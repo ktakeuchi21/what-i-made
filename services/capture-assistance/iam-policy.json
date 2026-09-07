@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InvokeBedrockMantleForCapture",
+      "Effect": "Allow",
+      "Action": "bedrock-mantle:CreateInference",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "aws:RequestedRegion": "us-east-2" }
+      }
+    },
+    {
+      "Sid": "InvokeBedrockRuntimeForCapture",
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeModel",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "aws:RequestedRegion": "us-east-2" }
+      }
+    }
+  ]
+}

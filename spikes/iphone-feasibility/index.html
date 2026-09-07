@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://eh6h3acmwp2owyowv6s7vqnyii0ifons.lambda-url.us-east-2.on.aws wss://transcribestreaming.us-east-2.amazonaws.com:8443; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F7F1E7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171814" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="What I Made Lab" />
+    <meta
+      name="description"
+      content="A private, on-device feasibility lab for What I Made's iPhone capabilities."
+    />
+    <title>What I Made — iPhone feasibility lab</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <svg class="symbol-library" aria-hidden="true">
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6" />
+      </symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24">
+        <path d="M12 3 2.8 20h18.4L12 3Z" />
+        <path d="M12 9v5M12 17.5h.01" />
+      </symbol>
+      <symbol id="icon-phone" viewBox="0 0 24 24">
+        <rect x="6" y="2" width="12" height="20" rx="2.5" />
+        <path d="M10 5h4M11 19h2" />
+      </symbol>
+      <symbol id="icon-camera" viewBox="0 0 24 24">
+        <path d="M4 7.5h3l1.4-2h7.2l1.4 2h3a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2Z" />
+        <circle cx="12" cy="13.5" r="4" />
+      </symbol>
+      <symbol id="icon-image" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="m21 15-5-5L5 21" />
+      </symbol>
+      <symbol id="icon-database" viewBox="0 0 24 24">
+        <ellipse cx="12" cy="5" rx="8" ry="3" />
+        <path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" />
+      </symbol>
+      <symbol id="icon-mic" viewBox="0 0 24 24">
+        <rect x="9" y="2" width="6" height="12" rx="3" />
+        <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v4M8.5 22h7" />
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24">
+        <rect x="6" y="6" width="12" height="12" rx="1.5" />
+      </symbol>
+      <symbol id="icon-share" viewBox="0 0 24 24">
+        <path d="M12 16V3M7 8l5-5 5 5" />
+        <path d="M5 11H3v10h18V11h-2" />
+      </symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="12" height="12" rx="2" />
+        <path d="M16 8V4H4v12h4" />
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M12 3v13M7 11l5 5 5-5M4 21h16" />
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 6v5h-5" />
+        <path d="M18.2 16.5A8 8 0 1 1 20 11" />
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6" />
+      </symbol>
+    </svg>
+
+    <a class="skip-link" href="#lab-main">Skip to tests</a>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="brand">What I Made</p>
+        <p class="eyebrow">iPhone feasibility lab</p>
+        <h1>Prove the phone before we build the archive.</h1>
+        <p class="hero-copy">
+          Six short checks will tell us whether an installable web app can safely handle your photos, voice,
+          local history, and Apple Files backup.
+        </p>
+        <div class="privacy-note">
+          <svg aria-hidden="true"><use href="#icon-phone"></use></svg>
+          <p>
+            <strong>Your photos, local records, and report stay on this device.</strong> Voice is the exception:
+            keyboard Dictation may use Apple, and the optional custom button streams audio directly to Amazon
+            Transcribe only while it is active. What I Made never uploads photographs with either route.
+          </p>
+        </div>
+        <div class="progress-block" aria-labelledby="progress-label">
+          <div class="progress-copy">
+            <span id="progress-label">Device readiness</span>
+            <strong id="progress-count">0 of 6 passed</strong>
+          </div>
+          <div
+            class="progress-track"
+            role="progressbar"
+            aria-labelledby="progress-label"
+            aria-valuemin="0"
+            aria-valuemax="6"
+            aria-valuenow="0"
+            id="progress-track"
+          >
+            <span id="progress-fill"></span>
+          </div>
+        </div>
+      </header>
+
+      <main id="lab-main" tabindex="-1">
+        <section class="environment" aria-labelledby="environment-title">
+          <div>
+            <p class="eyebrow">This session</p>
+            <h2 id="environment-title">Before you begin</h2>
+          </div>
+          <p>
+            Run every check from Safari on your iPhone. Then add this page to your Home Screen and run the
+            install check once more.
+          </p>
+          <dl class="environment-grid">
+            <div>
+              <dt>Connection</dt>
+              <dd id="environment-secure">Checking…</dd>
+            </div>
+            <div>
+              <dt>Display</dt>
+              <dd id="environment-display">Checking…</dd>
+            </div>
+            <div>
+              <dt>Browser storage</dt>
+              <dd id="environment-storage">Checking…</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="test-list" aria-label="Feasibility checks">
+          <article class="test-card" data-test-card="install">
+            <div class="test-heading">
+              <span class="test-number">01</span>
+              <div>
+                <h2>Secure, installed app</h2>
+                <p>Confirm the app can run from your Home Screen with the browser chrome removed.</p>
+              </div>
+              <span class="status-chip" data-status-for="install" data-tone="idle">Not ready</span>
+            </div>
+            <div class="result-list" id="install-results"></div>
+            <div class="instruction-box">
+              <strong>On iPhone Safari</strong>
+              <ol>
+                <li>Open the Share menu.</li>
+                <li>Choose <span>Add to Home Screen</span>.</li>
+                <li>Open the new What I Made Lab icon and rerun this check.</li>
+              </ol>
+            </div>
+            <button class="button button-secondary" type="button" id="refresh-install">
+              <svg aria-hidden="true"><use href="#icon-refresh"></use></svg>
+              Rerun install check
+            </button>
+          </article>
+
+          <article class="test-card" data-test-card="photo-inputs">
+            <div class="test-heading">
+              <span class="test-number">02</span>
+              <div>
+                <h2>Camera and photo library</h2>
+                <p>Try both entry points. Each selected photo is processed locally and never uploaded.</p>
+              </div>
+              <span class="status-chip" data-status-for="photo-inputs" data-tone="idle">Not run</span>
+            </div>
+            <div class="photo-actions">
+              <label class="button button-primary file-button">
+                <svg aria-hidden="true"><use href="#icon-camera"></use></svg>
+                Take a photo
+                <input id="camera-input" type="file" accept="image/*" capture="environment" />
+              </label>
+              <label class="button button-secondary file-button">
+                <svg aria-hidden="true"><use href="#icon-image"></use></svg>
+                Choose from library
+                <input id="library-input" type="file" accept="image/*" />
+              </label>
+            </div>
+            <div class="result-list" id="photo-input-results"></div>
+            <p class="inline-message" id="photo-message" role="status" aria-atomic="true">
+              Choose a disposable test image or a meal photo you are comfortable keeping locally.
+            </p>
+          </article>
+
+          <article class="test-card" data-test-card="photo-processing">
+            <div class="test-heading">
+              <span class="test-number">03</span>
+              <div>
+                <h2>HEIC orientation and optimization</h2>
+                <p>Verify Safari decodes the image upright and creates our planned portable JPEG copy.</p>
+              </div>
+              <span class="status-chip" data-status-for="photo-processing" data-tone="idle">Waiting for photo</span>
+            </div>
+            <figure class="photo-preview" id="photo-preview-shell" hidden>
+              <img id="photo-preview" alt="Locally optimized test photograph" />
+              <figcaption id="photo-caption">Processed locally</figcaption>
+            </figure>
+            <div class="photo-metrics" id="photo-metrics" hidden>
+              <dl>
+                <div><dt>Source</dt><dd id="photo-source">—</dd></div>
+                <div><dt>Original</dt><dd id="photo-original">—</dd></div>
+                <div><dt>Optimized</dt><dd id="photo-optimized">—</dd></div>
+                <div><dt>Reduction</dt><dd id="photo-reduction">—</dd></div>
+              </dl>
+              <fieldset class="manual-check">
+                <legend>Does the preview look upright?</legend>
+                <div>
+                  <button class="choice-button" type="button" id="orientation-yes">Yes, upright</button>
+                  <button class="choice-button" type="button" id="orientation-no">No, rotated</button>
+                </div>
+              </fieldset>
+            </div>
+            <p class="inline-message" id="processing-message" role="status" aria-atomic="true">
+              This check starts after you select a photo above.
+            </p>
+          </article>
+
+          <article class="test-card" data-test-card="storage">
+            <div class="test-heading">
+              <span class="test-number">04</span>
+              <div>
+                <h2>Durable local storage</h2>
+                <p>Test metadata, direct photo Blob storage, and a portable binary fallback, then verify the successful route survives a reload.</p>
+              </div>
+              <span class="status-chip" data-status-for="storage" data-tone="idle">Not run</span>
+            </div>
+            <div class="result-list" id="storage-results"></div>
+            <div class="button-row">
+              <button class="button button-primary" type="button" id="run-storage">
+                <svg aria-hidden="true"><use href="#icon-database"></use></svg>
+                Run storage test
+              </button>
+              <button class="button button-secondary" type="button" id="clear-storage">
+                <svg aria-hidden="true"><use href="#icon-trash"></use></svg>
+                Clear lab data
+              </button>
+            </div>
+            <p class="inline-message" id="storage-message" role="status" aria-atomic="true">
+              After the first successful write, reload this page to complete the persistence check.
+            </p>
+          </article>
+
+          <article class="test-card" data-test-card="voice">
+            <div class="test-heading">
+              <span class="test-number">05</span>
+              <div>
+                <h2>Microphone and transcription</h2>
+                <p>Prove the preferred one-tap AWS route while keeping Dictation and typing available.</p>
+              </div>
+              <span class="status-chip" data-status-for="voice" data-tone="idle">Not run</span>
+            </div>
+            <div class="result-list" id="voice-results"></div>
+            <div class="external-processing-note">
+              <svg aria-hidden="true"><use href="#icon-alert"></use></svg>
+              <p>
+                <strong>Before you use the custom button:</strong> audio streams directly from this browser to
+                Amazon Transcribe in Ohio. What I Made and Lambda do not durably store it. AWS service-improvement
+                use must be opted out before this control is enabled, though AWS may retain data needed to provide
+                and maintain the service. The transcript stays editable on this device.
+              </p>
+            </div>
+            <details class="voice-setup" id="voice-setup">
+              <summary>Private voice setup</summary>
+              <div class="voice-setup-body">
+                <label for="owner-token">Owner token</label>
+                <input id="owner-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" />
+                <p class="field-help">Entered once and stored only in this lab's local IndexedDB. It is never included in the report.</p>
+                <div class="button-row">
+                  <button class="button button-secondary" type="button" id="save-owner-token">Save token</button>
+                  <button class="text-button" type="button" id="remove-owner-token">Remove</button>
+                </div>
+                <p class="inline-message" id="token-message" role="status" aria-atomic="true">No owner token is saved.</p>
+              </div>
+            </details>
+            <div class="voice-primary-actions">
+              <button class="button button-primary voice-action" type="button" id="start-aws-transcription" aria-pressed="false">
+                <svg aria-hidden="true"><use href="#icon-mic"></use></svg>
+                Speak your cook
+              </button>
+              <button class="button button-secondary" type="button" id="cancel-aws-transcription" hidden>Cancel</button>
+            </div>
+            <output class="recording-status" id="aws-voice-status" aria-live="polite" aria-atomic="true">AWS voice setup is not configured yet.</output>
+            <div class="live-transcript" id="aws-live-transcript-shell" hidden>
+              <span>Words heard</span>
+              <p id="aws-live-transcript"></p>
+            </div>
+            <label class="transcript-label" for="transcript">Transcript from this test</label>
+            <textarea
+              id="transcript"
+              rows="4"
+              placeholder="Say: Oyakodon, eight out of ten. Use less soy next time."
+            ></textarea>
+            <p class="inline-message" id="voice-message" role="status" aria-atomic="true">
+              Type here anytime, or tap the keyboard's Dictation control. AWS recording automatically stops after 45 seconds.
+            </p>
+            <details class="legacy-voice-checks">
+              <summary>Earlier Safari diagnostics</summary>
+              <p>These controls preserve the evidence that raw microphone access worked and Safari speech recognition did not.</p>
+              <div class="button-row">
+                <button class="button button-secondary" type="button" id="check-microphone">
+                  <svg aria-hidden="true"><use href="#icon-mic"></use></svg>
+                  Check microphone
+                </button>
+                <button class="button button-secondary" type="button" id="start-transcription">
+                  <svg aria-hidden="true"><use href="#icon-mic"></use></svg>
+                  Retry Safari transcription
+                </button>
+              </div>
+            </details>
+          </article>
+
+          <article class="test-card" data-test-card="files">
+            <div class="test-heading">
+              <span class="test-number">06</span>
+              <div>
+                <h2>Apple Files export</h2>
+                <p>Open the native share sheet with a harmless JSON file and verify Save to Files is available.</p>
+              </div>
+              <span class="status-chip" data-status-for="files" data-tone="idle">Not run</span>
+            </div>
+            <div class="result-list" id="files-results"></div>
+            <button class="button button-primary" type="button" id="share-test-file">
+              <svg aria-hidden="true"><use href="#icon-share"></use></svg>
+              Open test share sheet
+            </button>
+            <fieldset class="manual-check" id="files-confirmation" hidden>
+              <legend>Did Save to Files appear?</legend>
+              <div>
+                <button class="choice-button" type="button" id="files-yes">Yes, it appeared</button>
+                <button class="choice-button" type="button" id="files-no">No, it did not</button>
+              </div>
+            </fieldset>
+            <p class="inline-message" id="files-message" role="status" aria-atomic="true">
+              The exported file contains diagnostic text only—no photograph or transcript.
+            </p>
+          </article>
+        </section>
+
+        <section class="summary" aria-labelledby="summary-title">
+          <p class="eyebrow">Decision evidence</p>
+          <h2 id="summary-title">Your feasibility report</h2>
+          <p>
+            Share this compact result after testing on your iPhone. It excludes photographs and transcript text.
+          </p>
+          <div class="summary-results" id="summary-results"></div>
+          <details class="report-preview">
+            <summary>Preview shared fields</summary>
+            <pre id="report-preview"></pre>
+          </details>
+          <div class="button-row">
+            <button class="button button-primary" type="button" id="copy-results">
+              <svg aria-hidden="true"><use href="#icon-copy"></use></svg>
+              Copy results
+            </button>
+            <button class="button button-secondary" type="button" id="download-results">
+              <svg aria-hidden="true"><use href="#icon-download"></use></svg>
+              Download JSON
+            </button>
+          </div>
+          <p class="inline-message" id="summary-message" role="status" aria-atomic="true">
+            Results update as you complete each check.
+          </p>
+        </section>
+      </main>
+
+      <footer>
+        <p>What I Made · Private iPhone feasibility lab</p>
+        <button class="text-button" type="button" id="reset-all">Reset all lab results</button>
+      </footer>
+    </div>
+    <div class="sr-only" id="announcement" role="status" aria-live="polite" aria-atomic="true"></div>
+    <script src="./config.js" defer></script>
+    <script src="./transcribe-codec.js" defer></script>
+    <script src="./transcribe-adapter.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>

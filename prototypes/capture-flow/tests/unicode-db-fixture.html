@@ -1,0 +1,38 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Unicode legacy archive fixture</title>
+<p id="status">Preparing Unicode legacy archive…</p>
+<script>
+  const status = document.querySelector("#status");
+  const deleteRequest = indexedDB.deleteDatabase("what-i-made-archive");
+  deleteRequest.onerror = () => { status.textContent = "delete failed"; };
+  deleteRequest.onsuccess = () => {
+    const openRequest = indexedDB.open("what-i-made-archive", 1);
+    openRequest.onupgradeneeded = () => {
+      const database = openRequest.result;
+      database.createObjectStore("occasions", { keyPath: "id" }).createIndex("cookedAt", "cookedAt");
+      database.createObjectStore("dishes", { keyPath: "id" });
+      database.createObjectStore("attempts", { keyPath: "id" }).createIndex("occasionId", "occasionId", { unique: true });
+      database.createObjectStore("photos", { keyPath: "id" }).createIndex("occasionId", "occasionId");
+    };
+    openRequest.onsuccess = () => {
+      const database = openRequest.result;
+      const transaction = database.transaction(["occasions", "dishes", "attempts", "photos"], "readwrite");
+      [
+        { number: 1, name: "親子丼" },
+        { number: 2, name: "ラーメン" },
+      ].forEach(({ number, name }) => {
+        const id = String(number);
+        transaction.objectStore("dishes").add({ id: `unicode-dish-${id}`, canonicalName: name, aliases: [], country: "Japan", createdAt: `2026-09-0${id}T12:00:00Z` });
+        transaction.objectStore("occasions").add({ id: `unicode-occasion-${id}`, cookedAt: `2026-09-0${id}`, createdAt: `2026-09-0${id}T12:00:00Z`, updatedAt: `2026-09-0${id}T12:00:00Z`, mainPhotoId: `unicode-photo-${id}` });
+        transaction.objectStore("attempts").add({ id: `unicode-attempt-${id}`, occasionId: `unicode-occasion-${id}`, dishId: `unicode-dish-${id}`, rating: 7 + number, notes: null, ingredientsText: null, transcript: null, createdAt: `2026-09-0${id}T12:00:00Z`, updatedAt: `2026-09-0${id}T12:00:00Z` });
+        transaction.objectStore("photos").add({ id: `unicode-photo-${id}`, occasionId: `unicode-occasion-${id}`, dishAttemptId: `unicode-attempt-${id}`, role: "main", mimeType: "image/jpeg", byteLength: 6, blob: new Blob(["legacy"], { type: "image/jpeg" }), createdAt: `2026-09-0${id}T12:00:00Z` });
+      });
+      transaction.oncomplete = () => {
+        database.close();
+        status.textContent = "unicode legacy ready";
+      };
+      transaction.onerror = () => { status.textContent = "seed failed"; };
+    };
+  };
+</script>

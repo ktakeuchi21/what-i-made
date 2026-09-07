@@ -1,0 +1,13 @@
+{
+  "name": "What I Made — iPhone Feasibility Lab",
+  "short_name": "What I Made Lab",
+  "description": "Private on-device capability checks for the What I Made cooking journal.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7F1E7",
+  "theme_color": "#F7F1E7",
+  "orientation": "any",
+  "categories": ["utilities", "lifestyle"]
+}

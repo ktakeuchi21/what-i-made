@@ -1,0 +1,1018 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F7F1E7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171814" media="(prefers-color-scheme: dark)" />
+    <meta name="wim-recipe-endpoint" content="https://tke4vvqhszhgtnlv5nbnu32wlq0xegwc.lambda-url.us-east-2.on.aws" />
+    <meta name="wim-capture-assistance-endpoint" content="https://muhxwobjcyckoelkmjhctyedg40qabnv.lambda-url.us-east-2.on.aws" />
+    <title>What I Made — Capture prototype</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
+    <link rel="manifest" href="./manifest.webmanifest?v=30" />
+    <link rel="stylesheet" href="./styles.css?v=29" />
+  </head>
+  <body>
+    <svg class="symbol-library" aria-hidden="true">
+      <symbol id="icon-camera" viewBox="0 0 24 24">
+        <path d="M4 7.5h3l1.4-2h7.2l1.4 2h3a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2Z" />
+        <circle cx="12" cy="13.5" r="4" />
+      </symbol>
+      <symbol id="icon-image" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="m21 15-5-5L5 21" />
+      </symbol>
+      <symbol id="icon-mic" viewBox="0 0 24 24">
+        <rect x="9" y="2" width="6" height="12" rx="3" />
+        <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v4M8.5 22h7" />
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24">
+        <rect x="6" y="6" width="12" height="12" rx="2" />
+      </symbol>
+      <symbol id="icon-chevron" viewBox="0 0 24 24">
+        <path d="m9 18 6-6-6-6" />
+      </symbol>
+      <symbol id="icon-back" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6" />
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6" />
+      </symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" />
+      </symbol>
+      <symbol id="icon-year" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M7 3v4M17 3v4M3 10h18" />
+      </symbol>
+      <symbol id="icon-map" viewBox="0 0 24 24">
+        <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z" />
+        <path d="M9 3v15M15 6v15" />
+      </symbol>
+      <symbol id="icon-journal" viewBox="0 0 24 24">
+        <path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2Z" />
+        <path d="M8 3v18M11 8h5M11 12h5" />
+      </symbol>
+      <symbol id="icon-ideas" viewBox="0 0 24 24">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5Z" />
+        <path d="M4 5.5v16M8 7h8M8 11h6" />
+      </symbol>
+    </svg>
+
+    <a class="skip-link" href="#app-main">Skip to app content</a>
+
+    <div class="prototype-layout">
+      <aside class="prototype-panel" aria-labelledby="prototype-title">
+        <p class="eyebrow">Interaction prototype</p>
+        <h1 id="prototype-title">Test the hot-food moment.</h1>
+        <p>
+          The common path should preserve a photograph and dish name before eating, without making optional detail feel required.
+        </p>
+        <div class="scenario-group" aria-labelledby="scenario-label">
+          <p id="scenario-label" class="control-label">Scenario</p>
+          <button class="scenario-button is-active" type="button" data-scenario="blank" aria-pressed="true">
+            Minimum capture
+          </button>
+          <button class="scenario-button" type="button" data-scenario="assisted" aria-pressed="false">
+            Voice-assisted sample
+          </button>
+          <button class="scenario-button" type="button" data-scenario="failure" aria-pressed="false">
+            AI failure fallback
+          </button>
+        </div>
+        <dl class="prototype-metrics">
+          <div>
+            <dt>Target</dt>
+            <dd>Under 20 sec</dd>
+          </div>
+          <div>
+            <dt>Required</dt>
+            <dd>Photo + name</dd>
+          </div>
+          <div>
+            <dt>Cloud</dt>
+            <dd>Voice + lookup</dd>
+          </div>
+        </dl>
+        <p class="prototype-note">Use the panel to reset the phone into a representative scenario.</p>
+      </aside>
+
+      <main class="phone-frame" id="app-main" tabindex="-1">
+        <section class="app-screen is-active" data-screen="capture" aria-labelledby="capture-title">
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="open-journal">
+              <svg aria-hidden="true"><use href="#icon-back"></use></svg>
+              Journal
+            </button>
+            <span class="app-bar-title">New cook</span>
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+          </header>
+
+          <div class="screen-scroll">
+            <p class="eyebrow">Quick capture · Prototype</p>
+            <h2 id="capture-title" tabindex="-1">What did you cook?</h2>
+            <p class="screen-intro">Start with the plate. Everything after the dish name is optional.</p>
+
+            <figure class="photo-picker" id="photo-picker" data-ready="false">
+              <img id="photo-preview" alt="" hidden />
+              <div class="photo-empty" id="photo-empty">
+                <svg class="empty-icon" aria-hidden="true"><use href="#icon-camera"></use></svg>
+                <strong>Add the main photo</strong>
+                <span>Required for a cooking occasion</span>
+              </div>
+              <figcaption class="photo-actions">
+                <label class="button button-secondary file-button">
+                  <svg aria-hidden="true"><use href="#icon-camera"></use></svg>
+                  Camera
+                  <input id="camera-input" type="file" accept="image/*" capture="environment" />
+                </label>
+                <label class="button button-secondary file-button">
+                  <svg aria-hidden="true"><use href="#icon-image"></use></svg>
+                  Library
+                  <input id="library-input" type="file" accept="image/*" />
+                </label>
+              </figcaption>
+            </figure>
+            <button class="inline-button" type="button" id="sample-photo">Use sample meal</button>
+
+            <form id="capture-form" novalidate>
+              <fieldset class="voice-card">
+                <legend>Tell me about it <span>Optional</span></legend>
+                <p>Say the dish, rating, notes, and ingredients. I’ll organize the details for review.</p>
+                <div class="voice-row">
+                  <button class="mic-button" type="button" id="mic-button" aria-pressed="false">
+                    <svg aria-hidden="true"><use href="#icon-mic"></use></svg>
+                    <span>Speak your cook</span>
+                  </button>
+                  <output class="recording-status" id="recording-status" aria-live="polite">Ready</output>
+                </div>
+                <div class="live-transcript" id="live-transcript-shell" aria-live="polite" hidden>
+                  <span>Hearing</span>
+                  <p id="live-transcript"></p>
+                </div>
+                <label for="transcript">Voice note or typed details</label>
+                <textarea
+                  id="transcript"
+                  rows="3"
+                  placeholder="For example: I made Oyakodon, eight out of ten. Notes: use less soy. Ingredients were chicken, egg, onion, and rice."
+                ></textarea>
+                <p class="voice-privacy">While recording, audio streams to Amazon Transcribe. After Done, transcript text—not audio or photographs—is sent for smart suggestions. What I Made does not save the audio. Typing and keyboard Dictation stay available.</p>
+                <div class="assist-progress" id="assist-progress" role="status" aria-live="polite" hidden>
+                  <span class="assist-progress-dot" aria-hidden="true"></span>
+                  <span id="assist-progress-text">Organizing your note…</span>
+                </div>
+                <div class="assist-recovery" id="assist-recovery" hidden>
+                  <p id="assist-recovery-message">Smart suggestions are unavailable. Basic suggestions were used and your note is still editable.</p>
+                  <button class="inline-button" type="button" id="retry-assistance">Retry smart suggestions</button>
+                </div>
+                <details class="voice-setup" id="voice-setup">
+                  <summary>Private voice setup</summary>
+                  <div class="voice-setup-body">
+                    <label for="owner-token">Owner token</label>
+                    <input id="owner-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" />
+                    <div class="voice-setup-actions">
+                      <button class="button button-secondary" type="button" id="save-owner-token">Save on this device</button>
+                      <button class="inline-button" type="button" id="remove-owner-token">Remove</button>
+                    </div>
+                    <p id="token-message" aria-live="polite">Checking this device…</p>
+                  </div>
+                </details>
+                <button class="inline-button" type="button" id="sample-voice">Use a sample voice note</button>
+              </fieldset>
+
+              <div class="field-group">
+                <label for="dish-name">Dish name <span>Required</span></label>
+                <input id="dish-name" name="dishName" autocomplete="off" required />
+                <p class="field-error" id="dish-error" role="alert" hidden>Enter the dish name to continue.</p>
+              </div>
+
+              <button class="disclosure-button" id="optional-toggle" type="button" aria-expanded="false" aria-controls="optional-fields">
+                <span>Add rating, notes, or ingredients</span>
+                <svg aria-hidden="true"><use href="#icon-chevron"></use></svg>
+              </button>
+
+              <div class="optional-fields" id="optional-fields" hidden>
+                <div class="field-group compact-field">
+                  <label for="rating">Rating <span>Optional</span></label>
+                  <div class="rating-input">
+                    <input id="rating" name="rating" type="number" inputmode="numeric" min="1" max="10" />
+                    <span>out of 10</span>
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label for="notes">Notes <span>Optional</span></label>
+                  <textarea id="notes" name="notes" rows="3"></textarea>
+                </div>
+                <div class="field-group">
+                  <label for="ingredients">Ingredients <span>Optional, informal</span></label>
+                  <textarea id="ingredients" name="ingredients" rows="2"></textarea>
+                </div>
+              </div>
+
+              <div class="form-error" id="capture-error" role="alert" hidden></div>
+              <button class="button button-primary primary-action" type="submit" id="review-button" disabled>
+                Review cook
+              </button>
+              <p class="prototype-disclaimer">Cooks and photographs are saved only on this device. Voice audio streams only while recording.</p>
+            </form>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="confirm" aria-labelledby="confirm-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="back-to-capture">
+              <svg aria-hidden="true"><use href="#icon-back"></use></svg>
+              Back
+            </button>
+            <span class="app-bar-title">Confirm</span>
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+          </header>
+
+          <form id="confirm-form" class="confirm-form">
+            <div class="screen-scroll">
+              <p class="eyebrow">One quick check</p>
+              <h2 id="confirm-title" tabindex="-1">Review your cook</h2>
+              <p class="screen-intro">Suggestions stay editable until you save.</p>
+
+              <div class="assist-warning" id="assist-warning" role="status" hidden>
+                <strong>Suggestions were unavailable.</strong>
+                <span>Your visible draft is intact. Review it manually and save when ready.</span>
+                <button class="inline-button" type="button" id="retry-assistance-confirm" hidden>Retry smart suggestions</button>
+              </div>
+
+              <figure class="confirm-photo">
+                <img id="confirm-photo" alt="Meal being reviewed" />
+                <figcaption id="confirm-photo-caption">Today’s cook</figcaption>
+              </figure>
+
+              <div class="field-group">
+                <label for="confirm-dish">Dish name <span>Required</span></label>
+                <input id="confirm-dish" required />
+              </div>
+              <div class="field-group">
+                <label for="confirm-date">Cooked on</label>
+                <input id="confirm-date" type="date" />
+              </div>
+
+              <fieldset class="match-group" id="match-group" hidden></fieldset>
+
+              <div class="suggestion-section">
+                <div class="section-heading-row">
+                  <label class="section-label" id="country-label" for="confirm-country">Country</label>
+                  <span class="suggestion-label" id="country-suggestion">Suggested</span>
+                </div>
+                <input id="confirm-country" aria-describedby="country-helper" />
+                <p class="field-helper" id="country-helper">Used to place this dish on the map. You can adjust its point later.</p>
+                <button class="country-suggestion-action" type="button" id="country-suggestion-action" hidden></button>
+              </div>
+
+              <section class="suggestion-section" aria-labelledby="details-heading">
+                <div class="section-heading-row">
+                  <h3 id="details-heading">Details</h3>
+                  <span class="suggestion-label" id="details-suggestion">From your note</span>
+                </div>
+                <div class="field-group compact-field">
+                  <label for="confirm-rating">Rating</label>
+                  <div class="rating-input">
+                    <input id="confirm-rating" type="number" inputmode="numeric" min="1" max="10" />
+                    <span>out of 10</span>
+                  </div>
+                </div>
+                <div class="field-group">
+                  <label for="confirm-notes">Notes</label>
+                  <textarea id="confirm-notes" rows="3"></textarea>
+                </div>
+                <div class="field-group">
+                  <label for="confirm-ingredients">Ingredients</label>
+                  <textarea id="confirm-ingredients" rows="2"></textarea>
+                </div>
+              </section>
+
+              <section class="additional-dishes-section" aria-labelledby="additional-dishes-title">
+                <div class="section-heading-row">
+                  <div><p class="eyebrow">Same cooking occasion</p><h3 id="additional-dishes-title">More dishes</h3></div>
+                </div>
+                <div id="additional-dishes"></div>
+                <button class="button button-secondary" type="button" id="add-confirm-dish">Add another dish</button>
+                <p class="field-helper">Additional dishes keep their own rating, notes, ingredients, country, and history.</p>
+              </section>
+            </div>
+
+            <div class="sticky-action-bar">
+              <div class="form-error" id="save-error" role="alert" hidden></div>
+              <button class="button button-primary primary-action" type="submit" id="save-button">Save cook</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="app-screen success-screen" data-screen="success" aria-labelledby="success-title" hidden>
+          <div class="screen-scroll success-content">
+            <div class="success-mark" aria-hidden="true">
+              <svg><use href="#icon-check"></use></svg>
+            </div>
+            <p class="eyebrow">Saved on this device</p>
+            <h2 id="success-title" tabindex="-1"><span id="success-dish">Oyakodon</span><span id="success-verb"> is</span> in your history.</h2>
+            <p class="success-time" id="success-time">Capture completed.</p>
+
+            <figure class="success-photo">
+              <img id="success-photo" alt="Saved meal" />
+            </figure>
+
+            <section class="history-preview" aria-labelledby="history-preview-title">
+              <div>
+                <p class="eyebrow">Dish progression</p>
+                <h3 id="history-preview-title">Your 4th cook</h3>
+              </div>
+              <ol class="rating-progression" aria-label="Rating progression: 7, 7, 8, and 8 out of 10">
+                <li><span>7</span><small>Mar</small></li>
+                <li><span>7</span><small>Apr</small></li>
+                <li><span>8</span><small>Jun</small></li>
+                <li class="current"><span id="success-rating">8</span><small>Today</small></li>
+              </ol>
+              <p id="success-note">Use a little less soy next time; the egg texture was much better.</p>
+            </section>
+
+            <button class="button button-primary primary-action" type="button" id="view-year">View your year</button>
+            <button class="inline-button" type="button" id="restart-prototype">Add another cook</button>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="year" aria-labelledby="year-title" hidden>
+          <header class="app-bar">
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <span class="app-bar-title">Year</span>
+            <button class="text-button" type="button" id="year-new-cook">New cook</button>
+          </header>
+          <div class="screen-scroll year-content">
+            <p class="eyebrow" id="year-eyebrow">This year</p>
+            <h2 id="year-title" tabindex="-1">Your year in cooking</h2>
+            <p class="screen-intro" id="year-summary">Your cooking memories, close enough to revisit.</p>
+            <div class="form-error" id="year-error" role="alert" hidden></div>
+
+            <figure class="year-hero">
+              <img id="year-hero-photo" alt="" />
+              <figcaption>
+                <span>Latest cook</span>
+                <strong id="year-hero-dish"></strong>
+                <small id="year-hero-date"></small>
+              </figcaption>
+            </figure>
+
+            <dl class="year-stats" aria-label="Current year summary">
+              <div><dt id="year-dish-count">0</dt><dd>Dishes</dd></div>
+              <div><dt id="year-cook-count">0</dt><dd>Cooks</dd></div>
+              <div><dt id="year-country-count">0</dt><dd>Countries</dd></div>
+            </dl>
+
+            <section class="dashboard-section" aria-labelledby="year-map-title">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Recent geography</p>
+                  <h3 id="year-map-title">Your culinary map</h3>
+                </div>
+                <button class="text-button section-action" type="button" id="open-map-preview">Explore</button>
+              </div>
+              <button class="atlas-preview" type="button" id="year-map-preview" aria-label="Open the complete culinary map">
+                <svg class="world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g data-world-countries></g></svg>
+                <span class="map-cells" id="year-map-cells" aria-hidden="true"></span>
+                <span class="atlas-preview-label" id="year-map-label">Open complete map</span>
+              </button>
+              <p class="map-helper" id="year-map-helper"></p>
+            </section>
+
+            <section class="dashboard-section" aria-labelledby="new-dishes-title">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Last 30 days</p>
+                  <h3 id="new-dishes-title">New this month</h3>
+                </div>
+              </div>
+              <div class="dashboard-empty" id="new-dishes-empty">New dishes will gather here.</div>
+              <ol class="dish-strip" id="new-dishes-list"></ol>
+            </section>
+
+            <section class="dashboard-section" aria-labelledby="repeat-dishes-title">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Progress worth seeing</p>
+                  <h3 id="repeat-dishes-title">Meaningful repeats</h3>
+                </div>
+              </div>
+              <div class="dashboard-empty" id="repeat-dishes-empty">Repeat a dish with a new rating or note to see its story.</div>
+              <ol class="repeat-list" id="repeat-dishes-list"></ol>
+            </section>
+
+            <section class="dashboard-section" aria-labelledby="year-recap-title">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">The year in photographs</p>
+                  <h3 id="year-recap-title">Photo recap</h3>
+                </div>
+              </div>
+              <button class="recap-preview-card" type="button" id="year-photo-recap">
+                <span class="recap-preview-images" id="year-recap-images" aria-hidden="true"></span>
+                <span class="recap-preview-copy"><strong id="year-recap-count">Browse this year</strong><small>See every photo, month by month</small></span>
+              </button>
+            </section>
+
+            <section class="archive-safety-card" aria-labelledby="archive-safety-title">
+              <p class="eyebrow">Keep your archive yours</p>
+              <h3 id="archive-safety-title">Backup &amp; storage</h3>
+              <p>Your cooks, recipes, and photographs live on this iPhone. Make a portable backup for safekeeping.</p>
+              <button class="button button-secondary" type="button" id="open-backup-storage">Open backup &amp; storage</button>
+            </section>
+
+            <button class="button button-secondary primary-action" type="button" id="year-open-journal">Open journal</button>
+          </div>
+          <nav class="bottom-nav" aria-label="Primary navigation">
+            <button type="button" data-nav="year" aria-current="page"><svg aria-hidden="true"><use href="#icon-year"></use></svg><span>Year</span></button>
+            <button type="button" data-nav="map"><svg aria-hidden="true"><use href="#icon-map"></use></svg><span>Map</span></button>
+            <button type="button" data-nav="journal"><svg aria-hidden="true"><use href="#icon-journal"></use></svg><span>Journal</span></button>
+            <button type="button" data-nav="ideas"><svg aria-hidden="true"><use href="#icon-ideas"></use></svg><span>Ideas</span></button>
+          </nav>
+        </section>
+
+        <section class="app-screen" data-screen="backup" aria-labelledby="backup-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="backup-back">
+              <svg aria-hidden="true"><use href="#icon-back"></use></svg>
+              Year
+            </button>
+            <span class="app-bar-title">Backup &amp; storage</span>
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+          </header>
+          <div class="screen-scroll backup-content" id="backup-scroll">
+            <p class="eyebrow">Your portable archive</p>
+            <h2 id="backup-title" tabindex="-1">Protect what you made</h2>
+            <p class="screen-intro">This app stores your archive on this iPhone. A backup gives you a separate copy you can keep in Files.</p>
+
+            <div class="form-error" id="backup-error" role="alert" tabindex="-1" hidden></div>
+            <p class="save-status" id="backup-status" role="status" aria-live="polite" hidden></p>
+
+            <section class="backup-section archive-overview" aria-labelledby="archive-overview-title">
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">On this iPhone</p>
+                  <h3 id="archive-overview-title">Local archive</h3>
+                </div>
+              </div>
+              <dl class="backup-counts" aria-label="Local archive totals">
+                <div><dt id="backup-cook-count">—</dt><dd>Cooks</dd></div>
+                <div><dt id="backup-dish-count">—</dt><dd>Dishes</dd></div>
+                <div><dt id="backup-idea-count">—</dt><dd>Ideas</dd></div>
+                <div><dt id="backup-photo-count">—</dt><dd>Images</dd></div>
+              </dl>
+              <div class="storage-status-row">
+                <div>
+                  <strong id="storage-protection-title">Checking storage…</strong>
+                  <span id="storage-usage">Storage use is unavailable.</span>
+                </div>
+                <button class="text-button" type="button" id="protect-storage" hidden>Protect storage</button>
+              </div>
+              <p class="field-helper" id="storage-helper">Local storage can still be lost if this app or its website data is removed.</p>
+            </section>
+
+            <section class="backup-section" aria-labelledby="create-backup-title">
+              <p class="eyebrow">Save a copy</p>
+              <h3 id="create-backup-title">Create a backup</h3>
+              <p>The JSON file includes saved cooks, notes, Ideas, and optimized photographs. Unfinished drafts and your private service token are excluded.</p>
+              <button class="button button-primary" type="button" id="create-backup">Create backup</button>
+            </section>
+
+            <section class="backup-section" aria-labelledby="restore-backup-title">
+              <p class="eyebrow">Bring it back</p>
+              <h3 id="restore-backup-title">Restore a backup</h3>
+              <p>Choose a What I Made backup to inspect it first. Nothing is changed until you confirm.</p>
+              <label class="button button-secondary file-button backup-file-button" id="backup-file-button" for="backup-file-input">
+                Choose backup file
+                <input id="backup-file-input" type="file" accept=".json,application/json" />
+              </label>
+              <div class="restore-preview" id="restore-preview" hidden>
+                <div class="restore-preview-heading">
+                  <div>
+                    <p class="eyebrow">Ready to review</p>
+                    <h4 id="restore-file-name">Backup file</h4>
+                  </div>
+                  <button class="text-button" type="button" id="choose-another-backup">Change</button>
+                </div>
+                <dl class="restore-details">
+                  <div><dt>Created</dt><dd id="restore-created-at">—</dd></div>
+                  <div><dt>File size</dt><dd id="restore-file-size">—</dd></div>
+                  <div><dt>Version</dt><dd id="restore-schema">—</dd></div>
+                  <div><dt>Contains</dt><dd id="restore-contents">—</dd></div>
+                </dl>
+                <p class="restore-blocker" id="restore-blocker" role="status" hidden></p>
+                <button class="button button-primary" type="button" id="confirm-restore">Restore backup</button>
+              </div>
+              <button class="button button-primary" type="button" id="view-restored-archive" hidden>View restored archive</button>
+            </section>
+
+            <section class="backup-section danger-zone" aria-labelledby="erase-archive-title">
+              <p class="eyebrow">Recovery tools</p>
+              <h3 id="erase-archive-title">Erase local archive</h3>
+              <p>Use this only when you need an empty archive for restore. Create a backup first if you want to keep what is here.</p>
+              <button class="button button-danger" type="button" id="open-erase-dialog">Erase local archive</button>
+            </section>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="map" id="map-screen" aria-labelledby="map-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="map-back" hidden>
+              <svg aria-hidden="true"><use href="#icon-back"></use></svg>
+              <span id="map-back-label">World</span>
+            </button>
+            <span class="app-bar-spacer" id="map-header-spacer" aria-hidden="true"></span>
+            <span class="app-bar-title">Map</span>
+            <button class="text-button" type="button" id="map-new-cook">New cook</button>
+          </header>
+          <div class="screen-scroll map-content" id="map-main">
+            <p class="eyebrow" id="map-eyebrow">All mapped dishes</p>
+            <h2 id="map-title" tabindex="-1">Your culinary atlas</h2>
+            <p class="screen-intro" id="map-summary">Choose a culinary region to explore the dishes you made there.</p>
+            <div class="form-error" id="map-error" role="alert" hidden></div>
+            <fieldset class="map-mode-control" id="map-mode-control" hidden>
+              <legend>Map view</legend>
+              <div class="segmented-control">
+                <button type="button" id="map-mode-photo" aria-pressed="true">Photo Density</button>
+                <button type="button" id="map-mode-needle" aria-pressed="false">Needle Field</button>
+              </div>
+            </fieldset>
+            <div class="atlas-stage" id="full-map" aria-label="Photo map of saved dishes">
+              <div class="atlas-map-layer" id="atlas-map-layer">
+                <svg class="world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g data-world-countries></g></svg>
+                <div class="map-cells" id="full-map-cells"></div>
+              </div>
+            </div>
+            <p class="map-helper map-status" id="map-status" role="status" aria-live="polite"></p>
+            <section class="dashboard-section country-shelf-section" id="country-shelf-section" aria-labelledby="country-shelf-title" hidden>
+              <div class="section-heading-row">
+                <div>
+                  <p class="eyebrow">Browse before opening</p>
+                  <h3 id="country-shelf-title">Countries</h3>
+                </div>
+              </div>
+              <ul class="country-shelf" id="country-shelf"></ul>
+              <p class="dashboard-empty" id="region-empty" hidden>No dishes saved here yet.</p>
+            </section>
+            <section class="dashboard-section" id="needs-location-section" aria-labelledby="needs-location-title" hidden>
+              <div class="section-heading-row"><h3 id="needs-location-title">Needs a map location</h3></div>
+              <p class="map-helper">These cooks stay in your year and journal without receiving a guessed point.</p>
+              <ul class="needs-location-list" id="needs-location-list"></ul>
+            </section>
+          </div>
+          <div class="country-sheet-layer" id="country-sheet-layer" hidden>
+            <button class="country-sheet-scrim" type="button" id="country-sheet-scrim" aria-label="Close country dishes"></button>
+            <section class="country-sheet" id="country-sheet" role="dialog" aria-modal="true" aria-labelledby="country-sheet-title" tabindex="-1">
+              <div class="sheet-handle" aria-hidden="true"></div>
+              <header class="country-sheet-header">
+                <div>
+                  <p class="eyebrow" id="country-sheet-region"></p>
+                  <h3 id="country-sheet-title">Country</h3>
+                  <p id="country-sheet-summary"></p>
+                </div>
+                <button class="text-button sheet-close" type="button" id="close-country-sheet">Close</button>
+              </header>
+              <ul class="country-dish-grid" id="country-dish-grid"></ul>
+            </section>
+          </div>
+          <nav class="bottom-nav" aria-label="Primary navigation">
+            <button type="button" data-nav="year"><svg aria-hidden="true"><use href="#icon-year"></use></svg><span>Year</span></button>
+            <button type="button" data-nav="map" aria-current="page"><svg aria-hidden="true"><use href="#icon-map"></use></svg><span>Map</span></button>
+            <button type="button" data-nav="journal"><svg aria-hidden="true"><use href="#icon-journal"></use></svg><span>Journal</span></button>
+            <button type="button" data-nav="ideas"><svg aria-hidden="true"><use href="#icon-ideas"></use></svg><span>Ideas</span></button>
+          </nav>
+        </section>
+
+        <section class="app-screen" data-screen="dish" aria-labelledby="dish-history-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="back-to-map-country">
+              <svg aria-hidden="true"><use href="#icon-back"></use></svg>
+              Map
+            </button>
+            <span class="app-bar-title">Dish history</span>
+            <button class="text-button" type="button" id="customize-map">Customize map</button>
+          </header>
+          <div class="screen-scroll dish-history-content">
+            <p class="eyebrow" id="dish-history-country"></p>
+            <h2 id="dish-history-title" tabindex="-1">Dish history</h2>
+            <p class="screen-intro" id="dish-history-summary"></p>
+            <ol class="dish-history-list" id="dish-history-list"></ol>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="ideas" aria-labelledby="ideas-title" hidden>
+          <header class="app-bar">
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <span class="app-bar-title">Ideas</span>
+            <button class="text-button" type="button" id="add-idea">Add idea</button>
+          </header>
+          <div class="screen-scroll ideas-content" id="ideas-scroll">
+            <p class="eyebrow">What you want to cook</p>
+            <h2 id="ideas-title" tabindex="-1">Ideas for later</h2>
+            <p class="screen-intro">Keep recipes that spark something. They join your history only after you cook them.</p>
+            <div class="ideas-tools">
+              <label for="ideas-search">Search saved ideas</label>
+              <input id="ideas-search" type="search" autocomplete="off" placeholder="Dish, ingredient, or source" />
+              <div class="filter-tabs" role="group" aria-label="Filter ideas">
+                <button type="button" data-idea-filter="all" aria-pressed="true">All</button>
+                <button type="button" data-idea-filter="unmade" aria-pressed="false">Unmade</button>
+                <button type="button" data-idea-filter="made" aria-pressed="false">Made</button>
+              </div>
+            </div>
+            <div class="form-error" id="ideas-error" role="alert" hidden></div>
+            <div class="journal-empty" id="ideas-empty" hidden>
+              <h3>No ideas saved yet.</h3>
+              <p>Paste a recipe link or describe something you would like to cook.</p>
+              <button class="button button-primary" type="button" id="empty-add-idea">Add your first idea</button>
+            </div>
+            <ol class="ideas-grid" id="ideas-grid"></ol>
+          </div>
+          <nav class="bottom-nav" aria-label="Primary navigation">
+            <button type="button" data-nav="year"><svg aria-hidden="true"><use href="#icon-year"></use></svg><span>Year</span></button>
+            <button type="button" data-nav="map"><svg aria-hidden="true"><use href="#icon-map"></use></svg><span>Map</span></button>
+            <button type="button" data-nav="journal"><svg aria-hidden="true"><use href="#icon-journal"></use></svg><span>Journal</span></button>
+            <button type="button" data-nav="ideas" aria-current="page"><svg aria-hidden="true"><use href="#icon-ideas"></use></svg><span>Ideas</span></button>
+          </nav>
+        </section>
+
+        <section class="app-screen" data-screen="idea-add" aria-labelledby="idea-add-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" data-back-to-ideas><svg aria-hidden="true"><use href="#icon-back"></use></svg>Ideas</button>
+            <span class="app-bar-title">Add idea</span><span class="app-bar-spacer" aria-hidden="true"></span>
+          </header>
+          <div class="screen-scroll idea-form-content">
+            <p class="eyebrow">Save some inspiration</p>
+            <h2 id="idea-add-title" tabindex="-1">What sounds good?</h2>
+            <div class="idea-paths" role="tablist" aria-label="How to add a recipe">
+              <button type="button" role="tab" id="idea-link-tab" aria-selected="true" aria-controls="idea-link-panel" tabindex="0">Paste a link</button>
+              <button type="button" role="tab" id="idea-describe-tab" aria-selected="false" aria-controls="idea-describe-panel" tabindex="-1">Describe a dish</button>
+            </div>
+            <form id="idea-link-panel" class="idea-path-panel" role="tabpanel" aria-labelledby="idea-link-tab" novalidate>
+              <label for="idea-url">Public recipe URL</label>
+              <input id="idea-url" type="url" inputmode="url" autocapitalize="none" autocomplete="url" placeholder="https://…" />
+              <p class="field-helper">Recipe and food-blog pages work best. Login, paywall, and social-video links are not supported.</p>
+              <p class="field-error" id="idea-url-error" role="alert" hidden></p>
+              <button class="button button-primary primary-action" type="submit">Retrieve recipe</button>
+            </form>
+            <form id="idea-describe-panel" class="idea-path-panel" role="tabpanel" aria-labelledby="idea-describe-tab" hidden novalidate>
+              <label for="idea-description">Describe what you want to make</label>
+              <textarea id="idea-description" rows="5" maxlength="1000" placeholder="For example: a spicy vegetarian noodle soup with mushrooms"></textarea>
+              <p class="field-helper">Your description is sent to the private recipe service to find sourced recipes.</p>
+              <p class="field-error" id="idea-description-error" role="alert" hidden></p>
+              <button class="button button-primary primary-action" type="submit">Find recipes</button>
+            </form>
+            <button class="inline-button" type="button" id="idea-add-manually">Add a recipe manually</button>
+            <div class="save-status" id="idea-fetch-status" role="status" aria-live="polite" hidden></div>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="idea-results" aria-labelledby="idea-results-title" hidden>
+          <header class="app-bar"><button class="icon-text-button" type="button" id="back-to-idea-add"><svg aria-hidden="true"><use href="#icon-back"></use></svg>Search</button><span class="app-bar-title">Recipe choices</span><span class="app-bar-spacer" aria-hidden="true"></span></header>
+          <div class="screen-scroll idea-results-content">
+            <p class="eyebrow">Sourced from the web</p><h2 id="idea-results-title" tabindex="-1">Choose a recipe</h2>
+            <p class="screen-intro">Open a result to retrieve its ingredients and instructions for review.</p>
+            <ol class="idea-results-list" id="idea-results-list"></ol>
+            <div class="journal-empty" id="idea-results-empty" hidden><h3>No sourced recipe matched.</h3><p>Refine your description, add it manually, or create a clearly labeled AI draft.</p><div class="empty-actions"><button class="button button-secondary" type="button" id="manual-idea-from-results">Add manually</button><button class="button button-secondary" type="button" id="generate-idea">Create AI draft</button></div></div>
+            <div class="form-error" id="idea-results-error" role="alert" hidden></div>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="idea-review" aria-labelledby="idea-review-title" hidden>
+          <header class="app-bar"><button class="text-button" type="button" id="cancel-idea-review">Cancel</button><span class="app-bar-title">Review idea</span><span class="app-bar-spacer" aria-hidden="true"></span></header>
+          <form class="screen-scroll idea-review-content" id="idea-review-form" novalidate>
+            <p class="eyebrow" id="idea-review-eyebrow">Editable draft</p><h2 id="idea-review-title" tabindex="-1">Review recipe</h2>
+            <div class="idea-review-image" id="idea-review-image"><span aria-hidden="true">Recipe photo</span></div>
+            <label class="button button-secondary idea-photo-button">Choose your own photo<input id="idea-photo-input" type="file" accept="image/*" /></label>
+            <div class="form-error" id="idea-review-error" role="alert" tabindex="-1" hidden></div>
+            <div class="field-group"><label for="idea-title">Recipe title <span>Required</span></label><input id="idea-title" maxlength="200" required /></div>
+            <div class="field-group"><label for="idea-summary">Description</label><textarea id="idea-summary" rows="3" maxlength="2000"></textarea></div>
+            <div class="idea-time-grid"><div class="field-group"><label for="idea-servings">Servings</label><input id="idea-servings" /></div><div class="field-group"><label for="idea-prep-time">Prep time</label><input id="idea-prep-time" /></div><div class="field-group"><label for="idea-cook-time">Cook time</label><input id="idea-cook-time" /></div></div>
+            <div class="field-group"><label for="idea-ingredients">Ingredients <span>One per line</span></label><textarea id="idea-ingredients" rows="8" required></textarea></div>
+            <div class="field-group"><label for="idea-instructions">Instructions <span>One step per line</span></label><textarea id="idea-instructions" rows="10" required></textarea></div>
+            <div class="field-group"><label for="idea-personal-notes">Personal notes</label><textarea id="idea-personal-notes" rows="3"></textarea></div>
+            <div class="idea-source-review" id="idea-source-review" hidden><strong id="idea-source-name"></strong><span id="idea-source-author"></span><a id="idea-source-link" target="_blank" rel="noopener noreferrer">Open original</a></div>
+            <button class="button button-primary primary-action" id="save-idea" type="submit">Save idea</button>
+          </form>
+        </section>
+
+        <section class="app-screen" data-screen="idea-detail" aria-labelledby="idea-detail-title" hidden>
+          <header class="app-bar"><button class="icon-text-button" type="button" id="idea-detail-back"><svg aria-hidden="true"><use href="#icon-back"></use></svg>Ideas</button><span class="app-bar-title">Recipe</span><button class="text-button" type="button" id="edit-idea">Edit</button></header>
+          <div class="screen-scroll idea-detail-content">
+            <div class="idea-detail-photo" id="idea-detail-photo"></div><p class="eyebrow" id="idea-detail-status"></p><h2 id="idea-detail-title" tabindex="-1">Recipe</h2><p class="screen-intro" id="idea-detail-summary"></p>
+            <dl class="entry-facts" id="idea-detail-facts"></dl>
+            <section class="entry-section"><h3>Ingredients</h3><ul id="idea-detail-ingredients"></ul></section>
+            <section class="entry-section"><h3>Instructions</h3><ol id="idea-detail-instructions"></ol></section>
+            <section class="entry-section" id="idea-notes-section"><h3>Personal notes</h3><p id="idea-detail-notes"></p></section>
+            <div class="idea-source-detail" id="idea-source-detail"></div>
+            <button class="button button-primary primary-action" type="button" id="start-idea-cook">Start a cook</button>
+            <div class="idea-detail-actions"><button class="button button-secondary" type="button" id="refresh-idea">Refresh from source</button><button class="text-button destructive-text" type="button" id="delete-idea">Delete idea</button></div>
+            <p class="save-status" id="idea-detail-message" role="status" aria-live="polite" hidden></p>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="journal" aria-labelledby="journal-title" hidden>
+          <header class="app-bar">
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <span class="app-bar-title">Journal</span>
+            <button class="text-button" type="button" id="new-cook">New cook</button>
+          </header>
+          <div class="screen-scroll journal-content" id="journal-scroll">
+            <p class="eyebrow">Your cooking history</p>
+            <h2 id="journal-title" tabindex="-1">What you made</h2>
+            <p class="screen-intro">Your latest cooks are saved here on this device.</p>
+            <div class="section-heading-row journal-recap-row">
+              <p>Browse the year as photographs.</p>
+              <button class="text-button section-action" type="button" id="journal-photo-recap">Photo recap</button>
+            </div>
+            <div class="journal-tools">
+              <label for="journal-search">Search cooked dishes</label>
+              <input id="journal-search" type="search" autocomplete="off" placeholder="Dish name" />
+              <div class="journal-filter-row">
+                <button class="button button-secondary" type="button" id="open-journal-filters" aria-haspopup="dialog">Filters</button>
+                <p id="journal-result-count" role="status" aria-live="polite"></p>
+              </div>
+              <div class="active-filter-shell" id="active-filter-shell" hidden>
+                <div class="active-filter-chips" id="active-filter-chips" aria-label="Active Journal filters"></div>
+                <button class="text-button" type="button" id="clear-journal-filters">Clear all</button>
+              </div>
+            </div>
+            <div class="form-error" id="journal-error" role="alert" hidden></div>
+            <div class="journal-empty" id="journal-empty" hidden>
+              <h3>Your first cook starts here.</h3>
+              <p>Add a photo and dish name to begin your private journal.</p>
+              <button class="button button-primary" type="button" id="empty-new-cook">Add a cook</button>
+            </div>
+            <div class="journal-empty" id="journal-no-results" hidden>
+              <h3>No cooks match.</h3>
+              <p>Try a different dish name or clear your filters.</p>
+              <button class="button button-secondary" type="button" id="reset-journal-results">Clear search and filters</button>
+            </div>
+            <ol class="journal-list" id="journal-list"></ol>
+          </div>
+          <nav class="bottom-nav" aria-label="Primary navigation">
+            <button type="button" data-nav="year"><svg aria-hidden="true"><use href="#icon-year"></use></svg><span>Year</span></button>
+            <button type="button" data-nav="map"><svg aria-hidden="true"><use href="#icon-map"></use></svg><span>Map</span></button>
+            <button type="button" data-nav="journal" aria-current="page"><svg aria-hidden="true"><use href="#icon-journal"></use></svg><span>Journal</span></button>
+            <button type="button" data-nav="ideas"><svg aria-hidden="true"><use href="#icon-ideas"></use></svg><span>Ideas</span></button>
+          </nav>
+        </section>
+
+        <section class="app-screen" data-screen="recap" aria-labelledby="recap-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="back-from-recap"><svg aria-hidden="true"><use href="#icon-back"></use></svg><span id="recap-back-label">Year</span></button>
+            <span class="app-bar-title">Photo recap</span>
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+          </header>
+          <div class="screen-scroll recap-content" id="recap-scroll">
+            <p class="eyebrow">Your year in photographs</p>
+            <h2 id="recap-title" tabindex="-1">Photo recap</h2>
+            <div class="recap-year-control">
+              <label for="recap-year">Calendar year</label>
+              <select id="recap-year"></select>
+            </div>
+            <p class="screen-intro" id="recap-summary" role="status" aria-live="polite"></p>
+            <div class="journal-empty" id="recap-empty" hidden>
+              <h3>No cooks saved in this year.</h3>
+              <p>Choose another year or add your next cook.</p>
+            </div>
+            <div class="recap-groups" id="recap-groups"></div>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="entry" aria-labelledby="entry-title" hidden>
+          <header class="app-bar">
+            <button class="icon-text-button" type="button" id="back-to-journal">
+              <svg aria-hidden="true"><use href="#icon-back"></use></svg>
+              <span id="entry-back-label">Journal</span>
+            </button>
+            <span class="app-bar-title">Cook</span>
+            <button class="text-button" type="button" id="edit-cook" hidden>Edit dish</button>
+          </header>
+          <div class="screen-scroll entry-content">
+            <div class="save-status" id="entry-status" role="status" aria-live="polite" hidden></div>
+            <figure class="entry-photo-shell"><img id="entry-photo" alt="" /></figure>
+            <p class="eyebrow" id="entry-date"></p>
+            <h2 id="entry-title" tabindex="-1">Cook</h2>
+            <section class="occasion-gallery" aria-labelledby="entry-gallery-title">
+              <div class="section-heading-row"><h3 id="entry-gallery-title">Photographs</h3><div class="compact-actions"><button class="text-button" type="button" id="take-entry-photo">Camera</button><button class="text-button" type="button" id="add-entry-photos">Library</button></div></div>
+              <div class="occasion-photo-grid" id="entry-photo-grid"></div>
+              <input id="entry-camera-input" type="file" accept="image/*" capture="environment" hidden />
+              <input id="entry-photo-input" type="file" accept="image/*" multiple hidden />
+            </section>
+            <section class="occasion-dishes" aria-labelledby="entry-dishes-title">
+              <div class="section-heading-row"><h3 id="entry-dishes-title">Dishes</h3><button class="text-button" type="button" id="add-entry-dish">Add dish</button></div>
+              <div id="entry-dish-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="add-dish" aria-labelledby="add-dish-title" hidden>
+          <header class="app-bar"><button class="text-button" type="button" id="cancel-add-dish">Cancel</button><span class="app-bar-title">Add dish</span><span class="app-bar-spacer" aria-hidden="true"></span></header>
+          <form class="screen-scroll edit-content" id="add-dish-form">
+            <p class="eyebrow">Same cooking occasion</p><h2 id="add-dish-title" tabindex="-1">Add another dish</h2>
+            <p class="screen-intro">This dish keeps its own history while sharing the occasion date and photographs.</p>
+            <div class="field-group"><label for="add-dish-name">Dish name <span>Required</span></label><input id="add-dish-name" required /></div>
+            <div class="field-group"><label for="add-dish-country">Country <span>Optional</span></label><input id="add-dish-country" /></div>
+            <div class="field-group compact-number-field"><label for="add-dish-rating">Rating <span>Optional</span></label><div><input id="add-dish-rating" type="number" min="1" max="10" inputmode="numeric" /><span>out of 10</span></div></div>
+            <div class="field-group"><label for="add-dish-notes">Notes <span>Optional</span></label><textarea id="add-dish-notes" rows="3"></textarea></div>
+            <div class="field-group"><label for="add-dish-ingredients">Ingredients <span>Optional</span></label><textarea id="add-dish-ingredients" rows="3"></textarea></div>
+            <div class="field-group"><label for="add-dish-photo">Dish photograph <span>Optional</span></label><input id="add-dish-photo" type="file" accept="image/*" /><p class="field-hint">The photograph will also join this occasion’s gallery.</p></div>
+            <label class="radio-card"><input id="add-dish-force-new" type="checkbox" /><span class="radio-copy"><strong>Keep as a separate dish</strong><span>Use this only when the same name represents a different dish.</span></span></label>
+            <div class="form-error" id="add-dish-error" role="alert" hidden></div>
+            <button class="button button-primary primary-action" type="submit" id="save-added-dish">Add dish</button>
+          </form>
+        </section>
+
+        <section class="app-screen" data-screen="edit" aria-labelledby="edit-title" hidden>
+          <header class="app-bar">
+            <button class="text-button" type="button" id="cancel-edit">Cancel</button>
+            <span class="app-bar-title">Edit cook</span>
+            <span class="app-bar-spacer" aria-hidden="true"></span>
+          </header>
+          <form class="screen-scroll edit-content" id="edit-form">
+            <p class="eyebrow">Correct this memory</p>
+            <h2 id="edit-title" tabindex="-1">Edit your cook</h2>
+            <p class="screen-intro">Changes save only when you tap Save changes.</p>
+
+            <figure class="edit-photo-shell"><img id="edit-photo" alt="" /></figure>
+            <div class="edit-photo-actions">
+              <label class="button button-secondary file-button" for="edit-camera-input">
+                <svg aria-hidden="true"><use href="#icon-camera"></use></svg>
+                Camera
+                <input id="edit-camera-input" type="file" accept="image/*" capture="environment" />
+              </label>
+              <label class="button button-secondary file-button" for="edit-library-input">
+                <svg aria-hidden="true"><use href="#icon-library"></use></svg>
+                Library
+                <input id="edit-library-input" type="file" accept="image/*" />
+              </label>
+            </div>
+            <p class="field-helper">Replacing this photo updates this cook. If it represents the dish on your map, the map updates too.</p>
+            <div class="edit-photo-message" id="edit-photo-error" role="status" aria-live="polite" hidden></div>
+
+            <div class="shared-dish-note" id="shared-dish-note">
+              <strong>Shared dish details</strong>
+              <span>Name and country apply to every cook grouped with this dish.</span>
+            </div>
+
+            <div class="field-group">
+              <label for="edit-dish">Dish name <span>Required</span></label>
+              <input id="edit-dish" required />
+              <p class="field-error" id="edit-dish-error" hidden>Enter a dish name.</p>
+            </div>
+            <div class="field-group">
+              <label for="edit-date">Cooked on <span>Required</span></label>
+              <input id="edit-date" type="date" required />
+            </div>
+            <div class="field-group">
+              <label for="edit-country">Country <span>Shared</span></label>
+              <input id="edit-country" />
+            </div>
+            <div class="field-group compact-number-field">
+              <label for="edit-rating">Rating <span>Optional</span></label>
+              <div><input id="edit-rating" type="number" min="1" max="10" step="1" inputmode="numeric" /><span>out of 10</span></div>
+            </div>
+            <div class="field-group">
+              <label for="edit-notes">Notes <span>Optional</span></label>
+              <textarea id="edit-notes" rows="4"></textarea>
+            </div>
+            <div class="field-group">
+              <label for="edit-ingredients">Ingredients <span>Optional, informal</span></label>
+              <textarea id="edit-ingredients" rows="4"></textarea>
+            </div>
+
+            <div class="form-error" id="edit-error" role="alert" hidden></div>
+            <button class="button button-primary primary-action" type="submit" id="edit-save">Save changes</button>
+          </form>
+        </section>
+
+        <dialog class="journal-filter-dialog photo-actions-dialog" id="photo-actions-dialog" aria-labelledby="photo-actions-title">
+          <form method="dialog" id="photo-actions-form">
+            <div class="dialog-handle" aria-hidden="true"></div>
+            <div class="dialog-title-row"><div><p class="eyebrow">Photograph</p><h2 id="photo-actions-title">Photo options</h2></div><button class="icon-button" type="button" id="close-photo-actions" aria-label="Close photo options">×</button></div>
+            <img class="photo-actions-preview" id="photo-actions-preview" alt="" />
+            <div class="field-group"><label for="photo-dish-assignment">Belongs to</label><select id="photo-dish-assignment"><option value="">The whole occasion</option></select></div>
+            <button class="button button-secondary" type="button" id="make-main-photo">Make main photo</button>
+            <button class="button button-danger" type="button" id="delete-entry-photo">Delete photo</button>
+            <p class="field-helper" id="photo-actions-message" role="status" aria-live="polite"></p>
+          </form>
+        </dialog>
+
+        <dialog class="journal-filter-dialog map-customize-dialog" id="map-customize-dialog" aria-labelledby="map-customize-title">
+          <form id="map-customize-form">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="country-sheet-header">
+              <div><p class="eyebrow">Dish map</p><h2 id="map-customize-title">Customize map</h2></div>
+              <button class="text-button sheet-close" type="button" id="close-map-customize">Close</button>
+            </div>
+            <p class="field-helper" id="map-customize-country"></p>
+            <fieldset class="map-photo-picker">
+              <legend>Default map photograph</legend>
+              <div class="map-photo-options" id="map-photo-options"></div>
+            </fieldset>
+            <fieldset class="map-location-editor">
+              <legend>Approximate location</legend>
+              <p class="field-helper">Tap or drag the photograph within the confirmed country. This represents the dish's culinary association, not where you cooked it.</p>
+              <div class="map-location-stage" id="map-location-stage" aria-label="Adjust approximate dish location">
+                <svg class="world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g id="map-editor-country"></g></svg>
+                <button type="button" class="map-editor-marker" id="map-editor-marker" aria-label="Approximate dish location. Drag or use the nudge controls."><img id="map-editor-photo" alt="" /></button>
+              </div>
+              <div class="map-nudge-controls" aria-label="Nudge approximate location">
+                <button type="button" data-map-nudge="up" aria-label="Nudge location up">↑</button>
+                <button type="button" data-map-nudge="left" aria-label="Nudge location left">←</button>
+                <button type="button" data-map-nudge="down" aria-label="Nudge location down">↓</button>
+                <button type="button" data-map-nudge="right" aria-label="Nudge location right">→</button>
+              </div>
+              <button class="button button-secondary" type="button" id="reset-map-location">Reset location</button>
+            </fieldset>
+            <p class="form-error" id="map-customize-error" role="alert" tabindex="-1" hidden></p>
+            <div class="dialog-actions">
+              <button class="button button-secondary" type="button" id="cancel-map-customize">Cancel</button>
+              <button class="button button-primary" type="submit" id="save-map-customize">Save map</button>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog class="erase-dialog" id="erase-dialog" aria-labelledby="erase-dialog-title" aria-describedby="erase-dialog-description">
+          <form id="erase-form" novalidate>
+            <p class="eyebrow">Permanent action</p>
+            <h2 id="erase-dialog-title">Erase this local archive?</h2>
+            <p id="erase-dialog-description">This permanently removes <strong id="erase-count-summary">your saved archive</strong> from this iPhone. Your private service token and installed app remain.</p>
+            <p class="erase-warning">This cannot be undone without a backup file.</p>
+            <label for="erase-confirmation">Type <strong>ERASE</strong> to continue</label>
+            <input id="erase-confirmation" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="erase-error" />
+            <p class="field-error" id="erase-error" role="alert" hidden></p>
+            <div class="dialog-actions">
+              <button class="button button-secondary" type="button" id="cancel-erase">Cancel</button>
+              <button class="button button-danger" type="submit" id="confirm-erase" disabled>Erase local archive</button>
+            </div>
+          </form>
+        </dialog>
+
+        <dialog class="journal-filter-dialog" id="journal-filter-dialog" aria-labelledby="journal-filter-title">
+          <form id="journal-filter-form">
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="country-sheet-header">
+              <div><p class="eyebrow">Narrow your archive</p><h2 id="journal-filter-title">Journal filters</h2></div>
+              <button class="text-button sheet-close" type="button" id="close-journal-filters">Close</button>
+            </div>
+            <div class="field-group">
+              <label for="journal-country-filter">Country</label>
+              <select id="journal-country-filter"></select>
+            </div>
+            <div class="journal-date-filters">
+              <div class="field-group"><label for="journal-year-filter">Year</label><select id="journal-year-filter"></select></div>
+              <div class="field-group"><label for="journal-month-filter">Month</label><select id="journal-month-filter"></select></div>
+            </div>
+            <div class="field-group">
+              <label for="journal-rating-filter">Rating</label>
+              <select id="journal-rating-filter">
+                <option value="any">Any rating</option>
+                <option value="unrated">Unrated</option>
+                <option value="min:10">10 out of 10</option>
+                <option value="min:9">9 or higher</option>
+                <option value="min:8">8 or higher</option>
+                <option value="min:7">7 or higher</option>
+                <option value="min:6">6 or higher</option>
+                <option value="min:5">5 or higher</option>
+                <option value="min:4">4 or higher</option>
+                <option value="min:3">3 or higher</option>
+                <option value="min:2">2 or higher</option>
+                <option value="min:1">1 or higher</option>
+              </select>
+            </div>
+            <div class="dialog-actions journal-filter-actions">
+              <button class="button button-secondary" type="button" id="reset-filter-sheet">Reset</button>
+              <button class="button button-primary" type="submit">Show results</button>
+            </div>
+          </form>
+        </dialog>
+      </main>
+    </div>
+
+    <script src="./config.js?v=27"></script>
+    <script src="./transcribe-codec.js?v=16"></script>
+    <script src="./transcribe-adapter.js?v=16"></script>
+    <script src="./capture-parser.js?v=16"></script>
+    <script src="./capture-assistance.js?v=27"></script>
+    <script src="./dish-matcher.js?v=27"></script>
+    <script src="./capture-draft.js?v=16"></script>
+    <script src="./photo-url.js?v=16"></script>
+    <script src="./photo-processor.js?v=16"></script>
+    <script src="./assets/world-map-data.js?v=29"></script>
+    <script src="./map-geometry.js?v=29"></script>
+    <script src="./archive-store.js?v=29"></script>
+    <script src="./idea-store.js?v=18"></script>
+    <script src="./archive-backup.js?v=29"></script>
+    <script src="./recipe-client.js?v=18"></script>
+    <script src="./assets/culinary-regions.js?v=16"></script>
+    <script src="./dashboard-model.js?v=29"></script>
+    <script src="./journal-model.js?v=25"></script>
+    <script src="./app.js?v=30"></script>
+  </body>
+</html>

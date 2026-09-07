@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Legacy archive fixture</title>
+<p id="status">Preparing legacy archive…</p>
+<script>
+  const status = document.querySelector("#status");
+  const deleteRequest = indexedDB.deleteDatabase("what-i-made-archive");
+  deleteRequest.onerror = () => { status.textContent = "delete failed"; };
+  deleteRequest.onsuccess = () => {
+    const openRequest = indexedDB.open("what-i-made-archive", 1);
+    openRequest.onupgradeneeded = () => {
+      const database = openRequest.result;
+      database.createObjectStore("occasions", { keyPath: "id" }).createIndex("cookedAt", "cookedAt");
+      database.createObjectStore("dishes", { keyPath: "id" });
+      database.createObjectStore("attempts", { keyPath: "id" }).createIndex("occasionId", "occasionId", { unique: true });
+      database.createObjectStore("photos", { keyPath: "id" }).createIndex("occasionId", "occasionId");
+    };
+    openRequest.onsuccess = () => {
+      const database = openRequest.result;
+      const transaction = database.transaction(["occasions", "dishes", "attempts", "photos"], "readwrite");
+      transaction.objectStore("dishes").add({ id: "legacy-dish-1", canonicalName: "Big Mac", aliases: [], country: "United States", createdAt: "2026-08-01T12:00:00Z" });
+      transaction.objectStore("dishes").add({ id: "legacy-dish-2", canonicalName: " big-mac ", aliases: [], country: "United States", createdAt: "2026-09-01T12:00:00Z" });
+      [1, 2].forEach((number) => {
+        const id = String(number);
+        transaction.objectStore("occasions").add({ id: `legacy-occasion-${id}`, cookedAt: `2026-09-0${number}`, createdAt: `2026-09-0${number}T12:00:00Z`, updatedAt: `2026-09-0${number}T12:00:00Z`, mainPhotoId: `legacy-photo-${id}` });
+        transaction.objectStore("attempts").add({ id: `legacy-attempt-${id}`, occasionId: `legacy-occasion-${id}`, dishId: `legacy-dish-${id}`, rating: 6 + number, notes: number === 1 ? "First try" : "Better sauce", ingredientsText: null, transcript: null, createdAt: `2026-09-0${number}T12:00:00Z`, updatedAt: `2026-09-0${number}T12:00:00Z` });
+        transaction.objectStore("photos").add({ id: `legacy-photo-${id}`, occasionId: `legacy-occasion-${id}`, dishAttemptId: `legacy-attempt-${id}`, role: "main", mimeType: "image/jpeg", byteLength: 6, blob: new Blob(["legacy"], { type: "image/jpeg" }), createdAt: `2026-09-0${number}T12:00:00Z` });
+      });
+      transaction.oncomplete = () => {
+        database.close();
+        status.textContent = "legacy ready";
+      };
+      transaction.onerror = () => { status.textContent = "seed failed"; };
+    };
+  };
+</script>

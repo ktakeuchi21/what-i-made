@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "StartTranscribeWebSocket",
+      "Effect": "Allow",
+      "Action": "transcribe:StartStreamTranscriptionWebSocket",
+      "Resource": "*"
+    },
+    {
+      "Sid": "WriteFunctionLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-east-2:*:log-group:/aws/lambda/what-i-made-transcribe-session:*"
+    }
+  ]
+}

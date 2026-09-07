@@ -1,0 +1,71 @@
+"use strict";
+
+const CACHE_NAME = "what-i-made-capture-v30";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./styles.css?v=29",
+  "./config.js?v=27",
+  "./transcribe-codec.js?v=16",
+  "./transcribe-adapter.js?v=16",
+  "./capture-parser.js?v=16",
+  "./capture-assistance.js?v=27",
+  "./dish-matcher.js?v=27",
+  "./capture-draft.js?v=16",
+  "./photo-url.js?v=16",
+  "./photo-processor.js?v=16",
+  "./assets/world-map-data.js?v=29",
+  "./map-geometry.js?v=29",
+  "./archive-store.js?v=29",
+  "./idea-store.js?v=18",
+  "./archive-backup.js?v=29",
+  "./recipe-client.js?v=18",
+  "./assets/culinary-regions.js?v=16",
+  "./dashboard-model.js?v=29",
+  "./journal-model.js?v=25",
+  "./audio-worklet.js",
+  "./app.js?v=30",
+  "./manifest.webmanifest?v=30",
+  "./assets/app-icon-192.png",
+  "./assets/app-icon-512.png",
+  "./assets/apple-touch-icon.png?v=30",
+  "./assets/favicon-32.png?v=30",
+  "./assets/sample-oyakodon.jpg",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((names) => Promise.all(names.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === "navigate") return caches.match("./index.html");
+        throw new Error("No cached response is available.");
+      }),
+  );
+});

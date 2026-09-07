@@ -1,0 +1,9 @@
+{
+  "name": "what-i-made-capture-assistance-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "lambda.js",
+  "scripts": { "test": "node --test tests/*.test.js" },
+  "engines": { "node": ">=20" }
+}
