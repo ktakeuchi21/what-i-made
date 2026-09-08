@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v30";
+const CACHE_NAME = "what-i-made-capture-v31";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -16,7 +16,8 @@ const APP_SHELL = [
   "./photo-processor.js?v=16",
   "./assets/world-map-data.js?v=29",
   "./map-geometry.js?v=29",
-  "./archive-store.js?v=29",
+  "./account-context.js?v=31",
+  "./archive-store.js?v=31",
   "./idea-store.js?v=18",
   "./archive-backup.js?v=29",
   "./recipe-client.js?v=18",

@@ -605,7 +605,6 @@ button:disabled {
   margin: 2px 0 0;
 }
 
-.voice-privacy,
 .voice-setup-body > p {
   margin: 8px 0 0;
   color: var(--muted-ink);
@@ -844,14 +843,6 @@ select[aria-invalid="true"] {
   border-right-color: transparent;
   border-radius: 50%;
   animation: spin 700ms linear infinite;
-}
-
-.prototype-disclaimer {
-  max-width: 33ch;
-  margin: 10px auto 0;
-  color: var(--muted-ink);
-  font-size: 0.75rem;
-  text-align: center;
 }
 
 .confirm-form {
