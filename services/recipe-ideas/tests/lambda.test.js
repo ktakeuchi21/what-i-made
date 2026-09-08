@@ -2,17 +2,23 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const crypto = require("node:crypto");
 const { createDeploymentHandler } = require("../lambda");
 
-const ownerToken = "owner_token_for_deployment_tests_123456";
 const environment = {
   RECIPE_IDEAS_ENABLED: "true", AWS_REGION: "us-east-2", BEDROCK_MODEL_ID: "openai.gpt-5.6-terra",
-  OWNER_TOKEN_SHA256: crypto.createHash("sha256").update(ownerToken).digest("hex"),
+  COGNITO_CLIENT_ID: "client-123",
   IMAGE_TOKEN_SECRET: "image-token-secret-that-is-at-least-32-bytes",
 };
 function event(path, body) {
-  return { rawPath: path, requestContext: { requestId: "deploy-test", http: { method: "POST" } }, headers: { authorization: `Bearer ${ownerToken}` }, body: JSON.stringify(body) };
+  return {
+    rawPath: path,
+    requestContext: {
+      requestId: "deploy-test",
+      http: { method: "POST" },
+      authorizer: { jwt: { claims: { sub: "account-a", token_use: "access", client_id: "client-123" } } },
+    },
+    body: JSON.stringify(body),
+  };
 }
 function response(payload) {
   const bytes = Buffer.from(JSON.stringify(payload));
@@ -33,6 +39,7 @@ test("deployment entrypoint lazily wires concrete search and generation provider
   const handler = createDeploymentHandler({
     environment, bedrockFetchImpl,
     credentialsProvider: async () => ({ accessKeyId: "AKIATEST", secretAccessKey: "secret", sessionToken: "session" }),
+    allowRequest: async () => true,
     logger: { info() {} },
   });
   const search = await handler(event("/v1/recipes/search", { description: "soup" }));

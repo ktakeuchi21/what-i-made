@@ -2,6 +2,8 @@
 
 > **Status:** Validated on the owner’s iPhone and integrated into the capture prototype
 
+> **Invitation-access addendum, September 8, 2026:** The owner-token and Lambda Function URL boundary below is historical and superseded by [Invitation only private archives](../../product/invitation-only-access/design.md). The current signer accepts only API Gateway-validated Cognito access-token claims through the unified service API; there is no shared-token fallback. The audio-streaming, privacy, and device-feasibility findings remain applicable.
+
 ## 1. Executive summary
 
 Safari's browser speech-recognition route accepted microphone access on the owner's iPhone but did not return words. Keyboard Dictation works, but it hides the action behind the keyboard and does not provide the preferred one-tap capture experience. This spike will add a dedicated **Speak your cook** button to the iPhone feasibility lab. The browser will convert microphone samples to short PCM audio chunks and stream them directly to Amazon Transcribe over an encrypted WebSocket. A small protected Lambda function will issue a short-lived connection URL, but it will never receive audio. The main downside is a small AWS backend and a one-time owner-token setup.

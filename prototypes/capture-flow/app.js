@@ -35,11 +35,6 @@
   const accountContext = window.WhatIMadeAccountContext;
   const authApi = window.WhatIMadeAuth;
   const authClient = authApi?.createAuthClient ? authApi.createAuthClient(authConfig) : null;
-  const TOKEN_DB_NAME = "what-i-made-feasibility-owner";
-  const TOKEN_DB_VERSION = 1;
-  const TOKEN_STORE_NAME = "diagnostics";
-  const TOKEN_RECORD_ID = "voice-owner-token";
-
   const state = {
     photoReady: false,
     photoSrc: "",
@@ -90,7 +85,7 @@
     countrySuggestion: null,
     countryProvenance: "",
     confirmationBaseline: null,
-    ownerToken: "",
+    accessToken: "",
     authSession: null,
     signOutCleanupPending: false,
     legacyMigrationInspection: null,
@@ -159,9 +154,6 @@
   const recordingStatus = $("#recording-status");
   const liveTranscriptShell = $("#live-transcript-shell");
   const liveTranscript = $("#live-transcript");
-  const voiceSetup = $("#voice-setup");
-  const ownerTokenInput = $("#owner-token");
-  const tokenMessage = $("#token-message");
   const captureError = $("#capture-error");
   const authMessage = $("#auth-message");
   const authError = $("#auth-error");
@@ -258,7 +250,7 @@
 
   function showSignedOut(reason = "") {
     state.authSession = null;
-    state.ownerToken = "";
+    state.accessToken = "";
     authError.hidden = true;
     signInButton.hidden = false;
     signInButton.textContent = state.signOutCleanupPending ? "Retry secure sign out" : "Sign in with email";
@@ -285,8 +277,7 @@
     state.archiveKey = archiveKey;
     state.mapMode = readMapMode(archiveKey);
     state.authSession = session;
-    state.ownerToken = session.accessToken || "";
-    voiceSetup.hidden = true;
+    state.accessToken = session.accessToken || "";
     $("#capture-account").hidden = false;
     $("#account-section").hidden = false;
     $("#account-email").textContent = session.email || "Invited account";
@@ -400,7 +391,7 @@
     const button = $("#sign-out-button");
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
-    state.ownerToken = "";
+    state.accessToken = "";
     state.authSession = null;
     state.signOutCleanupPending = true;
     try {
@@ -441,11 +432,13 @@
 
   async function bootApplication() {
     if (!authConfig.enabled) {
-      state.mapMode = readMapMode("");
-      await Promise.all([initializeApp(), restoreOwnerToken()]);
+      showSignedOut();
+      signInButton.disabled = true;
+      authError.textContent = "Invitation sign-in is not configured. The private archive remains locked.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
       return;
     }
-    voiceSetup.hidden = true;
     try {
       const session = await authClient.restore();
       if (["signedIn", "offlineGrace"].includes(session.kind)) await activateAccount(session);
@@ -462,7 +455,7 @@
   }
 
   async function serviceAccessToken() {
-    if (!authConfig.enabled) return state.ownerToken;
+    if (!authConfig.enabled) throw new Error("Invitation sign-in is not configured.");
     if (navigator.onLine === false) {
       throw new Error("Connect to the internet to use this feature.");
     }
@@ -472,11 +465,11 @@
         throw Object.assign(new Error("Your account changed. Sign in again before using this feature."), { code: "reauth_required" });
       }
       state.authSession = session;
-      state.ownerToken = session.accessToken;
+      state.accessToken = session.accessToken;
       $("#account-access-status").textContent = "This device opens only this account’s local archive.";
       return session.accessToken;
     } catch (error) {
-      state.ownerToken = "";
+      state.accessToken = "";
       if (error?.code === "reauth_required") {
         state.authSession = null;
         await cancelRecording("Session ended");
@@ -496,7 +489,7 @@
   }
 
   async function lockPrivateArchive(reason, clearSession = true) {
-    state.ownerToken = "";
+    state.accessToken = "";
     state.authSession = null;
     await cancelRecording("Session ended");
     await archive.closeDatabase();
@@ -769,84 +762,6 @@
     }
   }
 
-  function openTokenDatabase() {
-    if (!("indexedDB" in window)) return Promise.reject(new Error("Private setup storage is unavailable."));
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(TOKEN_DB_NAME, TOKEN_DB_VERSION);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(TOKEN_STORE_NAME)) {
-          request.result.createObjectStore(TOKEN_STORE_NAME, { keyPath: "id" });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error("Private setup could not be opened."));
-    });
-  }
-
-  async function tokenRecord(action, value) {
-    const database = await openTokenDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = database.transaction(TOKEN_STORE_NAME, action === "get" ? "readonly" : "readwrite");
-      const store = transaction.objectStore(TOKEN_STORE_NAME);
-      const request = action === "get"
-        ? store.get(TOKEN_RECORD_ID)
-        : action === "put"
-          ? store.put({ id: TOKEN_RECORD_ID, token: value, savedAt: new Date().toISOString() })
-          : store.delete(TOKEN_RECORD_ID);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error || new Error("Private setup could not be updated."));
-      transaction.oncomplete = () => database.close();
-    });
-  }
-
-  async function restoreOwnerToken() {
-    if (voiceConfig.fake) {
-      state.ownerToken = "local-fake-token-for-browser-tests";
-      tokenMessage.textContent = "Local voice simulation is ready.";
-      return;
-    }
-    try {
-      const record = await tokenRecord("get");
-      state.ownerToken = typeof record?.token === "string" ? record.token : "";
-      tokenMessage.textContent = state.ownerToken ? "Owner token already saved on this device." : "No owner token is saved on this device.";
-      if (!state.ownerToken) voiceSetup.open = true;
-    } catch (error) {
-      tokenMessage.textContent = error.message;
-      voiceSetup.open = true;
-    }
-  }
-
-  async function saveOwnerToken() {
-    const value = ownerTokenInput.value.trim();
-    if (!/^[A-Za-z0-9_-]{32,128}$/.test(value)) {
-      tokenMessage.textContent = "Enter the private token from AWS setup (at least 32 characters).";
-      ownerTokenInput.focus();
-      return;
-    }
-    try {
-      await tokenRecord("put", value);
-      state.ownerToken = value;
-      ownerTokenInput.value = "";
-      tokenMessage.textContent = "Owner token saved on this device.";
-      voiceSetup.open = false;
-    } catch (error) {
-      tokenMessage.textContent = error.message;
-    }
-  }
-
-  async function removeOwnerToken() {
-    try {
-      await cancelRecording("Voice stopped");
-      await tokenRecord("delete");
-      state.ownerToken = "";
-      ownerTokenInput.value = "";
-      tokenMessage.textContent = "Owner token removed from this device.";
-      voiceSetup.open = true;
-    } catch (error) {
-      tokenMessage.textContent = error.message;
-    }
-  }
-
   function stopRecordingClock() {
     window.clearInterval(state.recordingTimer);
     state.recordingTimer = null;
@@ -927,12 +842,6 @@
       captureError.textContent = "One-tap voice is not configured. Type here or use keyboard Dictation.";
       captureError.hidden = false;
       transcript.focus();
-      return;
-    }
-    if (!authConfig.enabled && !state.ownerToken) {
-      voiceSetup.open = true;
-      tokenMessage.textContent = "Save the private owner token before using one-tap voice.";
-      ownerTokenInput.focus();
       return;
     }
     let accessToken;
@@ -3737,8 +3646,6 @@
   $("#sample-photo").addEventListener("click", () => setPhoto(sample.photo, "Sample bowl of Oyakodon"));
   $("#sample-voice").addEventListener("click", applyParsedSample);
   micButton.addEventListener("click", toggleRecording);
-  $("#save-owner-token").addEventListener("click", saveOwnerToken);
-  $("#remove-owner-token").addEventListener("click", removeOwnerToken);
   signInButton.addEventListener("click", () => void startInvitationSignIn());
   $("#sign-out-button").addEventListener("click", () => void signOutAccount());
   $("#backup-legacy-archive").addEventListener("click", () => void backupLegacyArchive());
@@ -4100,7 +4007,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=30").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=34").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

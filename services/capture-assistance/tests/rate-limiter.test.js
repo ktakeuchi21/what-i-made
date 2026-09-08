@@ -4,14 +4,14 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createDurableRateLimiter } = require("../rate-limiter");
 
-test("fails closed for Cognito mode without the durable counter table", async () => {
-  const allow = createDurableRateLimiter({ AUTH_MODE: "cognito" });
+test("fails closed without the durable counter table", async () => {
+  const allow = createDurableRateLimiter({});
   assert.equal(await allow("a".repeat(64), "/route", 0, 10), false);
 });
 
 test("uses an atomic expiring counter without exposing the raw subject", async () => {
   let input;
-  const allow = createDurableRateLimiter({ AUTH_MODE: "cognito", RATE_LIMIT_TABLE: "limits" }, {
+  const allow = createDurableRateLimiter({ RATE_LIMIT_TABLE: "limits" }, {
     client: { async send(command) { input = command; } },
     commandFactory: (value) => value,
   });
@@ -24,7 +24,7 @@ test("uses an atomic expiring counter without exposing the raw subject", async (
 });
 
 test("turns a failed conditional write into a rate-limit decision", async () => {
-  const allow = createDurableRateLimiter({ AUTH_MODE: "cognito", RATE_LIMIT_TABLE: "limits" }, {
+  const allow = createDurableRateLimiter({ RATE_LIMIT_TABLE: "limits" }, {
     client: { async send() { throw { name: "ConditionalCheckFailedException" }; } },
     commandFactory: (value) => value,
   });

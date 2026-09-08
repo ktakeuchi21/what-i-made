@@ -83,7 +83,7 @@ API Gateway is the public authorization boundary. Every route requires a Cognito
 
 All paid routes use an atomic DynamoDB counter keyed by SHA-256 subject digest, route, and minute. TTL removes old windows. Missing rate-limit configuration in Cognito mode fails closed. Reserved concurrency and service kill switches provide separate global controls.
 
-The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. The Recipe Ideas service may invoke Mantle and Bedrock Web Search, and may fetch only validated public HTTPS recipe or image resources. Neither service can read an archive. Logs contain operational status, latency, and aggregate token counts, not transcripts, recipes, photos, email addresses, or raw subjects.
+The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. The Recipe Ideas service may invoke Mantle and Bedrock Web Search, and may fetch only validated public HTTPS recipe or image resources. The capture, Recipe Ideas, and transcription routes accept only API Gateway-validated Cognito access-token claims and have no shared-token or direct Function URL fallback. Neither service can read an archive. Logs contain operational status, latency, and aggregate token counts, not transcripts, recipes, photos, email addresses, or raw subjects.
 
 ## Backup and recovery
 

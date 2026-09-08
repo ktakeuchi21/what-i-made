@@ -6,9 +6,6 @@
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#F7F1E7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#171814" media="(prefers-color-scheme: dark)" />
-    <meta name="wim-recipe-endpoint" content="" />
-    <meta name="wim-capture-assistance-endpoint" content="" />
-    <meta name="wim-transcribe-session-endpoint" content="" />
     <meta name="wim-auth-domain" content="" />
     <meta name="wim-auth-client-id" content="" />
     <meta name="wim-service-api-endpoint" content="" />
@@ -17,7 +14,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=29" />
+    <link rel="stylesheet" href="./styles.css?v=34" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -185,18 +182,6 @@
                   <p id="assist-recovery-message">Smart suggestions are unavailable. Basic suggestions were used and your note is still editable.</p>
                   <button class="inline-button" type="button" id="retry-assistance">Retry smart suggestions</button>
                 </div>
-                <details class="voice-setup" id="voice-setup">
-                  <summary>Private voice setup</summary>
-                  <div class="voice-setup-body">
-                    <label for="owner-token">Owner token</label>
-                    <input id="owner-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" />
-                    <div class="voice-setup-actions">
-                      <button class="button button-secondary" type="button" id="save-owner-token">Save on this device</button>
-                      <button class="inline-button" type="button" id="remove-owner-token">Remove</button>
-                    </div>
-                    <p id="token-message" aria-live="polite">Checking this device…</p>
-                  </div>
-                </details>
                 <button class="inline-button" type="button" id="sample-voice">Use a sample voice note</button>
               </fieldset>
 
@@ -501,7 +486,7 @@
             <section class="backup-section" aria-labelledby="create-backup-title">
               <p class="eyebrow">Save a copy</p>
               <h3 id="create-backup-title">Create a backup</h3>
-              <p>The JSON file includes saved cooks, notes, Ideas, and optimized photographs. Unfinished drafts and your private service token are excluded.</p>
+              <p>The JSON file includes saved cooks, notes, Ideas, and optimized photographs. Unfinished drafts and sign-in information are excluded.</p>
               <button class="button button-primary" type="button" id="create-backup">Create backup</button>
             </section>
 
@@ -964,7 +949,7 @@
           <form id="erase-form" novalidate>
             <p class="eyebrow">Permanent action</p>
             <h2 id="erase-dialog-title">Erase this local archive?</h2>
-            <p id="erase-dialog-description">This permanently removes <strong id="erase-count-summary">your saved archive</strong> from this iPhone. Your private service token and installed app remain.</p>
+            <p id="erase-dialog-description">This permanently removes <strong id="erase-count-summary">your saved archive</strong> from this iPhone. Your sign-in session and installed app remain.</p>
             <p class="erase-warning">This cannot be undone without a backup file.</p>
             <label for="erase-confirmation">Type <strong>ERASE</strong> to continue</label>
             <input id="erase-confirmation" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="erase-error" />
@@ -1034,7 +1019,7 @@
       </main>
     </div>
 
-    <script src="./config.js?v=33"></script>
+    <script src="./config.js?v=34"></script>
     <script src="./transcribe-codec.js?v=16"></script>
     <script src="./transcribe-adapter.js?v=16"></script>
     <script src="./capture-parser.js?v=16"></script>
@@ -1055,6 +1040,6 @@
     <script src="./assets/culinary-regions.js?v=16"></script>
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
-    <script src="./app.js?v=33"></script>
+    <script src="./app.js?v=34"></script>
   </body>
 </html>

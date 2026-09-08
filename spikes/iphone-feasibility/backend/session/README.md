@@ -5,7 +5,6 @@ This Node.js Lambda runs behind the invitation API Gateway and returns a 15-seco
 Required environment variables:
 
 - `VOICE_ENABLED=true`
-- `AUTH_MODE=cognito`
 - `COGNITO_CLIENT_ID=<public web client ID>`
 - `RATE_LIMIT_TABLE=<DynamoDB table name>`
 - `PRESIGN_EXPIRES_SECONDS=15`

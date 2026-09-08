@@ -1,15 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
-import { handler, createPresignedTranscribeUrl, testing } from "../backend/session/index.mjs";
+import { createSessionHandler, createPresignedTranscribeUrl, testing } from "../backend/session/index.mjs";
 
-const token = "owner_token_for_tests_1234567890abcd";
 const originalEnvironment = { ...process.env };
+const handler = createSessionHandler({ allowRequest: async () => true });
 
 function configure(overrides = {}) {
   Object.assign(process.env, {
     VOICE_ENABLED: "true",
-    OWNER_TOKEN_SHA256: crypto.createHash("sha256").update(token).digest("hex"),
+    COGNITO_CLIENT_ID: "client-123",
+    RATE_LIMIT_TABLE: "limits",
     AWS_REGION: "us-east-2",
     AWS_ACCESS_KEY_ID: "ASIATESTACCESSKEY",
     AWS_SECRET_ACCESS_KEY: "test-secret-key-not-a-real-credential",
@@ -18,10 +18,13 @@ function configure(overrides = {}) {
   }, overrides);
 }
 
-function event(body = { languageCode: "en-US", sampleRateHertz: 16000 }, authorization = `Bearer ${token}`) {
+function event(body = { languageCode: "en-US", sampleRateHertz: 16000 }) {
   return {
-    requestContext: { requestId: "request-test", http: { method: "POST" } },
-    headers: { authorization },
+    requestContext: {
+      requestId: "request-test",
+      http: { method: "POST" },
+      authorizer: { jwt: { claims: { sub: "account-a", token_use: "access", client_id: "client-123" } } },
+    },
     body: JSON.stringify(body),
   };
 }
@@ -31,14 +34,26 @@ test.afterEach(() => {
   Object.assign(process.env, originalEnvironment);
 });
 
-test("AC-21: missing and wrong owner tokens are rejected", async () => {
+test("AC-21: missing and invalid Cognito claims are rejected", async () => {
   configure();
-  assert.equal((await handler(event(undefined, ""))).statusCode, 401);
-  assert.equal((await handler(event(undefined, "Bearer wrong_token_that_is_long_enough_123"))).statusCode, 401);
+  const missing = event();
+  delete missing.requestContext.authorizer;
+  assert.equal((await handler(missing)).statusCode, 401);
+  const wrongClient = event();
+  wrongClient.requestContext.authorizer.jwt.claims.client_id = "wrong";
+  assert.equal((await handler(wrongClient)).statusCode, 401);
+});
+
+test("does not accept the retired shared-token authorization path", async () => {
+  configure({ OWNER_TOKEN_SHA256: "a".repeat(64) });
+  const request = event();
+  delete request.requestContext.authorizer;
+  request.headers = { authorization: "Bearer legacy_owner_token_that_is_long_enough" };
+  assert.equal((await handler(request)).statusCode, 401);
 });
 
 test("accepts only API Gateway-validated Cognito access-token claims", async () => {
-  configure({ AUTH_MODE: "cognito", COGNITO_CLIENT_ID: "client-123" });
+  configure();
   const request = event();
   request.requestContext.authorizer = { jwt: { claims: { sub: "account-a", token_use: "access", client_id: "client-123" } } };
   assert.match(testing.requestIdentity(request).accountKey, /^[a-f0-9]{64}$/);

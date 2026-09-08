@@ -665,13 +665,6 @@ button:disabled {
   margin: 2px 0 0;
 }
 
-.voice-setup-body > p {
-  margin: 8px 0 0;
-  color: var(--muted-ink);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
 .assist-progress,
 .assist-recovery {
   margin-top: 10px;
@@ -715,40 +708,6 @@ button:disabled {
 
 @media (prefers-reduced-motion: reduce) {
   .assist-progress-dot { animation: none; }
-}
-
-.voice-setup {
-  margin-top: 8px;
-  border-top: 1px solid var(--soft-border);
-}
-
-.voice-setup summary {
-  min-height: 44px;
-  padding: 11px 2px;
-  color: var(--terracotta);
-  font-size: 0.84rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.voice-setup-body {
-  padding: 2px 0 10px;
-}
-
-.voice-setup-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.voice-setup-actions .button {
-  min-height: 44px;
-}
-
-.voice-setup-actions .inline-button {
-  min-height: 44px;
-  margin: 0;
 }
 
 .voice-card > label,

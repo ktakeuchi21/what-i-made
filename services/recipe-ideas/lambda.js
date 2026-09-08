@@ -29,6 +29,7 @@ function createDeploymentHandler(options = {}) {
         generateProvider,
         fetchImpl: options.sourceFetchImpl,
         lookup: options.lookup,
+        allowRequest: options.allowRequest,
         logger: options.logger,
         now: options.now,
       }, environment);

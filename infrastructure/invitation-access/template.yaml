@@ -41,7 +41,6 @@ Globals:
     Tracing: Active
     Environment:
       Variables:
-        AUTH_MODE: cognito
         COGNITO_CLIENT_ID: !Ref WebClient
         RATE_LIMIT_TABLE: !Ref RateLimitTable
 

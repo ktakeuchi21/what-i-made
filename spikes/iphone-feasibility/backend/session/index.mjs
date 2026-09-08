@@ -7,58 +7,62 @@ const { createDurableRateLimiter } = require("./rate-limiter.cjs");
 const ALLOWED_KEYS = new Set(["languageCode", "sampleRateHertz"]);
 const REGION_PATTERN = /^[a-z]{2}-[a-z]+-\d$/;
 
-export async function handler(event = {}) {
-  const startedAt = Date.now();
-  const requestId = event.requestContext?.requestId || "unknown";
-  const method = event.requestContext?.http?.method || event.httpMethod || "";
+export function createSessionHandler(dependencies = {}) {
+  const allowRequest = dependencies.allowRequest || createDurableRateLimiter(process.env);
+  return async function sessionHandler(event = {}) {
+    const startedAt = Date.now();
+    const requestId = event.requestContext?.requestId || "unknown";
+    const method = event.requestContext?.http?.method || event.httpMethod || "";
 
-  if (method !== "POST") return response(405, { error: "invalid_request" });
-  if (process.env.VOICE_ENABLED !== "true") return response(503, { error: "disabled" });
+    if (method !== "POST") return response(405, { error: "invalid_request" });
+    if (process.env.VOICE_ENABLED !== "true") return response(503, { error: "disabled" });
 
-  const rawBody = decodeBody(event);
-  if (rawBody.byteLength > 1024) return response(413, { error: "invalid_request" });
-  const identity = requestIdentity(event);
-  if (!identity) return response(401, { error: "unauthorized" });
-  try {
-    const allowRequest = createDurableRateLimiter(process.env);
-    if (!await allowRequest(identity.accountKey, "/v1/transcribe-session", startedAt, 10)) return response(429, { error: "rate_limited" });
-  } catch {
-    return response(503, { error: "unavailable" });
-  }
+    const rawBody = decodeBody(event);
+    if (rawBody.byteLength > 1024) return response(413, { error: "invalid_request" });
+    const identity = requestIdentity(event);
+    if (!identity) return response(401, { error: "unauthorized" });
+    try {
+      if (!await allowRequest(identity.accountKey, "/v1/transcribe-session", startedAt, 10)) return response(429, { error: "rate_limited" });
+    } catch {
+      return response(503, { error: "unavailable" });
+    }
 
-  let input;
-  try {
-    input = JSON.parse(rawBody.toString("utf8"));
-  } catch {
-    return response(400, { error: "invalid_request" });
-  }
-  if (!validInput(input)) return response(400, { error: "invalid_request" });
+    let input;
+    try {
+      input = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return response(400, { error: "invalid_request" });
+    }
+    if (!validInput(input)) return response(400, { error: "invalid_request" });
 
-  try {
-    const now = new Date();
-    const region = validRegion(process.env.AWS_REGION) ? process.env.AWS_REGION : "us-east-2";
-    const expiresSeconds = clampInteger(process.env.PRESIGN_EXPIRES_SECONDS, 5, 30, 15);
-    const websocketUrl = createPresignedTranscribeUrl({
-      region,
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      sessionToken: process.env.AWS_SESSION_TOKEN,
-      now,
-      expiresSeconds,
-      sessionId: crypto.randomUUID(),
-    });
-    logOutcome(requestId, "issued", Date.now() - startedAt);
-    return response(200, {
-      websocketUrl,
-      expiresAt: new Date(now.getTime() + expiresSeconds * 1000).toISOString(),
-      maxCaptureSeconds: 45,
-      region,
-    });
-  } catch {
-    logOutcome(requestId, "unavailable", Date.now() - startedAt);
-    return response(503, { error: "unavailable" });
-  }
+    try {
+      const now = new Date();
+      const region = validRegion(process.env.AWS_REGION) ? process.env.AWS_REGION : "us-east-2";
+      const expiresSeconds = clampInteger(process.env.PRESIGN_EXPIRES_SECONDS, 5, 30, 15);
+      const websocketUrl = createPresignedTranscribeUrl({
+        region,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        sessionToken: process.env.AWS_SESSION_TOKEN,
+        now,
+        expiresSeconds,
+        sessionId: crypto.randomUUID(),
+      });
+      logOutcome(requestId, "issued", Date.now() - startedAt);
+      return response(200, {
+        websocketUrl,
+        expiresAt: new Date(now.getTime() + expiresSeconds * 1000).toISOString(),
+        maxCaptureSeconds: 45,
+        region,
+      });
+    } catch {
+      logOutcome(requestId, "unavailable", Date.now() - startedAt);
+      return response(503, { error: "unavailable" });
+    }
+  };
 }
+
+export const handler = createSessionHandler();
 
 function response(statusCode, body) {
   return {
@@ -78,20 +82,10 @@ function decodeBody(event) {
 }
 
 function requestIdentity(event) {
-  if (process.env.AUTH_MODE === "cognito") {
-    const claims = event.requestContext?.authorizer?.jwt?.claims;
-    const valid = typeof claims?.sub === "string" && claims.sub.length > 0 && claims.sub.length <= 128 &&
-      claims.token_use === "access" && Boolean(process.env.COGNITO_CLIENT_ID) && claims.client_id === process.env.COGNITO_CLIENT_ID;
-    return valid ? { accountKey: crypto.createHash("sha256").update(claims.sub).digest("hex") } : null;
-  }
-  const expectedHex = process.env.OWNER_TOKEN_SHA256 || "";
-  if (!/^[a-f0-9]{64}$/i.test(expectedHex)) return null;
-  const normalized = Object.fromEntries(Object.entries(event.headers || {}).map(([key, value]) => [key.toLowerCase(), value]));
-  const match = /^Bearer ([A-Za-z0-9_-]{32,128})$/.exec(normalized.authorization || "");
-  if (!match) return null;
-  const actual = crypto.createHash("sha256").update(match[1], "utf8").digest();
-  const expected = Buffer.from(expectedHex, "hex");
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected) ? { accountKey: "legacy-owner" } : null;
+  const claims = event.requestContext?.authorizer?.jwt?.claims;
+  const valid = typeof claims?.sub === "string" && claims.sub.length > 0 && claims.sub.length <= 128 &&
+    claims.token_use === "access" && Boolean(process.env.COGNITO_CLIENT_ID) && claims.client_id === process.env.COGNITO_CLIENT_ID;
+  return valid ? { accountKey: crypto.createHash("sha256").update(claims.sub).digest("hex") } : null;
 }
 
 function validInput(input) {

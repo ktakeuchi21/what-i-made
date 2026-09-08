@@ -8,13 +8,14 @@
 
 ### Automated proof
 
-- The client/domain suite passes 132 tests. Account tests prove deterministic opaque archive keys, separate database names, stale-open race rejection, account-scoped map preferences, retained sessions, PKCE state and nonce checks, refresh subject continuity, fail-closed cleanup across deletion errors and relaunch, sign-out versus refresh ordering, and the exact seven-day offline boundary.
-- Capture assistance passes 20 tests, Recipe Ideas passes 27, and the Transcribe signer passes 5. Cognito mode requires trusted API Gateway access-token claims for the configured client. Missing durable-limit configuration fails closed. Atomic DynamoDB counter tests prove pseudonymous route/minute keys, TTL, and conditional rejection.
+- The client/domain suite passes 133 tests. Account tests prove deterministic opaque archive keys, separate database names, stale-open race rejection, account-scoped map preferences, retained sessions, PKCE state and nonce checks, refresh subject continuity, fail-closed cleanup across deletion errors and relaunch, sign-out versus refresh ordering, and the exact seven-day offline boundary. Static-boundary coverage also proves the owner-token controls and legacy service endpoint fallbacks are absent and missing invitation configuration locks the archive.
+- Capture assistance passes 21 tests, Recipe Ideas passes 28, and the Transcribe signer passes 6. Every service requires trusted API Gateway access-token claims for the configured Cognito client and explicitly rejects the retired shared-token path. Missing durable-limit configuration fails closed. Atomic DynamoDB counter tests prove pseudonymous route/minute keys, TTL, and conditional rejection.
 - The invitation SAM template passes `cfn-lint` 1.46 with SAM translator 1.109. Every paid route declares JWT scope authorization, optional quota-safe reserved concurrency, a kill switch, and DynamoDB counter access. All three Lambda packages have audited dependency lockfiles, and the locked DynamoDB SDK loads locally. Legacy Function URLs were removed from PWA source configuration.
 - Legacy migration unit tests prove owner-digest gating and inclusion of all seven local stores. `test-fixtures/private-migration.html`, kept outside the deployable PWA directory, uses a unique fixture-only database name, migrates it into an empty account namespace, and checks that the source remains intact; its browser run is pending because the Mac was locked during this pass.
 
 ### Browser proof
 
+- In an isolated Chromium session, the unconfigured build rendered only the invitation screen, disabled sign-in with “Invitation sign-in is not configured,” created no IndexedDB databases, made no application API request, and logged no console errors. The fake invited-account harness then opened Alice’s empty private archive, showed no owner-token controls or copy, and rendered the Account/backup screen at 375×812 with a 375-pixel document width.
 - In Chromium, Alice saved one Oyakodon cook. Bob then opened an empty archive at the same app origin. Returning to Alice restored exactly one dish, one cook, and one country. The Account screen showed only the active email and local-archive status; owner-token setup was absent.
 - Production Cognito redirects, API Gateway pre-Lambda rejection, legacy-owner migration UI, old Function URL removal, and installed-iPhone suspend/resume and VoiceOver remain deployment evidence gaps.
 
@@ -23,7 +24,7 @@
 ### Automated proof
 
 - The complete browser/domain/voice suite passes all 113 tests. New coverage proves strict bounded response validation, the text-only request contract, filler cleanup with meaningful “like” preservation, shared confidence thresholds, cleaned-segment isolation, useful-only alias learning, country-code rejection, unique exact canonical and alias matching, unselected fuzzy candidates, country-conflict exclusion, and deterministic ranking.
-- The capture-assistance service passes all 14 contract tests covering owner-token authentication, the kill switch, bounded and rate-limited requests, privacy-safe token-count metrics, non-stored deterministic Bedrock output through Mantle Responses and Bedrock InvokeModel, safe isolation of GPT OSS final JSON after private reasoning, new-segment-only cleanup, provider timeout and size failures, country-catalog parity, cleanup fixtures, and the supported structured-output schema subset.
+- Capture-assistance service coverage now uses only trusted Cognito access-token claims; the retired shared-token path is absent. Tests also cover the kill switch, bounded and rate-limited requests, privacy-safe token-count metrics, non-stored deterministic Bedrock output through Mantle Responses and Bedrock InvokeModel, safe isolation of GPT OSS final JSON after private reasoning, new-segment-only cleanup, provider timeout and size failures, country-catalog parity, cleanup fixtures, and the supported structured-output schema subset.
 - The unchanged Recipe Ideas service passes all 26 security and contract tests. JavaScript syntax checks pass for the updated browser and service modules.
 
 ### Browser proof
