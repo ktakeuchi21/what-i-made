@@ -10,7 +10,7 @@
 
 - The client/domain suite passes 132 tests. Account tests prove deterministic opaque archive keys, separate database names, stale-open race rejection, account-scoped map preferences, retained sessions, PKCE state and nonce checks, refresh subject continuity, fail-closed cleanup across deletion errors and relaunch, sign-out versus refresh ordering, and the exact seven-day offline boundary.
 - Capture assistance passes 20 tests, Recipe Ideas passes 27, and the Transcribe signer passes 5. Cognito mode requires trusted API Gateway access-token claims for the configured client. Missing durable-limit configuration fails closed. Atomic DynamoDB counter tests prove pseudonymous route/minute keys, TTL, and conditional rejection.
-- The invitation SAM template passes YAML syntax parsing. Every paid route declares JWT scope authorization, reserved concurrency, a kill switch, and DynamoDB counter access. Legacy Function URLs were removed from PWA source configuration.
+- The invitation SAM template passes `cfn-lint` 1.46 with SAM translator 1.109. Every paid route declares JWT scope authorization, optional quota-safe reserved concurrency, a kill switch, and DynamoDB counter access. All three Lambda packages have audited dependency lockfiles, and the locked DynamoDB SDK loads locally. Legacy Function URLs were removed from PWA source configuration.
 - Legacy migration unit tests prove owner-digest gating and inclusion of all seven local stores. `test-fixtures/private-migration.html`, kept outside the deployable PWA directory, uses a unique fixture-only database name, migrates it into an empty account namespace, and checks that the source remains intact; its browser run is pending because the Mac was locked during this pass.
 
 ### Browser proof
