@@ -1,5 +1,19 @@
 const voiceParameters = new URLSearchParams(window.location.search);
 const localFakeVoice = ["127.0.0.1", "localhost"].includes(window.location.hostname) && voiceParameters.get("voice") === "fake";
+const localFakeAuth = ["127.0.0.1", "localhost"].includes(window.location.hostname) && voiceParameters.get("auth") === "fake";
+
+const configuredAuthDomain = document.querySelector('meta[name="wim-auth-domain"]')?.content.trim() || "";
+const configuredAuthClientId = document.querySelector('meta[name="wim-auth-client-id"]')?.content.trim() || "";
+window.WIM_AUTH_CONFIG = Object.freeze({
+  enabled: localFakeAuth || Boolean(configuredAuthDomain && configuredAuthClientId),
+  fake: localFakeAuth,
+  fakeSubject: localFakeAuth ? voiceParameters.get("account") || "local-owner" : "",
+  fakeEmail: localFakeAuth ? `${voiceParameters.get("account") || "owner"}@example.test` : "",
+  domain: configuredAuthDomain,
+  clientId: configuredAuthClientId,
+  redirectUri: `${window.location.origin}${window.location.pathname}`,
+  scopes: ["openid", "email"],
+});
 
 window.WIM_VOICE_CONFIG = Object.freeze({
   enabled: true,

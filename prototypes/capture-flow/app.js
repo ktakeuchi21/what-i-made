@@ -12,6 +12,7 @@
     country: "Japan",
   };
 
+  const authConfig = window.WIM_AUTH_CONFIG || { enabled: false };
   const voiceConfig = window.WIM_VOICE_CONFIG || { enabled: false, sessionEndpoint: "", maxCaptureSeconds: 45, fake: false };
   const assistanceConfig = window.WIM_CAPTURE_ASSISTANCE_CONFIG || { enabled: false, endpoint: "", fake: false, timeoutMs: 10000 };
   const parser = window.WhatIMadeCaptureParser;
@@ -30,6 +31,9 @@
   const culinaryRegions = window.WhatIMadeCulinaryRegions;
   const journalModel = window.WhatIMadeJournal;
   const recapRenderGate = journalModel.createLatestRequestGate();
+  const accountContext = window.WhatIMadeAccountContext;
+  const authApi = window.WhatIMadeAuth;
+  const authClient = authApi?.createAuthClient ? authApi.createAuthClient(authConfig) : null;
   const TOKEN_DB_NAME = "what-i-made-feasibility-owner";
   const TOKEN_DB_VERSION = 1;
   const TOKEN_STORE_NAME = "diagnostics";
@@ -45,7 +49,8 @@
     currentCookId: "",
     dashboardModel: null,
     mapNavigation: { level: "world", regionId: "", countryKey: "" },
-    mapMode: readMapMode(),
+    mapMode: "photo",
+    archiveKey: "",
     mapRegionShelfScroll: 0,
     mapDetailDishIds: [],
     mapReturnFocusElement: null,
@@ -85,6 +90,7 @@
     countryProvenance: "",
     confirmationBaseline: null,
     ownerToken: "",
+    authSession: null,
     suggestedCountry: "",
     touchedFields: new Set(),
     recordingTimer: null,
@@ -102,6 +108,7 @@
     pendingIdeaId: "",
     yearScrollTop: 0,
     backupReturnFocusElement: null,
+    backupOriginScreen: "year",
     backupArchiveSummary: null,
     backupInspection: null,
     eraseCompleted: false,
@@ -153,6 +160,9 @@
   const ownerTokenInput = $("#owner-token");
   const tokenMessage = $("#token-message");
   const captureError = $("#capture-error");
+  const authMessage = $("#auth-message");
+  const authError = $("#auth-error");
+  const signInButton = $("#sign-in-button");
   const assistProgress = $("#assist-progress");
   const assistRecovery = $("#assist-recovery");
   const dishError = $("#dish-error");
@@ -206,14 +216,18 @@
   const mapEditorMarker = $("#map-editor-marker");
   let journalSearchTimer = null;
 
-  function readMapMode() {
-    try { return localStorage.getItem("what-i-made-map-mode") === "needle" ? "needle" : "photo"; }
+  function mapModeStorageKey(archiveKey = state.archiveKey) {
+    return archiveKey ? `what-i-made-map-mode:${archiveKey}` : "what-i-made-map-mode";
+  }
+
+  function readMapMode(archiveKey = state.archiveKey) {
+    try { return localStorage.getItem(mapModeStorageKey(archiveKey)) === "needle" ? "needle" : "photo"; }
     catch { return "photo"; }
   }
 
   function setMapMode(mode, options = {}) {
     state.mapMode = mode === "needle" ? "needle" : "photo";
-    try { localStorage.setItem("what-i-made-map-mode", state.mapMode); } catch {}
+    try { localStorage.setItem(mapModeStorageKey(), state.mapMode); } catch {}
     $("#map-mode-photo").setAttribute("aria-pressed", String(state.mapMode === "photo"));
     $("#map-mode-needle").setAttribute("aria-pressed", String(state.mapMode === "needle"));
     if (options.render !== false) {
@@ -237,6 +251,156 @@
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 10);
+  }
+
+  function showSignedOut(reason = "") {
+    state.authSession = null;
+    state.ownerToken = "";
+    authError.hidden = true;
+    signInButton.hidden = false;
+    $("#auth-helper").hidden = false;
+    authMessage.textContent = reason === "offlineExpired"
+      ? "Connect to the internet and sign in again to open this archive. Nothing was deleted."
+      : reason === "expired"
+        ? "Your session ended. Sign in again to reopen your private archive."
+        : reason === "serviceUnavailable"
+          ? "Sign-in is temporarily unavailable. Your archive is still on this device. Try again when connected."
+        : "Sign in with an invited email address. Your archive stays separate on this device.";
+    showScreen("auth");
+    window.requestAnimationFrame(() => signInButton.focus({ preventScroll: true }));
+  }
+
+  async function activateAccount(session) {
+    if (!session?.subject || !accountContext?.archiveKeyForSubject || !archive?.setArchiveContext) {
+      throw new Error("Private archive storage could not be initialized.");
+    }
+    const archiveKey = await accountContext.archiveKeyForSubject(session.subject);
+    archive.setArchiveContext(archiveKey);
+    state.archiveKey = archiveKey;
+    state.mapMode = readMapMode(archiveKey);
+    state.authSession = session;
+    state.ownerToken = session.accessToken || "";
+    voiceSetup.hidden = true;
+    $("#capture-account").hidden = false;
+    $("#account-section").hidden = false;
+    $("#account-email").textContent = session.email || "Invited account";
+    $("#account-access-status").textContent = session.kind === "offlineGrace"
+      ? "Offline access. Connect before using voice or recipe search."
+      : "This device opens only this account’s local archive.";
+    await initializeApp();
+  }
+
+  async function startInvitationSignIn() {
+    authError.hidden = true;
+    signInButton.disabled = true;
+    signInButton.setAttribute("aria-busy", "true");
+    try {
+      const destination = await authClient.startSignIn();
+      if (typeof destination === "string") window.location.assign(destination);
+      else await activateAccount(destination);
+    } catch (error) {
+      authError.textContent = error.message || "Sign-in could not be started. Try again.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+    } finally {
+      signInButton.disabled = false;
+      signInButton.removeAttribute("aria-busy");
+    }
+  }
+
+  async function signOutAccount() {
+    const button = $("#sign-out-button");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    try {
+      await archive.closeDatabase();
+      const logoutUrl = await authClient.signOut();
+      if (logoutUrl && navigator.onLine !== false) window.location.replace(logoutUrl);
+      else window.location.reload();
+    } catch (error) {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      backupError.textContent = error.message || "This account could not be signed out. Try again.";
+      backupError.hidden = false;
+      backupError.focus({ preventScroll: true });
+    }
+  }
+
+  async function bootApplication() {
+    if (!authConfig.enabled) {
+      state.mapMode = readMapMode("");
+      await Promise.all([initializeApp(), restoreOwnerToken()]);
+      return;
+    }
+    voiceSetup.hidden = true;
+    try {
+      const session = await authClient.restore();
+      if (["signedIn", "offlineGrace"].includes(session.kind)) await activateAccount(session);
+      else showSignedOut(session.reason);
+    } catch (error) {
+      showSignedOut();
+      authError.textContent = error.message || "Your private archive could not be opened.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+    }
+  }
+
+  async function serviceAccessToken() {
+    if (!authConfig.enabled) return state.ownerToken;
+    if (navigator.onLine === false) {
+      throw new Error("Connect to the internet to use this feature.");
+    }
+    try {
+      const session = await authClient.getSessionForNetwork();
+      if (!state.authSession?.subject || session.subject !== state.authSession.subject) {
+        throw Object.assign(new Error("Your account changed. Sign in again before using this feature."), { code: "reauth_required" });
+      }
+      state.authSession = session;
+      state.ownerToken = session.accessToken;
+      $("#account-access-status").textContent = "This device opens only this account’s local archive.";
+      return session.accessToken;
+    } catch (error) {
+      state.ownerToken = "";
+      if (error?.code === "reauth_required") {
+        state.authSession = null;
+        await cancelRecording("Session ended");
+        await archive.closeDatabase();
+        showSignedOut("expired");
+        window.location.reload();
+      } else if (error?.code === "temporarily_unavailable" && state.authSession) {
+        if (authClient.localAccessState(state.authSession).allowed) {
+          state.authSession = { ...state.authSession, kind: "offlineGrace", accessToken: "", accessTokenExpiresAt: null };
+          $("#account-access-status").textContent = "Local-only access. Connect before using voice or recipe search.";
+        } else {
+          await lockPrivateArchive("serviceUnavailable", false);
+        }
+      }
+      throw error;
+    }
+  }
+
+  async function lockPrivateArchive(reason, clearSession = true) {
+    state.ownerToken = "";
+    state.authSession = null;
+    await cancelRecording("Session ended");
+    await archive.closeDatabase();
+    if (clearSession) await authClient.clearSession();
+    showSignedOut(reason);
+    window.location.reload();
+  }
+
+  async function validateVisibleAccount() {
+    if (!authConfig.enabled || !state.authSession || document.visibilityState === "hidden") return;
+    if (!authClient.localAccessState(state.authSession).allowed) {
+      await lockPrivateArchive("offlineExpired", navigator.onLine === false);
+      return;
+    }
+    if (navigator.onLine !== false) {
+      try { await serviceAccessToken(); }
+      catch {
+        // serviceAccessToken owns the local-only or signed-out transition.
+      }
+    }
   }
 
   function showScreen(name) {
@@ -441,8 +605,9 @@
       if (assistanceConfig.fake) {
         result = await captureAssistance.fakeParseCook({ transcript: combined, voiceSegment: rawSegment, parseFallback: parser?.parseCaptureTranscript, countryLookup: worldMap?.findCountry });
       } else {
+        const accessToken = await serviceAccessToken();
         result = await captureAssistance.parseCook({
-          endpoint: assistanceConfig.endpoint, token: state.ownerToken, transcript: combined, voiceSegment: rawSegment,
+          endpoint: assistanceConfig.endpoint, token: accessToken, transcript: combined, voiceSegment: rawSegment,
           locale: "en-US", timeoutMs: assistanceConfig.timeoutMs, signal: controller.signal,
           countryCodes: (worldMap?.countries || []).map((country) => country.key),
         });
@@ -638,10 +803,19 @@
       transcript.focus();
       return;
     }
-    if (!state.ownerToken) {
+    if (!authConfig.enabled && !state.ownerToken) {
       voiceSetup.open = true;
       tokenMessage.textContent = "Save the private owner token before using one-tap voice.";
       ownerTokenInput.focus();
+      return;
+    }
+    let accessToken;
+    try {
+      accessToken = await serviceAccessToken();
+    } catch (error) {
+      captureError.textContent = `${error.message} Type here or use keyboard Dictation.`;
+      captureError.hidden = false;
+      transcript.focus();
       return;
     }
     const Adapter = voiceConfig.fake
@@ -662,7 +836,7 @@
     state.activeAdapter = adapter;
     state.activeTranscript = { adapter, text: "", committed: false };
     try {
-      await adapter.start(state.ownerToken);
+      await adapter.start(accessToken);
     } catch (error) {
       if (state.activeAdapter === adapter) handleVoiceState(adapter, "failed", error.message);
     }
@@ -1071,17 +1245,19 @@
     await renderStorageStatus();
   }
 
-  async function openBackupStorage(trigger = null) {
-    state.yearScrollTop = yearScroll?.scrollTop || 0;
+  async function openBackupStorage(trigger = null, originScreen = "year") {
+    state.backupOriginScreen = originScreen === "capture" ? "capture" : "year";
+    if (state.backupOriginScreen === "year") state.yearScrollTop = yearScroll?.scrollTop || 0;
     state.backupReturnFocusElement = trigger || $("#open-backup-storage");
+    $("#backup-back-label").textContent = state.backupOriginScreen === "capture" ? "New cook" : "Year";
     showScreen("backup");
     await refreshBackupScreen();
   }
 
   function closeBackupStorage() {
-    showScreen("year");
+    showScreen(state.backupOriginScreen);
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-      if (yearScroll) yearScroll.scrollTop = state.yearScrollTop;
+      if (state.backupOriginScreen === "year" && yearScroll) yearScroll.scrollTop = state.yearScrollTop;
       if (state.backupReturnFocusElement?.isConnected) state.backupReturnFocusElement.focus({ preventScroll: true });
     }));
   }
@@ -2080,7 +2256,7 @@
     const imageReference = recipe.imageToken || recipe.imageUrl;
     if (!imageReference || !recipeClient?.fetchImage) return null;
     try {
-      const source = await recipeClient.fetchImage(imageReference, state.ownerToken);
+      const source = await recipeClient.fetchImage(imageReference, await serviceAccessToken());
       if (!(source instanceof Blob)) return null;
       return photoProcessor?.processPhoto ? await photoProcessor.processPhoto(source) : { blob: source };
     } catch {
@@ -2094,7 +2270,7 @@
       await openIdeaDetail(existing.id, { message: "You already saved this source." });
       return;
     }
-    const payload = await recipeClient.importRecipe(url, state.ownerToken);
+    const payload = await recipeClient.importRecipe(url, await serviceAccessToken());
     const recipe = { ...payload.recipe, imageToken: payload.imageToken || payload.recipe.imageToken, sourceKind: options.refreshId ? existing?.sourceKind || "url" : (payload.recipe.sourceKind || "url") };
     if (options.refreshId) {
       const current = await ideas.getIdea(options.refreshId);
@@ -2151,7 +2327,7 @@
       } else {
         appendIdeaPhoto(photo, candidate);
         if (candidate.imageToken) {
-          void recipeClient.fetchImage(candidate.imageToken, state.ownerToken).then((blob) => {
+          void serviceAccessToken().then((accessToken) => recipeClient.fetchImage(candidate.imageToken, accessToken)).then((blob) => {
             if (!(blob instanceof Blob) || !photo.isConnected) return;
             photo.replaceChildren();
             const image = document.createElement("img");
@@ -2202,7 +2378,7 @@
     state.ideaSearchDescription = description;
     setIdeaBusy(form, true, "Searching…");
     try {
-      const payload = await recipeClient.search(description, state.ownerToken);
+      const payload = await recipeClient.search(description, await serviceAccessToken());
       renderIdeaResults((payload.candidates || []).slice(0, 3));
       showScreen("idea-results");
     } catch (caught) {
@@ -2385,7 +2561,7 @@
     button.setAttribute("aria-busy", "true");
     error.hidden = true;
     try {
-      const payload = await recipeClient.generate(state.ideaSearchDescription, state.ownerToken);
+      const payload = await recipeClient.generate(state.ideaSearchDescription, await serviceAccessToken());
       await openIdeaReview({ ...payload.recipe, sourceKind: "generated", sourceUrl: null, imageUrl: null }, { mode: "new" });
     } catch (caught) {
       error.textContent = caught.message || "An AI draft could not be created. You can still add the recipe manually.";
@@ -3437,6 +3613,8 @@
   micButton.addEventListener("click", toggleRecording);
   $("#save-owner-token").addEventListener("click", saveOwnerToken);
   $("#remove-owner-token").addEventListener("click", removeOwnerToken);
+  signInButton.addEventListener("click", () => void startInvitationSignIn());
+  $("#sign-out-button").addEventListener("click", () => void signOutAccount());
   optionalToggle.addEventListener("click", toggleOptionalFields);
   dishName.addEventListener("input", () => {
     beginTiming();
@@ -3474,6 +3652,7 @@
   $("#empty-new-cook").addEventListener("click", () => resetCapture({ scenario: "blank" }));
   $("#year-open-journal").addEventListener("click", () => void openJournal());
   $("#open-backup-storage").addEventListener("click", (event) => void openBackupStorage(event.currentTarget));
+  $("#capture-account").addEventListener("click", (event) => void openBackupStorage(event.currentTarget, "capture"));
   $("#backup-back").addEventListener("click", closeBackupStorage);
   $("#protect-storage").addEventListener("click", () => void protectLocalStorage());
   $("#create-backup").addEventListener("click", () => void createPortableBackup());
@@ -3782,9 +3961,10 @@
     state.activeAdapter = null;
     if (adapter) void adapter.cancel("Page closed");
   });
+  window.addEventListener("pageshow", () => void validateVisibleAccount());
+  document.addEventListener("visibilitychange", () => void validateVisibleAccount());
 
-  void initializeApp();
-  void restoreOwnerToken();
+  void bootApplication();
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {

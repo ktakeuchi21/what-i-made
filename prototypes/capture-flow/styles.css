@@ -116,6 +116,66 @@ button:disabled {
   display: none !important;
 }
 
+.auth-screen {
+  min-height: min(844px, 100dvh);
+}
+
+.auth-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  padding: max(32px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+.auth-mark {
+  align-self: center;
+  width: 88px;
+  height: 88px;
+  margin-bottom: 24px;
+  border-radius: 22px;
+  box-shadow: var(--shadow-surface);
+}
+
+.auth-content h2 {
+  margin: 6px 0 10px;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 9vw, 2.75rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.auth-content .screen-intro {
+  max-width: 30ch;
+  margin-inline: auto;
+}
+
+.auth-content .button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 16px;
+}
+
+.auth-helper {
+  margin: 10px 0 0;
+  color: var(--muted-ink);
+  font-size: 0.88rem;
+}
+
+.account-section > p:not(.eyebrow) {
+  display: grid;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+
+.account-section #account-access-status {
+  color: var(--muted-ink);
+  font-size: 0.88rem;
+}
+
 .symbol-library {
   position: absolute;
   width: 0;

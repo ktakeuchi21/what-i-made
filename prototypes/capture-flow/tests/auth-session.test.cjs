@@ -1,0 +1,261 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const crypto = require("node:crypto").webcrypto;
+
+const {
+  OAUTH_TRANSACTION_MAX_AGE_MS,
+  normalizeAuthConfig,
+  createAuthorizationRequest,
+  parseCallback,
+  withoutOAuthParameters,
+  validateTokenResponse,
+  createAuthClient,
+} = require("../auth-session.js");
+
+const config = {
+  enabled: true,
+  domain: "https://what-i-made.auth.us-east-2.amazoncognito.com",
+  clientId: "client123456789",
+  redirectUri: "https://app.example.test/index.html",
+};
+
+function jwt(payload) {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none" })}.${encode(payload)}.signature`;
+}
+
+function memoryStorage(initial = null) {
+  let record = initial;
+  return {
+    read: async () => record,
+    write: async (value) => { record = { ...value }; },
+    clear: async () => { record = null; },
+    current: () => record,
+  };
+}
+
+function transactionStorage() {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
+}
+
+test("accepts only a public Cognito HTTPS client configuration", () => {
+  assert.equal(normalizeAuthConfig({}).enabled, false);
+  assert.equal(normalizeAuthConfig(config).domain, "https://what-i-made.auth.us-east-2.amazoncognito.com");
+  assert.throws(() => normalizeAuthConfig({ ...config, domain: "http://example.test" }), /HTTPS Cognito domain/i);
+  assert.throws(() => normalizeAuthConfig({ ...config, clientId: "bad client" }), /public app client/i);
+  assert.throws(() => normalizeAuthConfig({ ...config, redirectUri: "http://example.test" }), /secure return address/i);
+});
+
+test("creates a state-bound authorization-code request with PKCE", async () => {
+  const request = await createAuthorizationRequest(config, { crypto, now: 1000 });
+  const url = new URL(request.authorizeUrl);
+  assert.equal(url.pathname, "/oauth2/authorize");
+  assert.equal(url.searchParams.get("response_type"), "code");
+  assert.equal(url.searchParams.get("code_challenge_method"), "S256");
+  assert.match(url.searchParams.get("code_challenge"), /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(url.searchParams.get("state"), request.transaction.state);
+  assert.equal(url.searchParams.get("nonce"), request.transaction.nonce);
+  assert.match(request.transaction.verifier, /^[A-Za-z0-9_-]{64}$/);
+  assert.equal(url.searchParams.get("scope"), "openid email");
+});
+
+test("rejects missing, mismatched, and expired callback state", () => {
+  const transaction = { state: "expected", nonce: "nonce", verifier: "verifier", createdAt: 1000 };
+  assert.equal(parseCallback("https://app.example.test/", null, 1000), null);
+  assert.throws(() => parseCallback("https://app.example.test/?code=one&state=wrong", transaction, 1000), /could not be verified/i);
+  assert.throws(() => parseCallback(`https://app.example.test/?code=one&state=expected`, transaction, 1000 + OAUTH_TRANSACTION_MAX_AGE_MS + 1), /expired/i);
+  assert.deepEqual(parseCallback("https://app.example.test/?code=one&state=expected", transaction, 1001), { code: "one", verifier: "verifier", nonce: "nonce" });
+});
+
+test("removes OAuth response data without deleting unrelated app parameters", () => {
+  assert.equal(
+    withoutOAuthParameters("https://app.example.test/index.html?voice=fake&code=secret&state=state#capture"),
+    "/index.html?voice=fake#capture",
+  );
+});
+
+test("requires the returned identity token to match the request nonce", () => {
+  const valid = validateTokenResponse({ access_token: "access", id_token: jwt({ nonce: "same" }), expires_in: 900 }, "same", 1000);
+  assert.equal(valid.expiresAt, 901000);
+  assert.throws(() => validateTokenResponse({ access_token: "access", id_token: jwt({ nonce: "wrong" }), expires_in: 900 }, "same", 1000), /identity could not be verified/i);
+});
+
+test("restores a valid retained session without a network request", async () => {
+  const storage = memoryStorage({ subject: "sub-1", email: "one@example.test", accessToken: "access", refreshToken: "refresh", expiresAt: 100000, lastAuthorizedAt: 1000 });
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => 2000,
+    fetch: async () => { throw new Error("network should not be called"); },
+  });
+  assert.deepEqual(await client.restore(), {
+    kind: "signedIn", subject: "sub-1", email: "one@example.test", accessToken: "access", accessTokenExpiresAt: 100000, lastAuthorizedAt: 1000,
+  });
+});
+
+test("refreshes an expired session and re-verifies its Cognito identity", async () => {
+  const storage = memoryStorage({ subject: "sub-1", email: "old@example.test", accessToken: "old", refreshToken: "refresh", expiresAt: 1000, lastAuthorizedAt: 500 });
+  const calls = [];
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => 2000,
+    fetch: async (url, options) => {
+      calls.push({ url, options });
+      if (url.endsWith("/oauth2/token")) return { ok: true, json: async () => ({ access_token: "new-access", expires_in: 900 }) };
+      return { ok: true, json: async () => ({ sub: "sub-1", email: "new@example.test" }) };
+    },
+  });
+  const session = await client.restore();
+  assert.equal(session.kind, "signedIn");
+  assert.equal(session.accessToken, "new-access");
+  assert.equal(session.email, "new@example.test");
+  assert.equal(storage.current().refreshToken, "refresh");
+  assert.equal(calls.length, 2);
+  assert.doesNotMatch(String(calls[0].url), /refresh/);
+});
+
+test("allows only a previously verified account inside offline grace", async () => {
+  const now = Date.UTC(2026, 8, 8);
+  const recent = memoryStorage({ subject: "sub-1", email: "one@example.test", accessToken: "still-unexpired", refreshToken: "refresh", expiresAt: now + 60000, lastAuthorizedAt: now - 1000 });
+  const client = createAuthClient(config, { storage: recent, transactionStorage: transactionStorage(), location: { href: config.redirectUri }, navigator: { onLine: false }, now: () => now });
+  const session = await client.restore();
+  assert.equal(session.kind, "offlineGrace");
+  assert.equal(session.accessToken, "");
+
+  const expired = memoryStorage({ ...recent.current(), lastAuthorizedAt: now - (8 * 24 * 60 * 60 * 1000) });
+  const expiredClient = createAuthClient(config, { storage: expired, transactionStorage: transactionStorage(), location: { href: config.redirectUri }, navigator: { onLine: false }, now: () => now });
+  assert.deepEqual(await expiredClient.restore(), { kind: "signedOut", reason: "offlineExpired" });
+  assert.equal(expired.current(), null);
+});
+
+test("refreshes once for concurrent network actions and preserves the verified subject", async () => {
+  const storage = memoryStorage({ subject: "sub-1", email: "one@example.test", accessToken: "old", refreshToken: "refresh", expiresAt: 1, lastAuthorizedAt: 500 });
+  let tokenCalls = 0;
+  let identityCalls = 0;
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => 2000,
+    fetch: async (url) => {
+      if (url.endsWith("/oauth2/token")) {
+        tokenCalls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return { ok: true, json: async () => ({ access_token: "fresh", expires_in: 900 }) };
+      }
+      identityCalls += 1;
+      return { ok: true, json: async () => ({ sub: "sub-1", email: "one@example.test" }) };
+    },
+  });
+  const [first, second] = await Promise.all([client.getSessionForNetwork(), client.getSessionForNetwork()]);
+  assert.equal(first.accessToken, "fresh");
+  assert.equal(second.accessToken, "fresh");
+  assert.equal(tokenCalls, 1);
+  assert.equal(identityCalls, 1);
+});
+
+test("rejects a refreshed identity that differs from the active archive", async () => {
+  const storage = memoryStorage({ subject: "sub-1", email: "one@example.test", accessToken: "old", refreshToken: "refresh", expiresAt: 1, lastAuthorizedAt: 500 });
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => 2000,
+    fetch: async (url) => url.endsWith("/oauth2/token")
+      ? { ok: true, json: async () => ({ access_token: "fresh", expires_in: 900 }) }
+      : { ok: true, json: async () => ({ sub: "sub-2", email: "two@example.test" }) },
+  });
+  await assert.rejects(client.getSessionForNetwork(), /identity changed/i);
+  assert.equal(storage.current(), null);
+});
+
+test("blocks network token access whenever the browser is offline", async () => {
+  const storage = memoryStorage({ subject: "sub-1", accessToken: "valid", refreshToken: "refresh", expiresAt: Date.now() + 60000, lastAuthorizedAt: Date.now() });
+  const client = createAuthClient(config, { storage, transactionStorage: transactionStorage(), location: { href: config.redirectUri }, navigator: { onLine: false } });
+  await assert.rejects(client.getSessionForNetwork(), /connect to the internet/i);
+});
+
+test("a temporary refresh outage preserves the verified session for local use", async () => {
+  const now = Date.UTC(2026, 8, 8);
+  const record = { subject: "sub-1", email: "one@example.test", accessToken: "expired", refreshToken: "refresh", expiresAt: 1, lastAuthorizedAt: now - 1000 };
+  const storage = memoryStorage(record);
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => now,
+    fetch: async () => ({ ok: false, status: 503, json: async () => ({ error: "server_error" }) }),
+  });
+  assert.equal((await client.restore()).kind, "offlineGrace");
+  assert.equal(storage.current().subject, "sub-1");
+  await assert.rejects(client.getSessionForNetwork(), (error) => error.code === "temporarily_unavailable");
+  assert.equal(storage.current().subject, "sub-1");
+});
+
+test("a definitive invalid grant clears the session and requires sign-in", async () => {
+  const storage = memoryStorage({ subject: "sub-1", accessToken: "expired", refreshToken: "revoked", expiresAt: 1, lastAuthorizedAt: 1000 });
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => 2000,
+    fetch: async () => ({ ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) }),
+  });
+  assert.deepEqual(await client.restore(), { kind: "signedOut", reason: "expired" });
+  assert.equal(storage.current(), null);
+});
+
+test("sign-out prevents an older in-flight refresh from restoring the session", async () => {
+  const storage = memoryStorage({ subject: "sub-1", accessToken: "expired", refreshToken: "refresh", expiresAt: 1, lastAuthorizedAt: 1000 });
+  let resolveToken;
+  const tokenResponse = new Promise((resolve) => { resolveToken = resolve; });
+  const client = createAuthClient(config, {
+    storage,
+    transactionStorage: transactionStorage(),
+    location: { href: config.redirectUri },
+    navigator: { onLine: true },
+    now: () => 2000,
+    fetch: async (url) => {
+      if (url.endsWith("/oauth2/token")) return tokenResponse;
+      return { ok: true, status: 200, json: async () => ({ sub: "sub-1" }) };
+    },
+  });
+  const refreshing = client.getSessionForNetwork();
+  await client.signOut();
+  resolveToken({ ok: true, status: 200, json: async () => ({ access_token: "late-token", expires_in: 900 }) });
+  await assert.rejects(refreshing, (error) => error.code === "cancelled");
+  assert.equal(storage.current(), null);
+});
+
+test("explicit sign-out removes the retained session before returning a hosted logout URL", async () => {
+  const storage = memoryStorage({ subject: "sub-1", accessToken: "secret" });
+  const client = createAuthClient(config, { storage, transactionStorage: transactionStorage(), location: { href: config.redirectUri } });
+  const logoutUrl = new URL(await client.signOut());
+  assert.equal(storage.current(), null);
+  assert.equal(logoutUrl.pathname, "/logout");
+  assert.equal(logoutUrl.searchParams.get("client_id"), config.clientId);
+  assert.equal(logoutUrl.searchParams.get("logout_uri"), config.redirectUri);
+  assert.doesNotMatch(logoutUrl.toString(), /secret/);
+});
+
+test("a loaded archive becomes ineligible immediately after seven days", async () => {
+  const authorizedAt = Date.UTC(2026, 8, 1);
+  const storage = memoryStorage({ subject: "sub-1", accessToken: "access", expiresAt: authorizedAt + 1000, lastAuthorizedAt: authorizedAt });
+  const client = createAuthClient(config, { storage, transactionStorage: transactionStorage(), location: { href: config.redirectUri }, now: () => authorizedAt });
+  assert.equal(client.localAccessState({ lastAuthorizedAt: authorizedAt }, authorizedAt + (7 * 24 * 60 * 60 * 1000)).allowed, true);
+  assert.equal(client.localAccessState({ lastAuthorizedAt: authorizedAt }, authorizedAt + (7 * 24 * 60 * 60 * 1000) + 1).allowed, false);
+});
