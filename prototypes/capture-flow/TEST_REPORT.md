@@ -1,8 +1,22 @@
 # Capture Flow Prototype Test Report
 
-> **Updated:** September 7, 2026  
+> **Updated:** September 8, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
-> **Scope:** Capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas recipe collection, backup/restore, navigation, and responsive behavior
+> **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Invitation-only private archives
+
+### Automated proof
+
+- The client/domain suite passes 132 tests. Account tests prove deterministic opaque archive keys, separate database names, stale-open race rejection, account-scoped map preferences, retained sessions, PKCE state and nonce checks, refresh subject continuity, fail-closed cleanup across deletion errors and relaunch, sign-out versus refresh ordering, and the exact seven-day offline boundary.
+- Capture assistance passes 20 tests, Recipe Ideas passes 27, and the Transcribe signer passes 5. Cognito mode requires trusted API Gateway access-token claims for the configured client. Missing durable-limit configuration fails closed. Atomic DynamoDB counter tests prove pseudonymous route/minute keys, TTL, and conditional rejection.
+- The invitation SAM template passes YAML syntax parsing. Every paid route declares JWT scope authorization, reserved concurrency, a kill switch, and DynamoDB counter access. Legacy Function URLs were removed from PWA source configuration.
+- Legacy migration unit tests prove owner-digest gating and inclusion of all seven local stores. `test-fixtures/private-migration.html`, kept outside the deployable PWA directory, uses a unique fixture-only database name, migrates it into an empty account namespace, and checks that the source remains intact; its browser run is pending because the Mac was locked during this pass.
+
+### Browser proof
+
+- In Chromium, Alice saved one Oyakodon cook. Bob then opened an empty archive at the same app origin. Returning to Alice restored exactly one dish, one cook, and one country. The Account screen showed only the active email and local-archive status; owner-token setup was absent.
+- Production Cognito redirects, API Gateway pre-Lambda rejection, legacy-owner migration UI, old Function URL removal, and installed-iPhone suspend/resume and VoiceOver remain deployment evidence gaps.
 
 ## Smarter voice capture assistance
 
@@ -16,7 +30,7 @@
 
 Using headed Chromium with local voice and assistance fixtures:
 
-- Completing the sample voice note changed the finalized text to “I made Oyakodon, eight out of ten. Use less soy next time.” and populated Oyakodon, rating 8, notes, and Japan. The capture screen visibly disclosed that transcript text—not audio or photographs—is sent after Done.
+- Completing the sample voice note changed the finalized text to “I made Oyakodon, eight out of ten. Use less soy next time.” and populated Oyakodon, rating 8, notes, and Japan. The longer on-screen audio and device-storage disclosure paragraphs were removed as requested.
 - A controlled two-dish response rendered Chicken adobo and Garlic rice as separate review sections with their own ratings, ingredients, notes, and Philippines country values.
 - An existing Oyakodon archive produced one preselected exact match. Renaming the capture to Chicken Oyakodon surfaced Oyakodon only as an unselected possible match and kept **Make a new dish** selected.
 - A 0.72 inferred Philippines result did not fill Country; it exposed an explicit **Use Philippines** action. A manually entered dish name survived the response.

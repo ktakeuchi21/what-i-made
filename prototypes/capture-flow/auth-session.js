@@ -15,6 +15,7 @@
   const OAUTH_TRANSACTION_KEY = "what-i-made-oauth-transaction";
   const OAUTH_TRANSACTION_MAX_AGE_MS = 10 * 60 * 1000;
   const TOKEN_EXPIRY_SKEW_MS = 30 * 1000;
+  const SIGN_OUT_PENDING_KEY = "what-i-made-sign-out-pending";
 
   function authError(code, message, cause) {
     const error = new Error(message);
@@ -230,9 +231,13 @@
         return await new Promise((resolve, reject) => {
           const transaction = database.transaction(AUTH_STORE_NAME, mode);
           const request = action(transaction.objectStore(AUTH_STORE_NAME));
-          request.onsuccess = () => resolve(request.result || null);
+          let result = null;
+          let settled = false;
+          request.onsuccess = () => { result = request.result || null; };
           request.onerror = () => reject(request.error || new Error("Private sign-in storage could not be updated."));
-          transaction.onabort = () => reject(transaction.error || new Error("Private sign-in storage was cancelled."));
+          transaction.oncomplete = () => { if (!settled) { settled = true; resolve(result); } };
+          transaction.onerror = () => { if (!settled) { settled = true; reject(transaction.error || new Error("Private sign-in storage could not be updated.")); } };
+          transaction.onabort = () => { if (!settled) { settled = true; reject(transaction.error || new Error("Private sign-in storage was cancelled.")); } };
         });
       } finally {
         database.close();
@@ -241,6 +246,7 @@
     return {
       read: () => operate("readonly", (store) => store.get(SESSION_ID)),
       write: (record) => operate("readwrite", (store) => store.put({ ...record, id: SESSION_ID })),
+      markSignOutPending: () => operate("readwrite", (store) => store.put({ id: SESSION_ID, signOutPending: true })),
       clear: () => operate("readwrite", (store) => store.delete(SESSION_ID)),
     };
   }
@@ -263,6 +269,7 @@
     const fetchImpl = dependencies.fetch || root.fetch;
     const storage = dependencies.storage || createIndexedDbSessionStore(dependencies.indexedDB || root.indexedDB);
     const transactionStorage = dependencies.transactionStorage || root.sessionStorage;
+    const guardStorage = dependencies.guardStorage || root.localStorage;
     const history = dependencies.history || root.history;
     const navigator = dependencies.navigator || root.navigator;
     const now = dependencies.now || (() => Date.now());
@@ -275,7 +282,7 @@
       const identity = await verifiedIdentity(config, tokens.accessToken, fetchImpl, signal);
       if (generation !== authGeneration) throw authError("cancelled", "Sign-in was cancelled.");
       if (expectedSubject && identity.subject !== expectedSubject) {
-        await storage.clear();
+        await clearSession().catch(() => {});
         throw authError("reauth_required", "The refreshed account identity changed. Sign in again.");
       }
       const record = {
@@ -289,7 +296,7 @@
       if (generation !== authGeneration) throw authError("cancelled", "Sign-in was cancelled.");
       await storage.write(record);
       if (generation !== authGeneration) {
-        await storage.clear();
+        await clearSession().catch(() => {});
         throw authError("cancelled", "Sign-in was cancelled.");
       }
       return publicSession(record);
@@ -301,8 +308,8 @@
       refreshController = new AbortController();
       refreshPromise = (async () => {
         if (!record?.refreshToken) {
-          await storage.clear();
-          throw new Error("Your session ended. Sign in again.");
+          await clearSession().catch(() => {});
+          throw authError("reauth_required", "Your session ended. Sign in again.");
         }
         const tokens = await requestTokens(config, {
           grant_type: "refresh_token",
@@ -336,6 +343,22 @@
 
     async function restore() {
       if (!config.enabled) return { kind: "disabled" };
+      let cleanupPending = false;
+      try { cleanupPending = guardStorage?.getItem(SIGN_OUT_PENDING_KEY) === "1"; } catch {}
+      if (cleanupPending) {
+        try {
+          await storage.clear();
+          try { guardStorage?.removeItem(SIGN_OUT_PENDING_KEY); } catch {}
+          return { kind: "signedOut", reason: "cleanupComplete" };
+        } catch {
+          return { kind: "signedOut", reason: "cleanup" };
+        }
+      }
+      const record = await storage.read();
+      if (record?.signOutPending) {
+        try { await storage.clear(); } catch { return { kind: "signedOut", reason: "cleanup" }; }
+        return { kind: "signedOut", reason: "cleanupComplete" };
+      }
       if (config.fake) {
         const record = {
           subject: accountContext.normalizeSubject(config.fakeSubject),
@@ -350,13 +373,12 @@
       }
       const callbackSession = await completeCallback();
       if (callbackSession) return callbackSession;
-      const record = await storage.read();
       if (!record?.subject) return { kind: "signedOut" };
       if (navigator?.onLine === false) {
         const offline = accountContext.offlineAccessState(record.lastAuthorizedAt, now());
         if (offline.allowed) return publicSession(record, "offlineGrace");
-        await storage.clear();
-        return { kind: "signedOut", reason: "offlineExpired" };
+        try { await clearSession(); return { kind: "signedOut", reason: "offlineExpired" }; }
+        catch { return { kind: "signedOut", reason: "cleanup" }; }
       }
       if (Number(record.expiresAt) > now() + TOKEN_EXPIRY_SKEW_MS && record.accessToken) return publicSession(record);
 
@@ -365,8 +387,8 @@
           return await refreshStoredSession(record);
         } catch (error) {
           if (error?.code === "reauth_required") {
-            await storage.clear();
-            return { kind: "signedOut", reason: "expired" };
+            try { await clearSession(); return { kind: "signedOut", reason: "expired" }; }
+            catch { return { kind: "signedOut", reason: "cleanup" }; }
           }
           if (error?.code === "temporarily_unavailable") {
             const offline = accountContext.offlineAccessState(record.lastAuthorizedAt, now());
@@ -375,8 +397,8 @@
           return { kind: "signedOut", reason: "cancelled" };
         }
       }
-      await storage.clear();
-      return { kind: "signedOut", reason: "expired" };
+      try { await clearSession(); return { kind: "signedOut", reason: "expired" }; }
+      catch { return { kind: "signedOut", reason: "cleanup" }; }
     }
 
     async function getSessionForNetwork() {
@@ -390,7 +412,7 @@
       try {
         return await refreshStoredSession(record, generation);
       } catch (error) {
-        if (error?.code === "reauth_required") await storage.clear();
+        if (error?.code === "reauth_required") await clearSession().catch(() => {});
         throw error;
       }
     }
@@ -410,7 +432,16 @@
     async function clearSession() {
       authGeneration += 1;
       refreshController?.abort();
+      let guarded = false;
+      try { guardStorage?.setItem(SIGN_OUT_PENDING_KEY, "1"); guarded = true; } catch {}
+      try {
+        if (storage.markSignOutPending) await storage.markSignOutPending();
+        else if (!guarded) await storage.clear();
+      } catch (error) {
+        if (!guarded) throw error;
+      }
       await storage.clear();
+      try { guardStorage?.removeItem(SIGN_OUT_PENDING_KEY); } catch {}
       transactionStorage?.removeItem(OAUTH_TRANSACTION_KEY);
     }
 
@@ -432,6 +463,7 @@
     OAUTH_TRANSACTION_KEY,
     OAUTH_TRANSACTION_MAX_AGE_MS,
     TOKEN_EXPIRY_SKEW_MS,
+    SIGN_OUT_PENDING_KEY,
     normalizeAuthConfig,
     randomBase64Url,
     pkceChallenge,

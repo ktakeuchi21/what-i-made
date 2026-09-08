@@ -22,6 +22,7 @@
   const photoUrls = window.WhatIMadePhotoUrls;
   const archive = window.WhatIMadeArchive;
   const backup = window.WhatIMadeBackup;
+  const legacyMigration = window.WhatIMadeLegacyMigration;
   const ideas = window.WhatIMadeIdeas;
   const recipeClient = window.WhatIMadeRecipeClient;
   const dashboard = window.WhatIMadeDashboard;
@@ -91,6 +92,8 @@
     confirmationBaseline: null,
     ownerToken: "",
     authSession: null,
+    signOutCleanupPending: false,
+    legacyMigrationInspection: null,
     suggestedCountry: "",
     touchedFields: new Set(),
     recordingTimer: null,
@@ -258,6 +261,7 @@
     state.ownerToken = "";
     authError.hidden = true;
     signInButton.hidden = false;
+    signInButton.textContent = state.signOutCleanupPending ? "Retry secure sign out" : "Sign in with email";
     $("#auth-helper").hidden = false;
     authMessage.textContent = reason === "offlineExpired"
       ? "Connect to the internet and sign in again to open this archive. Nothing was deleted."
@@ -265,6 +269,8 @@
         ? "Your session ended. Sign in again to reopen your private archive."
         : reason === "serviceUnavailable"
           ? "Sign-in is temporarily unavailable. Your archive is still on this device. Try again when connected."
+          : reason === "cleanup"
+            ? "Your archive is locked. Finish secure sign-out before another account can open."
         : "Sign in with an invited email address. Your archive stays separate on this device.";
     showScreen("auth");
     window.requestAnimationFrame(() => signInButton.focus({ preventScroll: true }));
@@ -288,9 +294,91 @@
       ? "Offline access. Connect before using voice or recipe search."
       : "This device opens only this account’s local archive.";
     await initializeApp();
+    await offerLegacyMigration();
+  }
+
+  function migrationMarkerKey() {
+    return `what-i-made-legacy-migrated:${state.archiveKey}`;
+  }
+
+  async function offerLegacyMigration() {
+    if (!legacyMigration?.inspect || !authConfig.legacyOwnerArchiveKey) return;
+    try {
+      if (sessionStorage.getItem(migrationMarkerKey()) === "dismissed" || localStorage.getItem(migrationMarkerKey()) === "complete") return;
+    } catch {}
+    try {
+      const inspection = await legacyMigration.inspect({
+        activeArchiveKey: state.archiveKey,
+        ownerArchiveKey: authConfig.legacyOwnerArchiveKey,
+        backup,
+      });
+      if (!inspection.available) return;
+      state.legacyMigrationInspection = inspection;
+      const counts = inspection.counts;
+      $("#legacy-migration-counts").textContent = `${pluralize(counts.attempts, "cook", "cooks")}, ${pluralize(counts.dishes, "dish", "dishes")}, ${pluralize(counts.ideas, "Idea", "Ideas")}, and ${pluralize(counts.photos + counts.ideaImages, "image", "images")} are ready to move.`;
+      $("#legacy-migration-dialog").showModal();
+      window.requestAnimationFrame(() => $("#backup-legacy-archive").focus({ preventScroll: true }));
+    } catch (error) {
+      console.warn("Legacy archive inspection was unavailable.", error?.message || error);
+    }
+  }
+
+  async function backupLegacyArchive() {
+    const inspection = state.legacyMigrationInspection;
+    if (!inspection?.payload) return;
+    const button = $("#backup-legacy-archive");
+    const status = $("#legacy-migration-status");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    status.hidden = false;
+    status.textContent = "Preparing the previous archive…";
+    try {
+      const blob = new Blob([JSON.stringify(inspection.payload)], { type: "application/json" });
+      const fileName = backup.createBackupFileName();
+      const file = typeof File === "function" ? new File([blob], fileName, { type: blob.type }) : null;
+      if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "What I Made backup", text: "Keep this file somewhere safe, such as Files.", files: [file] });
+      } else {
+        downloadBackupBlob(blob, fileName);
+      }
+      status.textContent = "Backup prepared. You can now move the archive.";
+    } catch (error) {
+      status.textContent = error?.name === "AbortError" ? "Backup sharing was canceled. Nothing was changed." : "The backup could not be prepared. Nothing was changed.";
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  }
+
+  async function moveLegacyArchive() {
+    const button = $("#move-legacy-archive");
+    const error = $("#legacy-migration-error");
+    const status = $("#legacy-migration-status");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    error.hidden = true;
+    status.hidden = false;
+    status.textContent = "Moving and checking every record…";
+    try {
+      const destination = await archive.openDatabase();
+      await legacyMigration.migrate(state.legacyMigrationInspection, destination);
+      try { localStorage.setItem(migrationMarkerKey(), "complete"); } catch {}
+      status.textContent = "Archive moved and verified.";
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (migrationError) {
+      error.textContent = migrationError.message || "The archive could not be moved. The previous archive is still untouched.";
+      error.hidden = false;
+      error.focus({ preventScroll: true });
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
   }
 
   async function startInvitationSignIn() {
+    if (state.signOutCleanupPending) {
+      await finishSignOutCleanup();
+      return;
+    }
     authError.hidden = true;
     signInButton.disabled = true;
     signInButton.setAttribute("aria-busy", "true");
@@ -312,17 +400,42 @@
     const button = $("#sign-out-button");
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
+    state.ownerToken = "";
+    state.authSession = null;
+    state.signOutCleanupPending = true;
     try {
+      await cancelRecording("Session ended");
       await archive.closeDatabase();
+      showSignedOut("cleanup");
+      await finishSignOutCleanup();
+    } catch (error) {
+      showSignedOut("cleanup");
+      showCleanupError(error);
+    }
+  }
+
+  function showCleanupError(error) {
+    authError.textContent = error?.message || "Secure sign-out could not finish. The archive is locked; retry before signing in again.";
+    authError.hidden = false;
+    authError.focus({ preventScroll: true });
+    signInButton.textContent = "Retry secure sign out";
+  }
+
+  async function finishSignOutCleanup() {
+    signInButton.disabled = true;
+    signInButton.setAttribute("aria-busy", "true");
+    try {
       const logoutUrl = await authClient.signOut();
+      state.signOutCleanupPending = false;
       if (logoutUrl && navigator.onLine !== false) window.location.replace(logoutUrl);
       else window.location.reload();
     } catch (error) {
-      button.disabled = false;
-      button.removeAttribute("aria-busy");
-      backupError.textContent = error.message || "This account could not be signed out. Try again.";
-      backupError.hidden = false;
-      backupError.focus({ preventScroll: true });
+      state.signOutCleanupPending = true;
+      showSignedOut("cleanup");
+      showCleanupError(error);
+    } finally {
+      signInButton.disabled = false;
+      signInButton.removeAttribute("aria-busy");
     }
   }
 
@@ -336,7 +449,10 @@
     try {
       const session = await authClient.restore();
       if (["signedIn", "offlineGrace"].includes(session.kind)) await activateAccount(session);
-      else showSignedOut(session.reason);
+      else {
+        state.signOutCleanupPending = session.reason === "cleanup";
+        showSignedOut(session.reason);
+      }
     } catch (error) {
       showSignedOut();
       authError.textContent = error.message || "Your private archive could not be opened.";
@@ -384,9 +500,19 @@
     state.authSession = null;
     await cancelRecording("Session ended");
     await archive.closeDatabase();
-    if (clearSession) await authClient.clearSession();
     showSignedOut(reason);
-    window.location.reload();
+    if (!clearSession) {
+      window.location.reload();
+      return;
+    }
+    try {
+      await authClient.clearSession();
+      window.location.reload();
+    } catch (error) {
+      state.signOutCleanupPending = true;
+      showSignedOut("cleanup");
+      showCleanupError(error);
+    }
   }
 
   async function validateVisibleAccount() {
@@ -3615,6 +3741,12 @@
   $("#remove-owner-token").addEventListener("click", removeOwnerToken);
   signInButton.addEventListener("click", () => void startInvitationSignIn());
   $("#sign-out-button").addEventListener("click", () => void signOutAccount());
+  $("#backup-legacy-archive").addEventListener("click", () => void backupLegacyArchive());
+  $("#move-legacy-archive").addEventListener("click", () => void moveLegacyArchive());
+  $("#defer-legacy-migration").addEventListener("click", () => {
+    try { sessionStorage.setItem(migrationMarkerKey(), "dismissed"); } catch {}
+    $("#legacy-migration-dialog").close();
+  });
   optionalToggle.addEventListener("click", toggleOptionalFields);
   dishName.addEventListener("input", () => {
     beginTiming();

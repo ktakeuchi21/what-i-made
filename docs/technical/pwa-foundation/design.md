@@ -1,5 +1,7 @@
 # What I Made PWA Foundation
 
+> **Invitation-access addendum, September 8, 2026:** The original single-owner token and public Function URL boundary described below is superseded by [Invitation only private archives](../../product/invitation-only-access/design.md). The implemented branch uses Cognito managed login, account-scoped IndexedDB, API Gateway JWT and route-scope enforcement, and durable pseudonymous per-account rate windows. The original sections remain as the historical foundation decision; `ARCHITECTURE.md` describes current code.
+
 > **Status:** Proposed for review
 
 ## 1. Executive summary

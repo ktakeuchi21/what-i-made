@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Invitation-only identity and protected services for What I Made.
+
+Parameters:
+  AppOrigin:
+    Type: String
+    Description: Exact HTTPS origin of the deployed PWA.
+    AllowedPattern: ^https://[^/]+$
+  CallbackUrl:
+    Type: String
+    Description: Exact deployed PWA callback URL.
+    AllowedPattern: ^https://.+$
+  CognitoDomainPrefix:
+    Type: String
+    AllowedPattern: ^[a-z0-9-]{3,63}$
+  ImageTokenSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+  BedrockModelId:
+    Type: String
+    Default: openai.gpt-5.6-terra
+  ServicesEnabled:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  ReservedConcurrency:
+    Type: Number
+    Default: 0
+    AllowedValues: [0, 2]
+    Description: Use 2 only after the account concurrency quota can retain ten unreserved executions; 0 omits the setting.
+
+Conditions:
+  UseReservedConcurrency: !Not [!Equals [!Ref ReservedConcurrency, 0]]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    Tracing: Active
+    Environment:
+      Variables:
+        AUTH_MODE: cognito
+        COGNITO_CLIENT_ID: !Ref WebClient
+        RATE_LIMIT_TABLE: !Ref RateLimitTable
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: what-i-made-invited-users
+      UserPoolTier: ESSENTIALS
+      DeletionProtection: ACTIVE
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      UsernameConfiguration:
+        CaseSensitive: false
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        SignInPolicy:
+          AllowedFirstAuthFactors: [EMAIL_OTP]
+
+  ServiceScopes:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      UserPoolId: !Ref UserPool
+      Identifier: what-i-made
+      Name: What I Made services
+      Scopes:
+        - ScopeName: capture
+          ScopeDescription: Use voice transcription and capture assistance
+        - ScopeName: recipes
+          ScopeDescription: Import, search, and generate recipe ideas
+
+  WebClient:
+    Type: AWS::Cognito::UserPoolClient
+    DependsOn: ServiceScopes
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: what-i-made-pwa
+      GenerateSecret: false
+      PreventUserExistenceErrors: ENABLED
+      ExplicitAuthFlows: [ALLOW_USER_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email, what-i-made/capture, what-i-made/recipes]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [!Ref CallbackUrl]
+      LogoutURLs: [!Ref CallbackUrl]
+      AccessTokenValidity: 15
+      IdTokenValidity: 15
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: minutes
+        IdToken: minutes
+        RefreshToken: days
+
+  ManagedLoginDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref UserPool
+      ManagedLoginVersion: 2
+
+  PrivateApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowOrigins: [!Ref AppOrigin]
+        AllowHeaders: [authorization, content-type]
+        AllowMethods: [GET, POST, OPTIONS]
+        MaxAge: 600
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience: [!Ref WebClient]
+
+  RateLimitTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: accountWindow
+          AttributeType: S
+      KeySchema:
+        - AttributeName: accountWindow
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  CaptureAssistanceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../services/capture-assistance
+      Handler: lambda.handler
+      MemorySize: 256
+      Timeout: 15
+      ReservedConcurrentExecutions: !If [UseReservedConcurrency, !Ref ReservedConcurrency, !Ref "AWS::NoValue"]
+      Environment:
+        Variables:
+          CAPTURE_ASSISTANCE_ENABLED: !Ref ServicesEnabled
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock-mantle:CreateInference"
+                - "bedrock:InvokeModel"
+              Resource: "*"
+              Condition:
+                StringEquals: { "aws:RequestedRegion": !Ref "AWS::Region" }
+            - Effect: Allow
+              Action: "dynamodb:UpdateItem"
+              Resource: !GetAtt RateLimitTable.Arn
+      Events:
+        ParseCook:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PrivateApi
+            Path: /v1/parse-cook
+            Method: POST
+            Auth:
+              Authorizer: CognitoJwt
+              AuthorizationScopes: [what-i-made/capture]
+
+  TranscribeSessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../spikes/iphone-feasibility/backend/session
+      Handler: index.handler
+      MemorySize: 128
+      Timeout: 5
+      ReservedConcurrentExecutions: !If [UseReservedConcurrency, !Ref ReservedConcurrency, !Ref "AWS::NoValue"]
+      Environment:
+        Variables:
+          VOICE_ENABLED: !Ref ServicesEnabled
+          PRESIGN_EXPIRES_SECONDS: "15"
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: "transcribe:StartStreamTranscriptionWebSocket"
+              Resource: "*"
+            - Effect: Allow
+              Action: "dynamodb:UpdateItem"
+              Resource: !GetAtt RateLimitTable.Arn
+      Events:
+        Session:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PrivateApi
+            Path: /v1/transcribe-session
+            Method: POST
+            Auth:
+              Authorizer: CognitoJwt
+              AuthorizationScopes: [what-i-made/capture]
+
+  RecipeIdeasFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../../services/recipe-ideas
+      Handler: lambda.handler
+      MemorySize: 512
+      Timeout: 30
+      ReservedConcurrentExecutions: !If [UseReservedConcurrency, !Ref ReservedConcurrency, !Ref "AWS::NoValue"]
+      Environment:
+        Variables:
+          RECIPE_IDEAS_ENABLED: !Ref ServicesEnabled
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          IMAGE_TOKEN_SECRET: !Ref ImageTokenSecret
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "bedrock-mantle:CreateInference"
+                - "bedrock-websearch:InvokeSearch"
+                - "bedrock-websearch:InvokeFetch"
+              Resource: "*"
+              Condition:
+                StringEquals: { "aws:RequestedRegion": !Ref "AWS::Region" }
+            - Effect: Allow
+              Action: "dynamodb:UpdateItem"
+              Resource: !GetAtt RateLimitTable.Arn
+      Events:
+        Import:
+          Type: HttpApi
+          Properties: { ApiId: !Ref PrivateApi, Path: /v1/recipes/import, Method: POST, Auth: { Authorizer: CognitoJwt, AuthorizationScopes: [what-i-made/recipes] } }
+        Search:
+          Type: HttpApi
+          Properties: { ApiId: !Ref PrivateApi, Path: /v1/recipes/search, Method: POST, Auth: { Authorizer: CognitoJwt, AuthorizationScopes: [what-i-made/recipes] } }
+        Generate:
+          Type: HttpApi
+          Properties: { ApiId: !Ref PrivateApi, Path: /v1/recipes/generate, Method: POST, Auth: { Authorizer: CognitoJwt, AuthorizationScopes: [what-i-made/recipes] } }
+        Image:
+          Type: HttpApi
+          Properties: { ApiId: !Ref PrivateApi, Path: /v1/recipes/image, Method: GET, Auth: { Authorizer: CognitoJwt, AuthorizationScopes: [what-i-made/recipes] } }
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  WebClientId:
+    Value: !Ref WebClient
+  ManagedLoginDomain:
+    Value: !Sub https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com
+  ApiBaseUrl:
+    Value: !Sub https://${PrivateApi}.execute-api.${AWS::Region}.amazonaws.com

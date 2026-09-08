@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { handler, createPresignedTranscribeUrl } from "../backend/session/index.mjs";
+import { handler, createPresignedTranscribeUrl, testing } from "../backend/session/index.mjs";
 
 const token = "owner_token_for_tests_1234567890abcd";
 const originalEnvironment = { ...process.env };
@@ -35,6 +35,15 @@ test("AC-21: missing and wrong owner tokens are rejected", async () => {
   configure();
   assert.equal((await handler(event(undefined, ""))).statusCode, 401);
   assert.equal((await handler(event(undefined, "Bearer wrong_token_that_is_long_enough_123"))).statusCode, 401);
+});
+
+test("accepts only API Gateway-validated Cognito access-token claims", async () => {
+  configure({ AUTH_MODE: "cognito", COGNITO_CLIENT_ID: "client-123" });
+  const request = event();
+  request.requestContext.authorizer = { jwt: { claims: { sub: "account-a", token_use: "access", client_id: "client-123" } } };
+  assert.match(testing.requestIdentity(request).accountKey, /^[a-f0-9]{64}$/);
+  request.requestContext.authorizer.jwt.claims.client_id = "wrong";
+  assert.equal(testing.requestIdentity(request), null);
 });
 
 test("AC-21: disabled, malformed, unknown, and oversized requests fail safely", async () => {

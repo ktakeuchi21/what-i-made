@@ -4,20 +4,31 @@ const localFakeAuth = ["127.0.0.1", "localhost"].includes(window.location.hostna
 
 const configuredAuthDomain = document.querySelector('meta[name="wim-auth-domain"]')?.content.trim() || "";
 const configuredAuthClientId = document.querySelector('meta[name="wim-auth-client-id"]')?.content.trim() || "";
+const invitationAuthConfigured = localFakeAuth || Boolean(configuredAuthDomain && configuredAuthClientId);
+const configuredLegacyVoiceEndpoint = document.querySelector('meta[name="wim-transcribe-session-endpoint"]')?.content.trim() || "";
+const configuredServiceApiEndpoint = document.querySelector('meta[name="wim-service-api-endpoint"]')?.content.trim() || "";
+let serviceApiEndpoint = "";
+try {
+  const parsedServiceApi = new URL(configuredServiceApiEndpoint);
+  if (parsedServiceApi.protocol === "https:" && !parsedServiceApi.username && !parsedServiceApi.password) {
+    serviceApiEndpoint = parsedServiceApi.toString().replace(/\/$/, "");
+  }
+} catch {}
 window.WIM_AUTH_CONFIG = Object.freeze({
-  enabled: localFakeAuth || Boolean(configuredAuthDomain && configuredAuthClientId),
+  enabled: invitationAuthConfigured,
   fake: localFakeAuth,
   fakeSubject: localFakeAuth ? voiceParameters.get("account") || "local-owner" : "",
   fakeEmail: localFakeAuth ? `${voiceParameters.get("account") || "owner"}@example.test` : "",
   domain: configuredAuthDomain,
   clientId: configuredAuthClientId,
   redirectUri: `${window.location.origin}${window.location.pathname}`,
-  scopes: ["openid", "email"],
+  scopes: ["openid", "email", "what-i-made/capture", "what-i-made/recipes"],
+  legacyOwnerArchiveKey: document.querySelector('meta[name="wim-legacy-owner-archive-key"]')?.content.trim().toLowerCase() || "",
 });
 
 window.WIM_VOICE_CONFIG = Object.freeze({
-  enabled: true,
-  sessionEndpoint: "https://eh6h3acmwp2owyowv6s7vqnyii0ifons.lambda-url.us-east-2.on.aws/",
+  enabled: localFakeVoice || Boolean(serviceApiEndpoint) || (!invitationAuthConfigured && Boolean(configuredLegacyVoiceEndpoint)),
+  sessionEndpoint: serviceApiEndpoint ? `${serviceApiEndpoint}/v1/transcribe-session` : invitationAuthConfigured ? "" : configuredLegacyVoiceEndpoint,
   region: "us-east-2",
   maxCaptureSeconds: 45,
   fake: localFakeVoice,
@@ -26,7 +37,7 @@ window.WIM_VOICE_CONFIG = Object.freeze({
 
 const localCaptureAssistance = ["127.0.0.1", "localhost"].includes(window.location.hostname)
   && voiceParameters.get("assist") === "fake";
-const configuredCaptureAssistanceEndpoint = document.querySelector('meta[name="wim-capture-assistance-endpoint"]')?.content.trim() || "";
+const configuredCaptureAssistanceEndpoint = serviceApiEndpoint || (invitationAuthConfigured ? "" : document.querySelector('meta[name="wim-capture-assistance-endpoint"]')?.content.trim() || "");
 let deployedCaptureAssistanceEndpoint = "";
 try {
   const parsedCaptureEndpoint = new URL(configuredCaptureAssistanceEndpoint);
@@ -46,7 +57,7 @@ window.WIM_CAPTURE_ASSISTANCE_CONFIG = Object.freeze({
 
 const localRecipeService = ["127.0.0.1", "localhost"].includes(window.location.hostname)
   && voiceParameters.get("recipes") === "fake";
-const configuredRecipeEndpoint = document.querySelector('meta[name="wim-recipe-endpoint"]')?.content.trim() || "";
+const configuredRecipeEndpoint = serviceApiEndpoint || (invitationAuthConfigured ? "" : document.querySelector('meta[name="wim-recipe-endpoint"]')?.content.trim() || "");
 let deployedRecipeEndpoint = "";
 try {
   const parsedRecipeEndpoint = new URL(configuredRecipeEndpoint);

@@ -30,6 +30,16 @@ test("all routes require a valid owner token and honor the kill switch", async (
   assert.equal((await createHandler({ logger }, { ...environment, RECIPE_IDEAS_ENABLED: "false" })(event("POST", "/v1/recipes/search", { description: "soup" }))).statusCode, 503);
 });
 
+test("accepts only the API Gateway-validated Cognito access-token identity", async () => {
+  const cognitoEnvironment = { ...environment, AUTH_MODE: "cognito", COGNITO_CLIENT_ID: "client-123" };
+  const handler = createHandler({ logger, allowRequest: async () => true }, cognitoEnvironment);
+  const request = event("POST", "/v1/recipes/search", { description: "soup" }, "Bearer ignored-by-lambda");
+  request.requestContext.authorizer = { jwt: { claims: { sub: "account-a", token_use: "access", client_id: "client-123" } } };
+  assert.equal((await handler(request)).statusCode, 503);
+  request.requestContext.authorizer.jwt.claims.token_use = "id";
+  assert.equal((await handler(request)).statusCode, 401);
+});
+
 test("import safely fetches and normalizes a recipe with a signed image token", async () => {
   const document = `<script type="application/ld+json">${JSON.stringify({
     "@type": "Recipe", name: "Rice Bowl", image: "https://cdn.example/rice.jpg",

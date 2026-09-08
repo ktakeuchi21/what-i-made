@@ -9,5 +9,6 @@
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "dependencies": { "@aws-sdk/client-dynamodb": "^3.888.0" }
 }

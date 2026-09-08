@@ -81,7 +81,7 @@
         throw error;
       }
       if (!this.endpoint) throw this.makeError("not_configured", "AWS transcription is not configured.");
-      if (!token) throw this.makeError("missing_token", "Save the owner token before starting.");
+      if (!token) throw this.makeError("missing_token", "Sign in or finish private voice setup before starting.");
       if (!this.AudioContextImpl || !this.mediaDevices?.getUserMedia || !this.WebSocketImpl) {
         throw this.makeError("unsupported", "This browser does not expose the required audio APIs.");
       }
@@ -166,7 +166,7 @@
       }
       if (!response.ok) {
         const messages = {
-          401: "The owner token was not accepted.",
+          401: "Your private service session was not accepted. Sign in again.",
           413: "The transcription request was too large.",
           503: "AWS transcription is temporarily disabled.",
         };
@@ -414,7 +414,7 @@
       this.runId = 0;
     }
     async start(token) {
-      if (!token) throw new Error("Save the owner token before starting.");
+      if (!token) throw new Error("Sign in or finish private voice setup before starting.");
       const runId = ++this.runId;
       this.state = "connecting";
       this.onState("connecting", "Opening test session");

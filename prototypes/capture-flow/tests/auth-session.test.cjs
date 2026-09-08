@@ -10,6 +10,7 @@ const {
   withoutOAuthParameters,
   validateTokenResponse,
   createAuthClient,
+  createIndexedDbSessionStore,
 } = require("../auth-session.js");
 
 const config = {
@@ -35,6 +36,15 @@ function memoryStorage(initial = null) {
 }
 
 function transactionStorage() {
+  const values = new Map();
+  return {
+    getItem: (key) => values.get(key) || null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  };
+}
+
+function keyValueStorage() {
   const values = new Map();
   return {
     getItem: (key) => values.get(key) || null,
@@ -250,6 +260,89 @@ test("explicit sign-out removes the retained session before returning a hosted l
   assert.equal(logoutUrl.searchParams.get("client_id"), config.clientId);
   assert.equal(logoutUrl.searchParams.get("logout_uri"), config.redirectUri);
   assert.doesNotMatch(logoutUrl.toString(), /secret/);
+});
+
+test("a failed sign-out deletion leaves a persistent tombstone that blocks reload", async () => {
+  let record = { subject: "sub-1", accessToken: "secret" };
+  let failClear = true;
+  const storage = {
+    read: async () => record,
+    write: async (value) => { record = value; },
+    markSignOutPending: async () => { record = { signOutPending: true }; },
+    clear: async () => {
+      if (failClear) { failClear = false; throw new Error("disk unavailable"); }
+      record = null;
+    },
+  };
+  const first = createAuthClient(config, { storage, transactionStorage: transactionStorage(), location: { href: config.redirectUri } });
+  await assert.rejects(first.signOut(), /disk unavailable/);
+  assert.deepEqual(record, { signOutPending: true });
+  const relaunched = createAuthClient(config, { storage, transactionStorage: transactionStorage(), location: { href: config.redirectUri } });
+  assert.deepEqual(await relaunched.restore(), { kind: "signedOut", reason: "cleanupComplete" });
+  assert.equal(record, null);
+});
+
+for (const failure of ["invalid_grant", "userinfo_unauthorized"]) {
+  test(`${failure} plus a failed delete cannot reopen the archive offline`, async () => {
+    let record = { subject: "sub-1", accessToken: "expired", refreshToken: "refresh", expiresAt: 1, lastAuthorizedAt: 1000 };
+    let clearAttempts = 0;
+    const storage = {
+      read: async () => record,
+      write: async (value) => { record = value; },
+      markSignOutPending: async () => { record = { signOutPending: true }; },
+      clear: async () => {
+        clearAttempts += 1;
+        if (clearAttempts === 1) throw new Error("disk unavailable");
+        record = null;
+      },
+    };
+    const guardStorage = keyValueStorage();
+    const fetch = async (url) => {
+      if (url.endsWith("/oauth2/token")) {
+        return failure === "invalid_grant"
+          ? { ok: false, status: 400, json: async () => ({ error: "invalid_grant" }) }
+          : { ok: true, status: 200, json: async () => ({ access_token: "new-access", expires_in: 900 }) };
+      }
+      return { ok: false, status: 401, json: async () => ({}) };
+    };
+    const first = createAuthClient(config, { storage, guardStorage, transactionStorage: transactionStorage(), location: { href: config.redirectUri }, navigator: { onLine: true }, now: () => 2000, fetch });
+    assert.deepEqual(await first.restore(), { kind: "signedOut", reason: "cleanup" });
+    assert.deepEqual(record, { signOutPending: true });
+    const relaunchedOffline = createAuthClient(config, { storage, guardStorage, transactionStorage: transactionStorage(), location: { href: config.redirectUri }, navigator: { onLine: false }, now: () => 3000, fetch });
+    assert.deepEqual(await relaunchedOffline.restore(), { kind: "signedOut", reason: "cleanupComplete" });
+    assert.equal(record, null);
+  });
+}
+
+test("IndexedDB session writes wait for commit and reject a late transaction abort", async () => {
+  const indexedDB = {
+    open() {
+      const openRequest = {};
+      const database = {
+        objectStoreNames: { contains: () => true },
+        close() {},
+        transaction() {
+          const transaction = {
+            error: new Error("late abort"),
+            objectStore: () => ({ put: () => {
+              const request = { result: "ok" };
+              setTimeout(() => {
+                request.onsuccess?.();
+                transaction.onabort?.();
+              }, 0);
+              return request;
+            } }),
+          };
+          return transaction;
+        },
+      };
+      openRequest.result = database;
+      setTimeout(() => openRequest.onsuccess?.(), 0);
+      return openRequest;
+    },
+  };
+  const storage = createIndexedDbSessionStore(indexedDB);
+  await assert.rejects(storage.write({ subject: "sub-1" }), /late abort/);
 });
 
 test("a loaded archive becomes ineligible immediately after seven days", async () => {

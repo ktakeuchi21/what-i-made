@@ -1,0 +1,7 @@
+{
+  "name": "what-i-made-transcribe-session-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@aws-sdk/client-dynamodb": "^3.888.0" }
+}

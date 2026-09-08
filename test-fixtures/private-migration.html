@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<title>Private archive migration fixture</title>
+<p id="status">Preparing isolated migration…</p>
+<script src="../prototypes/capture-flow/map-geometry.js"></script>
+<script src="../prototypes/capture-flow/archive-store.js"></script>
+<script src="../prototypes/capture-flow/archive-backup.js"></script>
+<script src="../prototypes/capture-flow/legacy-migration.js"></script>
+<script>
+(async () => {
+  const status = document.querySelector("#status");
+  const fixtureSourceName = "what-i-made-fixture-legacy-do-not-use-for-app";
+  const ownerKey = "a".repeat(64);
+  const destinationName = WhatIMadeArchive.databaseNameForArchiveKey(ownerKey);
+  const deleteDatabase = (name) => new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = resolve;
+    request.onerror = () => reject(request.error);
+  });
+  await deleteDatabase(fixtureSourceName);
+  await deleteDatabase(destinationName);
+  const legacy = await new Promise((resolve, reject) => {
+    const request = indexedDB.open(fixtureSourceName, WhatIMadeArchive.DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      ["occasions", "dishes", "attempts", "photos", "ideas", "ideaImages", "ideaDrafts"].forEach((name) => db.createObjectStore(name, { keyPath: "id" }));
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const tx = legacy.transaction(["occasions", "dishes", "attempts", "photos", "ideaDrafts"], "readwrite");
+  tx.objectStore("occasions").add({ id: "occasion-1", cookedAt: "2026-09-08", createdAt: "2026-09-08T12:00:00Z", updatedAt: "2026-09-08T12:00:00Z", mainPhotoId: "photo-1" });
+  tx.objectStore("dishes").add({ id: "dish-1", canonicalName: "Adobo", aliases: [], country: "Philippines", createdAt: "2026-09-08T12:00:00Z" });
+  tx.objectStore("attempts").add({ id: "attempt-1", occasionId: "occasion-1", dishId: "dish-1", rating: 8, notes: null, ingredientsText: null, transcript: null, createdAt: "2026-09-08T12:00:00Z" });
+  const blob = new Blob(["photo"], { type: "image/jpeg" });
+  tx.objectStore("photos").add({ id: "photo-1", occasionId: "occasion-1", dishAttemptId: "attempt-1", role: "main", mimeType: "image/jpeg", byteLength: blob.size, blob, createdAt: "2026-09-08T12:00:00Z" });
+  tx.objectStore("ideaDrafts").add({ id: "draft-1", title: "Soup" });
+  await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+  legacy.close();
+  WhatIMadeArchive.setArchiveContext(ownerKey);
+  const destination = await WhatIMadeArchive.openDatabase();
+  const inspection = await WhatIMadeLegacyMigration.inspect({ activeArchiveKey: ownerKey, ownerArchiveKey: ownerKey, legacyDatabaseName: fixtureSourceName, backup: WhatIMadeBackup });
+  const moved = await WhatIMadeLegacyMigration.migrate(inspection, destination);
+  const source = await new Promise((resolve, reject) => { const request = indexedDB.open(fixtureSourceName); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+  const sourceCount = await new Promise((resolve, reject) => { const request = source.transaction("attempts").objectStore("attempts").count(); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+  source.close();
+  status.textContent = moved.attempts === 1 && moved.ideaDrafts === 1 && sourceCount === 1 ? "migration verified" : "migration failed";
+})().catch((error) => { document.querySelector("#status").textContent = `migration failed: ${error.message}`; });
+</script>
+</html>

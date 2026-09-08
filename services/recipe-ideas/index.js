@@ -1,6 +1,7 @@
 "use strict";
 
-const crypto = require("node:crypto");
+const { requestIdentity } = require("./request-identity");
+const { createDurableRateLimiter } = require("./rate-limiter");
 const { canonicalizeUrl, FetchSafetyError, parseHttpsUrl, safeFetch } = require("./url-security");
 const { parseRecipeHtml, plainText } = require("./recipe-parser");
 const { signImageToken, verifyImageToken } = require("./image-token");
@@ -17,20 +18,6 @@ function jsonResponse(statusCode, body) {
     },
     body: JSON.stringify(body),
   };
-}
-
-function headerValue(headers, name) {
-  const entry = Object.entries(headers || {}).find(([key]) => key.toLowerCase() === name.toLowerCase());
-  return entry ? String(entry[1]) : "";
-}
-
-function authorized(headers, expectedHex) {
-  if (!/^[a-f0-9]{64}$/i.test(expectedHex || "")) return false;
-  const match = /^Bearer ([A-Za-z0-9_-]{32,128})$/.exec(headerValue(headers, "authorization"));
-  if (!match) return false;
-  const actual = crypto.createHash("sha256").update(match[1], "utf8").digest();
-  const expected = Buffer.from(expectedHex, "hex");
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
 function decodeBody(event) {
@@ -123,6 +110,7 @@ function createHandler(dependencies = {}, environment = process.env) {
   };
   const now = dependencies.now || Date.now;
   const logger = dependencies.logger || console;
+  const allowRequest = dependencies.allowRequest || createDurableRateLimiter(environment, { client: dependencies.rateLimitClient });
 
   return async function recipeIdeasHandler(event = {}) {
     const method = event.requestContext?.http?.method || event.httpMethod || "";
@@ -137,7 +125,12 @@ function createHandler(dependencies = {}, environment = process.env) {
     };
 
     if (environment.RECIPE_IDEAS_ENABLED !== "true") return finish(503, { error: "disabled" });
-    if (!authorized(event.headers, environment.OWNER_TOKEN_SHA256)) return finish(401, { error: "unauthorized" });
+    const identity = requestIdentity(event, environment);
+    if (!identity) return finish(401, { error: "unauthorized" });
+    const routeLimits = { "/v1/recipes/import": 15, "/v1/recipes/search": 10, "/v1/recipes/generate": 5, "/v1/recipes/image": 60 };
+    try {
+      if (routeLimits[routeLabel] && !await allowRequest(identity.accountKey, routeLabel, startedAt, routeLimits[routeLabel])) return finish(429, { error: "rate_limited" });
+    } catch { return finish(503, { error: "unavailable" }); }
 
     try {
       if (method === "POST" && path === "/v1/recipes/import") {
@@ -234,5 +227,5 @@ const handler = createHandler();
 module.exports = {
   createHandler,
   handler,
-  testing: { authorized, decodeBody, normalizeCandidate, sanitizeGeneratedRecipe, sourceName },
+  testing: { requestIdentity, decodeBody, normalizeCandidate, sanitizeGeneratedRecipe, sourceName },
 };

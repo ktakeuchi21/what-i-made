@@ -135,6 +135,24 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Restore all supported data into an empty installation.
 - Confirm restored counts, relationships, and readable optimized images.
 
+### 6. Enter a private invited archive
+
+**Steps**
+
+1. Open the shared PWA link.
+2. Sign in with an invited email and one-time code.
+3. Use only that account's local archive.
+4. Sign out without deleting it.
+
+**Tasks**
+
+- Reject self-registration and uninvited identities.
+- Retain a verified session so normal launches do not require another code.
+- Derive a non-readable account namespace before opening IndexedDB.
+- Keep local features available for up to seven days offline.
+- Require a current scoped token for voice and recipe services.
+- Move the original owner's fixed archive once, only into the configured empty owner archive.
+
 ## Vertical release slices
 
 The slices below are delivery milestones within version one. Each ends in something the owner can use or validate; none requires building the entire horizontal layer first.
@@ -193,6 +211,16 @@ Not a product release. Before feature breadth, prove Home Screen installation, c
 - Exact-count selected detail and accessible geographic list.
 - Tap-driven dense-area country close-ups and nearby-dish selection.
 - Editable default map photograph per canonical dish.
+
+### Slice 5 — Invitation-only private archives
+
+**Outcome:** A small invited group can use one app link without sharing archive data or service credentials.
+
+- Owner-administered Cognito membership with email one-time-code managed login.
+- Separate account-scoped IndexedDB archives on the same device.
+- Bounded offline access and complete sign-out cleanup.
+- JWT- and scope-protected paid services with durable pseudonymous rate limits.
+- Controlled, verified migration of the original owner's local archive.
 
 ## Deferred releases
 

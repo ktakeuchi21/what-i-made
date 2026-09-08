@@ -16,6 +16,18 @@ test("requires the owner token and exact bounded request contract", async () => 
   assert.equal((await handler(event({ transcript: "x".repeat(5001), voiceSegment: "", locale: "en-US" }))).statusCode, 400);
 });
 
+test("accepts only the API Gateway-validated Cognito access-token identity", async () => {
+  const cognitoEnvironment = { CAPTURE_ASSISTANCE_ENABLED: "true", AUTH_MODE: "cognito", COGNITO_CLIENT_ID: "client-123" };
+  const handler = createHandler({ provider: { parseCook: async () => valid }, allowRequest: async () => true, logger: { info() {} } }, cognitoEnvironment);
+  const request = event({ transcript: "I made adobo.", voiceSegment: "I made adobo.", locale: "en-US" }, "Bearer ignored-by-lambda");
+  request.requestContext.authorizer = { jwt: { claims: { sub: "account-a", token_use: "access", client_id: "client-123" } } };
+  assert.equal((await handler(request)).statusCode, 200);
+  request.requestContext.authorizer.jwt.claims.client_id = "other-client";
+  assert.equal((await handler(request)).statusCode, 401);
+  delete request.requestContext.authorizer;
+  assert.equal((await handler(request)).statusCode, 401);
+});
+
 test("returns validated provider output without logging private text", async () => {
   const logs = [];
   const providerValue = { ...valid };

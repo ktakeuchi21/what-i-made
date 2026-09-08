@@ -2248,6 +2248,10 @@ select[aria-invalid="true"] {
   margin-top: 18px;
 }
 
+.migration-actions {
+  grid-template-columns: 1fr;
+}
+
 @media (max-width: 374px) {
   .backup-counts {
     grid-template-columns: repeat(2, 1fr);

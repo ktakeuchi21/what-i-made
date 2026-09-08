@@ -1,14 +1,14 @@
 # What I Made Product Requirements Document
 
 > **Status:** Draft for owner review  
-> **Version:** 0.1  
-> **Date:** August 30, 2026  
+> **Version:** 0.2
+> **Date:** September 8, 2026
 > **Author and approver:** Product owner, with Codex support  
 > **Sources:** [Discovery brief](./DISCOVERY_BRIEF.md), [PWA foundation](../technical/pwa-foundation/design.md), [story map](./USER_STORY_MAP.md), and [design system](../../design-system/what-i-made/MASTER.md)
 
 ## 1. Executive summary
 
-What I Made is a private, installable iPhone web app for a frequent home cook who wants the context and progress behind their cooking to stop disappearing. Immediately after cooking, the owner can preserve a photo and dish name in under 20 seconds, optionally add a spoken rating, notes, and ingredients, and confirm a suggested country and dish match. Over time, the archive turns those quick records into a photographic journal of new dishes, repeated-dish improvement, annual reflection, and dish-level geographic exploration. The first release is successful when the owner records most cooking occasions, can clearly see what is new or improving, feels proud or inspired when revisiting the archive, and can back it up without a cloud account.
+What I Made is a private, invitation-only iPhone web app for frequent home cooks who want the context and progress behind their cooking to stop disappearing. Each invited person gets a separate device-local archive. Immediately after cooking, they can preserve a photo and dish name in under 20 seconds, optionally add a spoken rating, notes, and ingredients, and confirm suggested structure. Over time, the archive becomes a photographic journal, annual reflection, and culinary map. Membership is cloud-verified, but cooks, photos, Ideas, and backups remain local.
 
 ## 2. Problem statement
 
@@ -235,6 +235,15 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - **When:** I confirm restore into an empty archive.
 - **Then:** Every occasion, dish, attempt, Idea, field, map location, and optimized photograph is restored with matching counts into an empty archive.
 
+### US-13 — Open a separate invited archive
+
+**As an invited cook, I want my own private archive behind a retained email-code sign-in, so that sharing the app link never shares anyone else's cooking history.**
+
+- **Scenario:** Two invited people use one browser.
+- **Given:** Each has a valid Cognito membership and a previously verified session.
+- **When:** They sign out and alternate accounts.
+- **Then:** Each account opens only its SHA-256-scoped local database, the prior account disappears before the next opens, and no archive record or photograph is synchronized to AWS.
+
 ### Cross-cutting constraints
 
 - The target surface is an iPhone Home Screen PWA over HTTPS.
@@ -247,6 +256,8 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - Required data and its main photo commit atomically.
 - All AI-derived fields remain editable and require confirmation.
 - The app contains no shipped AWS credentials and sends no photographs externally.
+- Invitation membership uses Cognito managed login; self-registration is disabled and protected services require scoped access tokens.
+- Offline archive access ends seven days after the last successful authorization without deleting local data.
 - Touch targets are at least 44 by 44 CSS pixels, visible labels remain present, and core behavior works with VoiceOver, keyboard navigation, enlarged text, landscape, and reduced motion.
 - Detailed technical invariants and acceptance criteria remain authoritative in the [PWA foundation](../technical/pwa-foundation/design.md).
 
@@ -260,7 +271,7 @@ The following are explicitly excluded from version one:
 - Sentiment analysis of notes.
 - Automatic cloud backup, synchronization, or multi-device history.
 - Historical Apple Photos import.
-- Shared household accounts, public profiles, or social features.
+- Shared household archives, public profiles, social features, and cloud synchronization. Invitation accounts are separate and private.
 - Cooking streaks, reminders, badges, and gamified pressure.
 - App Store distribution.
 - AI analysis of photographs.

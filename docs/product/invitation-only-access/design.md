@@ -1,6 +1,6 @@
 # Invitation only private archives
 
-Status: Proposed for review
+Status: Approved and in implementation
 
 ## 1. Executive summary
 
