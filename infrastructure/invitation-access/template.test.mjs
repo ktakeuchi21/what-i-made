@@ -11,4 +11,7 @@ test("keeps invitation access email-code-first while satisfying Cognito's pool p
   assert.match(template, /Name:\s+admin_only/);
   assert.match(template, /AllowedFirstAuthFactors:\s+\[PASSWORD, EMAIL_OTP\]/);
   assert.doesNotMatch(template, /AllowAdminCreateUserOnly:\s+false/);
+  assert.match(template, /ManagedLoginBranding:\s+Type: AWS::Cognito::ManagedLoginBranding/);
+  assert.match(template, /DependsOn: ManagedLoginDomain/);
+  assert.match(template, /UseCognitoProvidedValues:\s+true/);
 });

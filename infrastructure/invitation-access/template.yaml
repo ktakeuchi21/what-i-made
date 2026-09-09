@@ -112,6 +112,14 @@ Resources:
       UserPoolId: !Ref UserPool
       ManagedLoginVersion: 2
 
+  ManagedLoginBranding:
+    Type: AWS::Cognito::ManagedLoginBranding
+    DependsOn: ManagedLoginDomain
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientId: !Ref WebClient
+      UseCognitoProvidedValues: true
+
   PrivateApi:
     Type: AWS::Serverless::HttpApi
     Properties:
