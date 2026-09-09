@@ -24,10 +24,27 @@ test("ships no owner-token setup or legacy service endpoint fallback", () => {
 });
 
 test("service worker caches OAuth navigations only under the canonical shell URL", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
   const worker = fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8");
   const navigationBranch = worker.slice(worker.indexOf('if (event.request.mode === "navigate")'), worker.indexOf("event.respondWith(\n    fetch(event.request)", worker.indexOf('if (event.request.mode === "navigate")') + 1));
   assert.match(navigationBranch, /new Response\(await response\.clone\(\)\.arrayBuffer\(\)/);
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
+  assert.match(worker, /what-i-made-capture-v39/);
+  assert.match(worker, /\.\/app\.js\?v=39/);
+  assert.match(html, /\.\/app\.js\?v=39/);
+  assert.match(app, /\.\/sw\.js\?v=39/);
+});
+
+test("owner migration backup falls back to download when native sharing fails", () => {
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const start = app.indexOf("async function backupLegacyArchive()");
+  const end = app.indexOf("async function moveLegacyArchive()", start);
+  const migrationBackup = app.slice(start, end);
+
+  assert.match(migrationBackup, /await navigator\.share/);
+  assert.match(migrationBackup, /if \(error\?\.name === "AbortError"\) throw error;/);
+  assert.match(migrationBackup, /catch \(error\)[\s\S]*downloadBackupBlob\(blob, fileName\);/);
 });

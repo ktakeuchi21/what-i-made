@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v38";
+const CACHE_NAME = "what-i-made-capture-v39";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -27,7 +27,7 @@ const APP_SHELL = [
   "./dashboard-model.js?v=29",
   "./journal-model.js?v=25",
   "./audio-worklet.js",
-  "./app.js?v=38",
+  "./app.js?v=39",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",

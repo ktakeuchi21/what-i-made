@@ -328,7 +328,12 @@
       const fileName = backup.createBackupFileName();
       const file = typeof File === "function" ? new File([blob], fileName, { type: blob.type }) : null;
       if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: "What I Made backup", text: "Keep this file somewhere safe, such as Files.", files: [file] });
+        try {
+          await navigator.share({ title: "What I Made backup", text: "Keep this file somewhere safe, such as Files.", files: [file] });
+        } catch (error) {
+          if (error?.name === "AbortError") throw error;
+          downloadBackupBlob(blob, fileName);
+        }
       } else {
         downloadBackupBlob(blob, fileName);
       }
@@ -4007,7 +4012,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=38").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=39").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });
