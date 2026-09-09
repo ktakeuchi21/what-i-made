@@ -1,6 +1,6 @@
 # Invitation only private archives
 
-Status: Implemented locally; production rollout and device acceptance pending
+Status: Deployed for the owner; canary invitation and installed-iPhone acceptance pending
 
 ## 1. Executive summary
 
