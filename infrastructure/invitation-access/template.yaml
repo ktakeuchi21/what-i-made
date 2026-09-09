@@ -59,9 +59,16 @@ Resources:
         CaseSensitive: false
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: admin_only
+            Priority: 1
       Policies:
         SignInPolicy:
-          AllowedFirstAuthFactors: [EMAIL_OTP]
+          # Cognito's live CreateUserPool API currently requires PASSWORD to be
+          # present when EMAIL_OTP is configured. Invitees are still provisioned
+          # without passwords and self-service password recovery is disabled.
+          AllowedFirstAuthFactors: [PASSWORD, EMAIL_OTP]
 
   ServiceScopes:
     Type: AWS::Cognito::UserPoolResourceServer

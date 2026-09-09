@@ -27,7 +27,7 @@ This is the release gate for invitation-only private archives. Complete it in or
 
 - [ ] Deploy `infrastructure/invitation-access/template.yaml` initially with `ServicesEnabled=false` and `ReservedConcurrency=0` unless the account can retain the required unreserved concurrency.
 - [ ] Record the stack outputs `AwsRegion`, `UserPoolId`, `WebClientId`, `ManagedLoginDomain`, and `ApiBaseUrl` in the private release record—not in source control.
-- [ ] In Cognito, verify self-registration is disabled, email OTP is the allowed first factor, the app client has no secret, Authorization Code is the only OAuth flow, callback/logout URLs exactly match production, and access-token lifetime is 15 minutes.
+- [ ] In Cognito, verify self-registration and self-service password recovery are disabled; email OTP and the API-required password compatibility factor are allowed; the app client has no secret; Authorization Code is the only OAuth flow; callback/logout URLs exactly match production; and access-token lifetime is 15 minutes.
 - [ ] Create only the owner account without a temporary or reusable password; allow managed email OTP sign-in. Do not create invitees yet.
 - [ ] Remove every retired Lambda Function URL configuration or public invoke permission and revoke the shared owner token. Direct requests to every former URL must fail.
 

@@ -2,6 +2,8 @@
 
 This SAM stack creates the invitation-only Cognito user pool, managed-login client, JWT-protected HTTP API, and the three private service Lambdas. Public self-registration is disabled. Every API route requires an access token and its matching service scope before Lambda invocation.
 
+The pool permits email OTP plus Cognito's currently required `PASSWORD` compatibility factor. Invited users are created without passwords, and self-service password recovery is disabled, so the intended experience remains email-code sign-in without a reusable password.
+
 Use the ordered [production rollout checklist](../../docs/product/invitation-only-access/ROLLOUT_CHECKLIST.md) as the release record. The first stack deployment keeps `ServicesEnabled=false`; paid services are enabled only after authorizer rejection and owner migration gates pass.
 
 ## Deploy
