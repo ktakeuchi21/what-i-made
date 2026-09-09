@@ -1,6 +1,6 @@
 # Invitation only private archives
 
-Status: Approved and in implementation
+Status: Implemented locally; production rollout and device acceptance pending
 
 ## 1. Executive summary
 

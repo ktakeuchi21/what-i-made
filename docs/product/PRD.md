@@ -299,7 +299,7 @@ These may be reconsidered only after the capture-and-reflection loop is used suc
 | Large photo archives exceed storage or backup memory. | Feasibility | Store optimized display copies and thumbnails; measure the first 100 photos and a representative one-year JSON export on the owner’s iPhone, then add streaming ZIP export only if observed size requires it. |
 | AI assigns the wrong country or canonical match. | Usability | Return confidence, constrain countries to a reviewed list, require confirmation, support later edits, and preserve manual merge. |
 | Map cells become too dense to select or understand. | Usability | Validate zoom and nearest-cell selection on iPhone; provide a geographic summary list and exact-count details. |
-| The personal backend is abused or exceeds budget. | Viability | Owner token, input and rate caps, reserved concurrency, redacted logs, $5/$8 alerts, and an AI kill switch. |
+| The private backend is abused or exceeds budget. | Viability | Cognito access tokens validated by API Gateway, per-account and input limits, reserved concurrency when quota permits, redacted logs, $5/$8 alerts, and independent AI kill switches. |
 | A later Expo migration becomes necessary. | Feasibility | Keep domain models, validation, backup schema, and service contracts platform-neutral; accept that UI and device adapters would be rewritten. |
 
 ## 10. Open questions and validation plan
