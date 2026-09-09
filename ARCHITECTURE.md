@@ -2,9 +2,17 @@
 
 ## Executive summary
 
-What I Made is a static, invitation-only iPhone web app for keeping separate private cooking archives. An account-scoped IndexedDB database is the source of truth for cooks, dishes, attempts, photographs, recipe Ideas, and Idea images. Cognito establishes membership but stores no archive content. The app may stream a live microphone to Amazon Transcribe and send explicitly submitted text to JWT-protected AWS services. Archive records and personal photographs stay on the device.
+What I Made is a static, invitation-only iPhone web app for keeping separate private cooking archives. A public, fictional sample archive is available before sign-in and is isolated from every private archive. An account-scoped IndexedDB database is the source of truth for cooks, dishes, attempts, photographs, recipe Ideas, and Idea images. Cognito establishes membership but stores no archive content. The app may stream a live microphone to Amazon Transcribe and send explicitly submitted text to JWT-protected AWS services. Archive records and personal photographs stay on the device.
 
 The load-bearing rule is that an authenticated account context must be selected before an archive opens. Remote services may propose editable text, but they never read or write the archive.
+
+## Application modes and public sample
+
+The browser has three explicit modes: `signedOut`, `demo`, and `account`. `account` is the only mode allowed to select or open an IndexedDB archive. `demo` lazy-loads `assets/demo/demo-content.json`, validates it, derives the visitor's previous calendar year, and exposes only read interfaces from an in-memory repository. There is no legacy/default database fallback and no protected-service access in demo mode.
+
+The same screen and view-model layer consumes either the account read repository or the demo read repository. Photograph rendering accepts private `Blob` values and validated same-origin demo paths; only object URLs created for Blobs are revoked. Personal actions are intercepted at the UI boundary and open invitation sign-in.
+
+Demo JSON and photographs are absent from the install-time shell. The service worker runtime-caches only files visited after explicit exploration. The deployment packager parses the manifest, copies only referenced WebP assets, rejects path escapes, and enforces per-file and 12 MB total media budgets.
 
 ### System architecture
 

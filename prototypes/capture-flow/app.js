@@ -33,11 +33,17 @@
   const mapGeometry = window.WhatIMadeMapGeometry;
   const culinaryRegions = window.WhatIMadeCulinaryRegions;
   const journalModel = window.WhatIMadeJournal;
+  const demoArchive = window.WhatIMadeDemoArchive;
   const recapRenderGate = journalModel.createLatestRequestGate();
   const accountContext = window.WhatIMadeAccountContext;
   const authApi = window.WhatIMadeAuth;
   const authClient = authApi?.createAuthClient ? authApi.createAuthClient(authConfig) : null;
   const state = {
+    mode: "signedOut",
+    demoRepository: null,
+    demoReturnFocusElement: null,
+    demoActivationId: 0,
+    demoActivationController: null,
     photoReady: false,
     photoSrc: "",
     photoBlob: null,
@@ -210,10 +216,33 @@
   const eraseDialog = $("#erase-dialog");
   const eraseConfirmation = $("#erase-confirmation");
   const mapCustomizeDialog = $("#map-customize-dialog");
+  const demoInvitationDialog = $("#demo-invitation-dialog");
   const mapLocationStage = $("#map-location-stage");
   const mapEditorMarker = $("#map-editor-marker");
   const countryPickers = new Map();
   let journalSearchTimer = null;
+
+  function activeArchiveRepository() {
+    if (demoArchive?.repositoryForMode) return demoArchive.repositoryForMode(state.mode, state.demoRepository, archive);
+    if (state.mode === "demo") throw new Error("The sample archive is unavailable.");
+    return archive;
+  }
+
+  function activeIdeasRepository() {
+    if (demoArchive?.repositoryForMode) return demoArchive.repositoryForMode(state.mode, state.demoRepository, ideas);
+    if (state.mode === "demo") throw new Error("The sample archive is unavailable.");
+    return ideas;
+  }
+
+  function isDemoMode() {
+    return state.mode === "demo";
+  }
+
+  function dashboardOptions() {
+    if (!isDemoMode()) return {};
+    const year = state.demoRepository.year;
+    return { year, now: new Date(year, 11, 31, 12, 0, 0) };
+  }
 
   function setupCountryPicker(input, options = {}) {
     if (!input || !countryCombobox?.create || !worldMap) return null;
@@ -248,7 +277,9 @@
 
   function setMapMode(mode, options = {}) {
     state.mapMode = mode === "needle" ? "needle" : "photo";
-    try { localStorage.setItem(mapModeStorageKey(), state.mapMode); } catch {}
+    if (!isDemoMode()) {
+      try { localStorage.setItem(mapModeStorageKey(), state.mapMode); } catch {}
+    }
     $("#map-mode-photo").setAttribute("aria-pressed", String(state.mapMode === "photo"));
     $("#map-mode-needle").setAttribute("aria-pressed", String(state.mapMode === "needle"));
     if (options.render !== false) {
@@ -274,7 +305,74 @@
     return local.toISOString().slice(0, 10);
   }
 
+  function cancelDemoActivation() {
+    state.demoActivationId += 1;
+    state.demoActivationController?.abort();
+    state.demoActivationController = null;
+    const button = $("#explore-demo");
+    if (button) {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Explore a sample archive";
+    }
+  }
+
+  function resetDemoTransientState() {
+    cancelDemoActivation();
+    clearArchiveObjectUrls();
+    clearIdeaObjectUrls();
+    state.demoRepository = null;
+    state.dashboardModel = null;
+    state.currentCookId = "";
+    state.mapNavigation = { level: "world", regionId: "", countryKey: "" };
+    state.mapRegionShelfScroll = 0;
+    state.mapDetailDishIds = [];
+    state.mapSheetReturnState = null;
+    state.currentDishHistoryId = "";
+    state.dishReturnCountryKey = "";
+    state.dishReturnMapState = null;
+    state.journalQuery = "";
+    state.journalFilters = { country: "all", year: "", month: "", rating: "any" };
+    state.journalCooks = [];
+    state.journalOptions = { countries: [], years: [], hasMissingCountry: false };
+    state.journalScrollTop = 0;
+    state.yearScrollTop = 0;
+    state.ideasScrollTop = 0;
+    state.ideaQuery = "";
+    state.ideaFilter = "all";
+    state.currentIdeaId = "";
+    state.ideaSearchDescription = "";
+    state.pendingIdeaId = "";
+    state.recapScrollTop = 0;
+    state.recapYear = new Date().getFullYear();
+    state.recapOrigin = "year";
+    state.entryReturnScreen = "journal";
+    state.entryReturnCookId = "";
+    state.entryReturnPhotoId = "";
+    state.currentOccasionId = "";
+    state.currentAttemptId = "";
+    state.selectedEntryPhotoId = "";
+    ["#journal-scroll", "#ideas-scroll", "#recap-scroll", "#map-main"].forEach((selector) => {
+      const surface = $(selector);
+      if (surface) surface.scrollTop = 0;
+    });
+    if (yearScroll) yearScroll.scrollTop = 0;
+    const journalSearch = $("#journal-search");
+    if (journalSearch) journalSearch.value = "";
+    const ideasSearch = $("#ideas-search");
+    if (ideasSearch) ideasSearch.value = "";
+    $$('[data-idea-filter]').forEach((control) => control.setAttribute("aria-pressed", String(control.dataset.ideaFilter === "all")));
+    $("#app-main").classList.remove("is-demo");
+    $("#demo-banner").hidden = true;
+    $("#demo-welcome").hidden = true;
+    $("#archive-safety-card").hidden = false;
+    if (demoInvitationDialog?.open) demoInvitationDialog.close();
+    if (!countrySheetLayer.hidden) closeCountrySheet({ restoreFocus: false });
+  }
+
   function showSignedOut(reason = "") {
+    if (isDemoMode()) resetDemoTransientState();
+    state.mode = "signedOut";
     state.authSession = null;
     state.accessToken = "";
     authError.hidden = true;
@@ -289,17 +387,98 @@
           ? "Sign-in is temporarily unavailable. Your archive is still on this device. Try again when connected."
           : reason === "cleanup"
             ? "Your archive is locked. Finish secure sign-out before another account can open."
-        : "Sign in with an invited email address. Your archive stays separate on this device.";
+        : "See how the journal works, or sign in with an invited email. Every account starts with its own separate archive.";
     showScreen("auth");
-    window.requestAnimationFrame(() => signInButton.focus({ preventScroll: true }));
+    window.requestAnimationFrame(() => $("#explore-demo").focus({ preventScroll: true }));
+  }
+
+  async function activateDemo() {
+    cancelDemoActivation();
+    const activationId = state.demoActivationId;
+    const controller = new AbortController();
+    state.demoActivationController = controller;
+    authError.hidden = true;
+    const button = $("#explore-demo");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "Opening sample archive…";
+    try {
+      const repository = await demoArchive.load({ signal: controller.signal });
+      const stillRequested = new URLSearchParams(window.location.search).get("demo") === "1";
+      if (activationId !== state.demoActivationId || !stillRequested) return;
+      state.mode = "demo";
+      state.demoRepository = repository;
+      state.archiveKey = "";
+      state.authSession = null;
+      state.accessToken = "";
+      state.mapMode = "photo";
+      state.recapYear = repository.year;
+      $("#app-main").classList.add("is-demo");
+      $("#demo-banner").hidden = false;
+      $("#demo-welcome").hidden = false;
+      $("#archive-safety-card").hidden = true;
+      $("#capture-account").hidden = true;
+      $("#account-section").hidden = true;
+      await initializeApp();
+    } catch (error) {
+      if (error?.name === "AbortError" || activationId !== state.demoActivationId) return;
+      showSignedOut();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("demo");
+      window.history.replaceState({ wimMode: "signedOut" }, "", url);
+      authError.textContent = navigator.onLine === false
+        ? "The sample archive has not been cached on this device. Connect once to explore it."
+        : error.message || "The sample archive could not be opened.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+    } finally {
+      if (activationId !== state.demoActivationId) return;
+      state.demoActivationController = null;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Explore a sample archive";
+    }
+  }
+
+  async function enterDemoFromSignedOut() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("demo", "1");
+    window.history.pushState({ wimMode: "demo" }, "", url);
+    await activateDemo();
+  }
+
+  function openDemoInvitation(trigger) {
+    if (!isDemoMode()) return false;
+    state.demoReturnFocusElement = trigger || document.activeElement;
+    demoInvitationDialog.showModal();
+    window.requestAnimationFrame(() => $("#invitation-sign-in").focus({ preventScroll: true }));
+    return true;
+  }
+
+  function closeDemoInvitation() {
+    if (demoInvitationDialog.open) demoInvitationDialog.close();
+  }
+
+  function trapModalFocus(event, dialog) {
+    if (event.key !== "Tab") return;
+    const controls = $$('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', dialog)
+      .filter((control) => !control.hidden && control.getClientRects().length);
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
 
   async function activateAccount(session) {
     if (!session?.subject || !accountContext?.archiveKeyForSubject || !archive?.setArchiveContext) {
       throw new Error("Private archive storage could not be initialized.");
     }
+    cancelDemoActivation();
     const archiveKey = await accountContext.archiveKeyForSubject(session.subject);
     archive.setArchiveContext(archiveKey);
+    if (isDemoMode()) resetDemoTransientState();
+    state.mode = "account";
     state.archiveKey = archiveKey;
     state.mapMode = readMapMode(archiveKey);
     state.authSession = session;
@@ -397,18 +576,42 @@
   }
 
   async function startInvitationSignIn() {
+    cancelDemoActivation();
     if (state.signOutCleanupPending) {
       await finishSignOutCleanup();
       return;
     }
+    if (!authConfig.enabled || !authClient) {
+      const unavailableUrl = new URL(window.location.href);
+      unavailableUrl.searchParams.delete("demo");
+      window.history.replaceState({ wimMode: "signedOut" }, "", unavailableUrl);
+      if (isDemoMode()) resetDemoTransientState();
+      showSignedOut();
+      signInButton.disabled = true;
+      authError.textContent = "Invitation sign-in is not configured. You can keep exploring the public sample.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("demo");
+    window.history.replaceState({ wimMode: "signedOut" }, "", url);
+    if (isDemoMode()) resetDemoTransientState();
+    state.mode = "signedOut";
     authError.hidden = true;
     signInButton.disabled = true;
     signInButton.setAttribute("aria-busy", "true");
     try {
+      const retained = await authClient.restore();
+      if (["signedIn", "offlineGrace"].includes(retained.kind)) {
+        await activateAccount(retained);
+        return;
+      }
       const destination = await authClient.startSignIn();
       if (typeof destination === "string") window.location.assign(destination);
       else await activateAccount(destination);
     } catch (error) {
+      showSignedOut();
       authError.textContent = error.message || "Sign-in could not be started. Try again.";
       authError.hidden = false;
       authError.focus({ preventScroll: true });
@@ -462,10 +665,16 @@
   }
 
   async function bootApplication() {
+    const parameters = new URLSearchParams(window.location.search);
+    const hasOAuthCallback = ["code", "state", "error", "error_description"].some((key) => parameters.has(key));
+    if (!hasOAuthCallback && parameters.get("demo") === "1") {
+      await activateDemo();
+      return;
+    }
     if (!authConfig.enabled) {
       showSignedOut();
       signInButton.disabled = true;
-      authError.textContent = "Invitation sign-in is not configured. The private archive remains locked.";
+      authError.textContent = "Invitation sign-in is not configured here. The public sample is still available.";
       authError.hidden = false;
       authError.focus({ preventScroll: true });
       return;
@@ -1111,22 +1320,28 @@
     clearMapMarkerObjectUrls();
   }
 
-  function photoUrlForCook(cook) {
-    const url = URL.createObjectURL(cook.photoBlob);
-    state.archiveObjectUrls.push(url);
+  function trustedPhotoUrl(value, ownedUrls) {
+    if (typeof value === "string") {
+      const resolved = new URL(value, window.location.href);
+      if (resolved.origin === window.location.origin && resolved.pathname.includes("/assets/demo/")) return resolved.href;
+      return "";
+    }
+    if (!(value instanceof Blob)) return "";
+    const url = URL.createObjectURL(value);
+    ownedUrls.push(url);
     return url;
+  }
+
+  function photoUrlForCook(cook) {
+    return trustedPhotoUrl(cook.photoBlob, state.archiveObjectUrls);
   }
 
   function photoUrlForBlob(blob) {
-    const url = URL.createObjectURL(blob);
-    state.archiveObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(blob, state.archiveObjectUrls);
   }
 
   function mapPhotoUrlForDish(dish) {
-    const url = URL.createObjectURL(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob);
-    state.archiveObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.archiveObjectUrls);
   }
 
   function clearMapMarkerObjectUrls() {
@@ -1135,9 +1350,7 @@
   }
 
   function mapMarkerPhotoUrl(dish) {
-    const url = URL.createObjectURL(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob);
-    state.mapMarkerObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.mapMarkerObjectUrls);
   }
 
   function pluralize(count, singular, plural = `${singular}s`) {
@@ -1221,10 +1434,12 @@
 
   function renderYearFromCooks(cooks, occasions = []) {
     clearArchiveObjectUrls();
-    const model = dashboard.buildYearDashboard(cooks);
+    const model = dashboard.buildYearDashboard(cooks, dashboardOptions());
     state.dashboardModel = model;
     $("#year-eyebrow").textContent = String(model.year);
-    $("#year-summary").textContent = `${pluralize(model.dishCount, "dish", "dishes")} across ${pluralize(model.countryCount, "country", "countries")}, all saved on this device.`;
+    $("#year-summary").textContent = isDemoMode()
+      ? `${pluralize(model.dishCount, "dish", "dishes")} across ${pluralize(model.countryCount, "country", "countries")} in this fictional sample.`
+      : `${pluralize(model.dishCount, "dish", "dishes")} across ${pluralize(model.countryCount, "country", "countries")}, all saved on this device.`;
     $("#year-dish-count").textContent = String(model.dishCount);
     $("#year-cook-count").textContent = String(model.cookCount);
     $("#year-country-count").textContent = String(model.countryCount);
@@ -1280,7 +1495,8 @@
 
   async function openYear(options = {}) {
     try {
-      const [cooks, occasions] = await Promise.all([archive.listDishAttempts(), archive.listOccasions()]);
+      const repository = activeArchiveRepository();
+      const [cooks, occasions] = await Promise.all([repository.listDishAttempts(), repository.listOccasions()]);
       renderYearFromCooks(cooks, occasions);
       showScreen("year");
       if (options.restoreScroll !== false) {
@@ -2032,7 +2248,7 @@
     trigger?.setAttribute("aria-disabled", "true");
     trigger?.setAttribute("aria-busy", "true");
     try {
-      const cooks = (await archive.listDishAttempts()).filter((cook) => cook.dishId === dishId);
+      const cooks = (await activeArchiveRepository().listDishAttempts()).filter((cook) => cook.dishId === dishId);
       if (requestId !== state.dishHistoryRequestId) return;
       if (!cooks.length) throw new Error("That dish is no longer available.");
       state.currentDishHistoryId = dishId;
@@ -2248,7 +2464,7 @@
     button.disabled = true; button.setAttribute("aria-busy", "true");
     try {
       await archive.updateDishMapPreferences(draft.dishId, { defaultMapPhotoId: draft.defaultPhotoId, mapLocation: draft.mapLocation });
-      state.dashboardModel = dashboard.buildYearDashboard(await archive.listDishAttempts());
+      state.dashboardModel = dashboard.buildYearDashboard(await activeArchiveRepository().listDishAttempts(), dashboardOptions());
       draft.dirty = false;
       closeMapCustomize({ force: true });
       $("#dish-history-summary").textContent += " Map appearance updated.";
@@ -2263,7 +2479,7 @@
 
   function renderMapFromCooks(cooks) {
     clearArchiveObjectUrls();
-    const model = dashboard.buildYearDashboard(cooks);
+    const model = dashboard.buildYearDashboard(cooks, dashboardOptions());
     state.dashboardModel = model;
     $("#map-error").hidden = true;
     needsLocationList.replaceChildren();
@@ -2278,7 +2494,7 @@
 
   async function openMap() {
     try {
-      const cooks = await archive.listDishAttempts();
+      const cooks = await activeArchiveRepository().listDishAttempts();
       if (!cooks.length) {
         resetCapture({ scenario: "blank" });
         return;
@@ -2299,10 +2515,7 @@
   }
 
   function ideaImageUrl(blob) {
-    if (!(blob instanceof Blob)) return "";
-    const url = URL.createObjectURL(blob);
-    state.ideaObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(blob, state.ideaObjectUrls);
   }
 
   function appendIdeaPhoto(container, idea, alt = "", preferThumbnail = false) {
@@ -2331,7 +2544,7 @@
     grid.replaceChildren();
     error.hidden = true;
     try {
-      const allIdeas = await ideas.listIdeas({ query: state.ideaQuery, filter: state.ideaFilter });
+      const allIdeas = await activeIdeasRepository().listIdeas({ query: state.ideaQuery, filter: state.ideaFilter });
       empty.hidden = allIdeas.length > 0;
       empty.querySelector("h3").textContent = state.ideaQuery || state.ideaFilter !== "all" ? "No ideas match this view." : "No ideas saved yet.";
       allIdeas.forEach((idea) => {
@@ -2434,7 +2647,7 @@
     const payload = await recipeClient.importRecipe(url, await serviceAccessToken());
     const recipe = { ...payload.recipe, imageToken: payload.imageToken || payload.recipe.imageToken, sourceKind: options.refreshId ? existing?.sourceKind || "url" : (payload.recipe.sourceKind || "url") };
     if (options.refreshId) {
-      const current = await ideas.getIdea(options.refreshId);
+      const current = await activeIdeasRepository().getIdea(options.refreshId);
       const fields = ["title", "description", "servings", "prepTime", "cookTime", "ingredients", "instructions"];
       const changed = fields.filter((field) => JSON.stringify(current?.[field] || null) !== JSON.stringify(recipe[field] || null)).length;
       Object.assign(recipe, { id: current.id, createdAt: current.createdAt, imageId: current.imageId, personalNotes: current.personalNotes, refreshChangeCount: changed });
@@ -2659,7 +2872,7 @@
   }
 
   async function openIdeaDetail(id, options = {}) {
-    const idea = await ideas.getIdea(id);
+    const idea = await activeIdeasRepository().getIdea(id);
     if (!idea) { await openIdeas(); return; }
     clearIdeaObjectUrls();
     state.currentIdeaId = id;
@@ -2740,7 +2953,7 @@
   }
 
   async function startCookFromIdea() {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (!idea) return;
     resetCapture({ scenario: "blank", sourceIdeaId: idea.id });
     dishName.value = idea.title;
@@ -2823,7 +3036,7 @@
   async function renderJournal(options = {}) {
     const requestId = ++state.journalRenderRequestId;
     try {
-      const cooks = await archive.listOccasions();
+      const cooks = await activeArchiveRepository().listOccasions();
       if (requestId !== state.journalRenderRequestId) return [];
       clearArchiveObjectUrls();
       journalList.replaceChildren();
@@ -2897,7 +3110,7 @@
   async function renderRecap(options = {}) {
     const requestId = recapRenderGate.begin();
     const requestedYear = Number(state.recapYear);
-    const cooks = await archive.listOccasions();
+    const cooks = await activeArchiveRepository().listOccasions();
     if (!recapRenderGate.isCurrent(requestId)) return false;
     clearArchiveObjectUrls();
     recapGroups.replaceChildren();
@@ -3044,14 +3257,15 @@
   }
 
   async function openCook(id, options = {}) {
-    const cook = await archive.getCook(id);
+    const repository = activeArchiveRepository();
+    const cook = await repository.getCook(id);
     if (!cook) {
       journalError.textContent = "That cook is no longer available.";
       journalError.hidden = false;
       showScreen("journal");
       return;
     }
-    const occasion = await archive.getOccasion(cook.occasionId);
+    const occasion = await repository.getOccasion(cook.occasionId);
     if (!occasion) throw new Error("That cooking occasion is no longer available.");
     clearArchiveObjectUrls();
     const activeScreen = $(".app-screen.is-active")?.dataset.screen;
@@ -3124,7 +3338,7 @@
   }
 
   async function openPhotoActions(photoId, trigger) {
-    const occasion = await archive.getOccasion(state.currentOccasionId);
+    const occasion = await activeArchiveRepository().getOccasion(state.currentOccasionId);
     const photo = occasion?.photos.find((candidate) => candidate.id === photoId);
     if (!photo) return;
     state.selectedEntryPhotoId = photoId;
@@ -3250,7 +3464,7 @@
   }
 
   async function openEditCook() {
-    const cook = await archive.getCook(state.currentCookId);
+    const cook = await activeArchiveRepository().getCook(state.currentCookId);
     if (!cook) {
       await openJournal();
       journalError.textContent = "That cook is no longer available.";
@@ -3827,9 +4041,10 @@
     setupCountryPicker(editCountry, { allowPristineUnresolved: true });
     renderWorldMaps();
     resetCapture({ scenario: "blank" });
-    if (!archive?.listCooks) return;
+    const repository = activeArchiveRepository();
+    if (!repository?.listDishAttempts) return;
     try {
-      const [cooks, occasions] = await Promise.all([archive.listDishAttempts(), archive.listOccasions()]);
+      const [cooks, occasions] = await Promise.all([repository.listDishAttempts(), repository.listOccasions()]);
       if (cooks.length > 0) {
         renderYearFromCooks(cooks, occasions);
         showScreen("year");
@@ -3839,6 +4054,22 @@
     }
   }
 
+  const demoMutationSelector = [
+    "#year-new-cook", "#map-new-cook", "#new-cook", "#empty-new-cook", "#restart-prototype",
+    "#add-idea", "#empty-add-idea", "#start-idea-cook", "#edit-idea", "#refresh-idea", "#delete-idea",
+    "#edit-cook", "#add-entry-dish", "#add-entry-photos", "#take-entry-photo", "#customize-map",
+    ".occasion-dish-actions button", ".occasion-photo-tile",
+  ].join(",");
+
+  document.addEventListener("click", (event) => {
+    if (!isDemoMode()) return;
+    const trigger = event.target.closest(demoMutationSelector);
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openDemoInvitation(trigger);
+  }, true);
+
   cameraInput.addEventListener("change", handleFile);
   libraryInput.addEventListener("change", handleFile);
   $("#edit-camera-input").addEventListener("change", handleEditPhoto);
@@ -3846,7 +4077,18 @@
   $("#sample-photo").addEventListener("click", () => setPhoto(sample.photo, "Sample bowl of Oyakodon"));
   $("#sample-voice").addEventListener("click", applyParsedSample);
   micButton.addEventListener("click", toggleRecording);
+  $("#explore-demo").addEventListener("click", () => void enterDemoFromSignedOut());
   signInButton.addEventListener("click", () => void startInvitationSignIn());
+  $("#demo-sign-in").addEventListener("click", (event) => openDemoInvitation(event.currentTarget));
+  $("#keep-exploring").addEventListener("click", closeDemoInvitation);
+  $("#invitation-sign-in").addEventListener("click", () => void startInvitationSignIn());
+  demoInvitationDialog.addEventListener("keydown", (event) => trapModalFocus(event, demoInvitationDialog));
+  demoInvitationDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeDemoInvitation(); });
+  demoInvitationDialog.addEventListener("close", () => {
+    const target = state.demoReturnFocusElement;
+    state.demoReturnFocusElement = null;
+    if (target?.isConnected && isDemoMode()) window.requestAnimationFrame(() => target.focus({ preventScroll: true }));
+  });
   $("#sign-out-button").addEventListener("click", () => void signOutAccount());
   $("#backup-legacy-archive").addEventListener("click", () => void backupLegacyArchive());
   $("#move-legacy-archive").addEventListener("click", () => void moveLegacyArchive());
@@ -4164,11 +4406,11 @@
   $("#cancel-idea-review").addEventListener("click", () => void cancelIdeaReview());
   $("#idea-detail-back").addEventListener("click", () => void openIdeas());
   $("#edit-idea").addEventListener("click", async () => {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (idea) await openIdeaReview(idea, { mode: "edit" });
   });
   $("#refresh-idea").addEventListener("click", async () => {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     const message = $("#idea-detail-message");
     if (!idea?.sourceUrl) return;
     message.textContent = "Checking the source…";
@@ -4177,7 +4419,7 @@
     catch (caught) { message.textContent = caught.message || "The source could not be refreshed. Your saved copy is unchanged."; }
   });
   $("#delete-idea").addEventListener("click", async () => {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (!idea || !window.confirm(`Delete ${idea.title}? Your cooked history will stay intact.`)) return;
     await ideas.deleteIdea(idea.id);
     state.currentIdeaId = "";
@@ -4209,6 +4451,7 @@
   $("#restart-prototype").addEventListener("click", () => resetCapture({ scenario: state.scenario }));
   $$("[data-scenario]").forEach((button) => button.addEventListener("click", switchScenario));
   window.addEventListener("pagehide", () => {
+    cancelDemoActivation();
     state.assistanceController?.abort();
     state.assistanceRequestId += 1;
     const adapter = state.activeAdapter;
@@ -4217,12 +4460,18 @@
   });
   window.addEventListener("pageshow", () => void validateVisibleAccount());
   document.addEventListener("visibilitychange", () => void validateVisibleAccount());
+  window.addEventListener("popstate", () => {
+    const wantsDemo = new URLSearchParams(window.location.search).get("demo") === "1";
+    if (!wantsDemo) cancelDemoActivation();
+    if (isDemoMode() && !wantsDemo) showSignedOut();
+    else if (state.mode === "signedOut" && wantsDemo) void activateDemo();
+  });
 
   void bootApplication();
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=40").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=42").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

@@ -8,7 +8,7 @@
 
 ## 1. Executive summary
 
-What I Made is a private, invitation-only iPhone web app for frequent home cooks who want the context and progress behind their cooking to stop disappearing. Each invited person gets a separate device-local archive. Immediately after cooking, they can preserve a photo and dish name in under 20 seconds, optionally add a spoken rating, notes, and ingredients, and confirm suggested structure. Over time, the archive becomes a photographic journal, annual reflection, and culinary map. Membership is cloud-verified, but cooks, photos, Ideas, and backups remain local.
+What I Made is a private, invitation-only iPhone web app for frequent home cooks who want the context and progress behind their cooking to stop disappearing. Prospective invitees can explore a fictional, read-only sample before sign-in; each invited person still gets a separate device-local archive containing none of that sample content. Immediately after cooking, they can preserve a photo and dish name in under 20 seconds, optionally add a spoken rating, notes, and ingredients, and confirm suggested structure. Over time, the archive becomes a photographic journal, annual reflection, and culinary map. Membership is cloud-verified, but cooks, photos, Ideas, and backups remain local.
 
 ## 2. Problem statement
 
@@ -87,6 +87,7 @@ The primary flow begins immediately after cooking: add or take a photo, speak or
 7. **Dish-level map:** Switch between Needle Field and Photo Density. Repetition changes only the canonical dish marker, never the whole country.
 8. **Portable ownership:** Local optimized photographs plus validated export and restore through Apple Files.
 9. **Ideas for later:** Public recipe import, sourced search with an AI fallback, editable local recipe snapshots, and a direct link into cooking capture.
+10. **Public product tour:** A complete fictional year is explorable before sign-in through the real read-only archive interfaces, without opening local archive storage or protected services.
 
 ### Primary flow prototype
 

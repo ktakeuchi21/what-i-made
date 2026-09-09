@@ -20,7 +20,7 @@ test("ships no owner-token setup or legacy service endpoint fallback", () => {
   assert.doesNotMatch(html, /owner-token|private service token|voice-setup|wim-(?:recipe|capture-assistance|transcribe-session)-endpoint/i);
   assert.doesNotMatch(app, /ownerToken|restoreOwnerToken|tokenRecord/i);
   assert.doesNotMatch(config, /wim-(?:recipe|capture-assistance|transcribe-session)-endpoint/i);
-  assert.match(app, /Invitation sign-in is not configured\. The private archive remains locked\./);
+  assert.match(app, /Invitation sign-in is not configured here\. The public sample is still available\./);
 });
 
 test("service worker caches OAuth navigations only under the canonical shell URL", () => {
@@ -32,12 +32,27 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v40/);
-  assert.match(worker, /\.\/app\.js\?v=40/);
-  assert.match(worker, /\.\/styles\.css\?v=40/);
-  assert.match(html, /\.\/app\.js\?v=40/);
-  assert.match(html, /\.\/styles\.css\?v=40/);
-  assert.match(app, /\.\/sw\.js\?v=40/);
+  assert.match(worker, /what-i-made-capture-v42/);
+  assert.match(worker, /\.\/app\.js\?v=42/);
+  assert.match(worker, /\.\/styles\.css\?v=42/);
+  assert.match(html, /\.\/app\.js\?v=42/);
+  assert.match(html, /\.\/styles\.css\?v=42/);
+  assert.match(app, /\.\/sw\.js\?v=42/);
+});
+
+test("signed-out discovery and demo safety copy ship together", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const worker = fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8");
+  assert.match(html, />Explore a sample archive</);
+  assert.match(html, /Ready to start your own archive\?/);
+  assert.match(html, /Sample content will never enter your private archive/);
+  assert.match(app, /state\.mode === "demo"/);
+  assert.match(app, /activeArchiveRepository\(\)/);
+  assert.match(app, /url\.searchParams\.set\("demo", "1"\)/);
+  assert.match(app, /url\.searchParams\.delete\("demo"\)/);
+  assert.doesNotMatch(worker, /assets\/demo\/(?:demo-content|display|thumb)/);
+  assert.doesNotMatch(worker, /sample-oyakodon\.jpg/);
 });
 
 test("owner migration backup falls back to download when native sharing fails", () => {

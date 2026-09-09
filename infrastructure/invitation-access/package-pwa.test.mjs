@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { STATIC_FILES, packagePwa, validateConfiguration } from "./package-pwa.mjs";
+import { DEMO_MEDIA_BUDGET, STATIC_FILES, demoMediaFiles, packagePwa, validateConfiguration } from "./package-pwa.mjs";
 
 const configuration = [
   "--auth-domain", "https://what-i-made.auth.us-east-2.amazoncognito.com",
@@ -33,6 +33,11 @@ test("packages only allowlisted runtime files with public invitation configurati
     assert.match(headers, /Referrer-Policy'[\s\S]*value: 'no-referrer'/);
     assert.match(headers, /Permissions-Policy'[\s\S]*camera=\(self\), microphone=\(self\), geolocation=\(\)/);
     assert.equal((await readdir(join(output, "assets"))).includes("app-icon-master.png"), false);
+    const demoFiles = await demoMediaFiles(join(process.cwd(), "prototypes/capture-flow"));
+    const demoManifest = JSON.parse(await readFile(join(process.cwd(), "prototypes/capture-flow/assets/demo/demo-content.json"), "utf8"));
+    assert.equal(demoFiles.length, Object.keys(demoManifest.media).length * 2);
+    assert.ok((await Promise.all(demoFiles.map((relative) => stat(join(output, relative))))).every((entry) => entry.isFile()));
+    assert.equal(DEMO_MEDIA_BUDGET, 12 * 1024 * 1024);
     assert.equal((await readdir(output)).includes("tests"), false);
     assert.equal((await readdir(output)).includes("TEST_REPORT.md"), false);
   } finally {

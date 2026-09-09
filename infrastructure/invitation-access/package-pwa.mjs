@@ -3,6 +3,9 @@
 import { copyFile, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 
 const STATIC_FILES = Object.freeze([
   "index.html",
@@ -28,6 +31,7 @@ const STATIC_FILES = Object.freeze([
   "recipe-client.js",
   "dashboard-model.js",
   "journal-model.js",
+  "demo-archive.js",
   "audio-worklet.js",
   "app.js",
   "manifest.webmanifest",
@@ -40,7 +44,34 @@ const STATIC_FILES = Object.freeze([
   "assets/apple-touch-icon.png",
   "assets/favicon-32.png",
   "assets/sample-oyakodon.jpg",
+  "assets/demo/demo-content.json",
 ]);
+
+const DEMO_MEDIA_BUDGET = 12 * 1024 * 1024;
+
+async function demoMediaFiles(source) {
+  const manifest = JSON.parse(await readFile(join(source, "assets/demo/demo-content.json"), "utf8"));
+  const demoArchive = require(join(source, "demo-archive.js"));
+  demoArchive.validateManifest(manifest);
+  const files = [];
+  for (const media of Object.values(manifest.media)) {
+    for (const [kind, value] of [["thumbnail", media.thumbnail], ["display", media.display]]) {
+      const expected = kind === "thumbnail" ? /^\.\/assets\/demo\/thumb\/[a-z0-9-]+\.webp$/ : /^\.\/assets\/demo\/display\/[a-z0-9-]+\.webp$/;
+      if (!expected.test(String(value || ""))) throw new Error(`Demo ${kind} path is invalid.`);
+      files.push(value.slice(2));
+    }
+  }
+  if (new Set(files).size !== files.length) throw new Error("Demo media references must be unique.");
+  let total = 0;
+  for (const relativePath of files) {
+    const information = await stat(join(source, relativePath));
+    const limit = relativePath.includes("/thumb/") ? 50 * 1024 : 250 * 1024;
+    if (!information.isFile() || information.size > limit) throw new Error(`Demo media exceeds its file budget: ${relativePath}`);
+    total += information.size;
+  }
+  if (total > DEMO_MEDIA_BUDGET) throw new Error("Demo media exceeds the 12 MB package budget.");
+  return files;
+}
 
 function parseArguments(values) {
   const result = {};
@@ -143,15 +174,15 @@ function validateConfiguration(argumentsMap) {
   };
 }
 
-async function assertSourceFiles(source) {
-  for (const relativePath of STATIC_FILES) {
+async function assertSourceFiles(source, files = STATIC_FILES) {
+  for (const relativePath of files) {
     const information = await stat(join(source, relativePath));
     if (!information.isFile()) throw new Error(`Static source is not a file: ${relativePath}`);
   }
 }
 
-async function copyStaticFiles(source, destination) {
-  for (const relativePath of STATIC_FILES) {
+async function copyStaticFiles(source, destination, files = STATIC_FILES) {
+  for (const relativePath of files) {
     const target = join(destination, relativePath);
     await mkdir(dirname(target), { recursive: true });
     await copyFile(join(source, relativePath), target);
@@ -166,7 +197,8 @@ async function packagePwa(values = process.argv.slice(2)) {
   if (!outputValue) throw new Error("--output is required.");
   const output = resolve(outputValue);
   const configuration = validateConfiguration(argumentsMap);
-  await assertSourceFiles(source);
+  const packageFiles = [...STATIC_FILES, ...await demoMediaFiles(source)];
+  await assertSourceFiles(source, packageFiles);
   try {
     await stat(output);
     throw new Error("Output path already exists; choose a new destination.");
@@ -176,7 +208,7 @@ async function packagePwa(values = process.argv.slice(2)) {
   const staging = join(dirname(output), `.${basename(output)}.tmp-${process.pid}`);
   try {
     await mkdir(staging);
-    await copyStaticFiles(source, staging);
+    await copyStaticFiles(source, staging, packageFiles);
     const sourceHtml = await readFile(join(staging, "index.html"), "utf8");
     const configuredHtml = injectConfiguration(sourceHtml, configuration);
     await writeFile(join(staging, "index.html"), configuredHtml, "utf8");
@@ -197,4 +229,4 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   });
 }
 
-export { STATIC_FILES, amplifyHeaders, contentSecurityPolicy, injectConfiguration, packagePwa, parseArguments, validateConfiguration };
+export { DEMO_MEDIA_BUDGET, STATIC_FILES, amplifyHeaders, contentSecurityPolicy, demoMediaFiles, injectConfiguration, packagePwa, parseArguments, validateConfiguration };

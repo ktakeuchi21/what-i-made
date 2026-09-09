@@ -4,6 +4,28 @@
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas, backup/restore, navigation, and responsive behavior
 
+## Public sample archive — September 9, 2026
+
+### Automated proof
+
+- Focused tests validate exactly 36 occasions, 40 attempts, 28 canonical dishes, 22 countries, all 13 culinary regions, 40 photographs, eight Ideas, two Made links, deterministic IDs, previous-year derivation, references, country parity, local search/filtering, and a repository with no database or mutation methods.
+- Manifest media validation proves every asset exists, remains under 50 KB or 250 KB as appropriate, and totals about 4.1 MB. Packaging copies only the 52 referenced variants and preserves the 12 MB rejection boundary.
+- Static-boundary checks prove the signed-out actions, fictional/sample disclosures, `demo=1` addition/removal, OAuth precedence branch, explicit demo repository selection, write-control interception, and absence of demo JSON/photographs from the service-worker shell.
+
+### Browser proof
+
+- The local signed-out page displayed Explore first and sign-in second. Server requests showed no demo JSON or food photograph before Explore.
+- Explore preserved `release=boundary-test`, added `demo=1`, opened a 2025 sample with 28 dishes, 36 cooks, 22 countries, and 40 photos, and Browser Back returned to the signed-out URL while preserving the unrelated parameter.
+- The map exposed all 13 culinary regions and drilled into North America with country alternatives and both temporary map modes. Journal rendered all 36 occasions including four multi-dish entries. Ideas rendered eight cards with two Made states and complete recipe detail.
+- New cook opened the accessible invitation modal and Keep exploring restored focus to its originating control. The Backup card was absent. The exercised browser flow logged no console warnings or errors.
+- Visual inspection in the in-app browser confirmed the established dark culinary-journal treatment, persistent sample label, readable welcome hierarchy, fixed four-tab navigation, and no page-level horizontal overflow.
+
+### Production rollout
+
+- Amplify accepted the validated 5.2 MB static bundle and reported the `main` branch deployed on September 9, 2026.
+- A live smoke test at the production origin opened the direct `demo=1` route with the current sample counts, Lamingtons as the latest cook, and the versioned sample media.
+- Installed-iPhone checks remain for VoiceOver gestures, largest Dynamic Type, portrait/landscape safe areas, offline revisit after one online sample visit, and retained-account transition from sample sign-in.
+
 ## Country autocomplete and global dish recognition
 
 ### Automated proof

@@ -156,6 +156,22 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Require a current scoped token for voice and recipe services.
 - Move the original owner's fixed archive once, only into the configured empty owner archive.
 
+### 7. Understand the product before joining
+
+**Steps**
+
+1. Open the shared app link without an account session.
+2. Enter a fictional sample archive.
+3. Explore the real read-only product surfaces.
+4. Return to sign-in or start an invited session.
+
+**Tasks**
+
+- See a clear sample-archive action before sign-in.
+- Explore a fictional Year, all 13 map regions, Journal discovery, photo recap, histories, and Ideas.
+- Keep the sample visibly labeled and route personal actions to invitation sign-in.
+- Enter a private archive without sample state or records.
+
 ## Vertical release slices
 
 The slices below are delivery milestones within version one. Each ends in something the owner can use or validate; none requires building the entire horizontal layer first.
@@ -224,6 +240,14 @@ Not a product release. Before feature breadth, prove Home Screen installation, c
 - Bounded offline access and complete sign-out cleanup.
 - JWT- and scope-protected paid services with durable pseudonymous rate limits.
 - Controlled, verified migration of the original owner's local archive.
+
+### Slice 6 — Public sample archive
+
+**Outcome:** A prospective invitee can understand the product before signing in without creating or contaminating an archive.
+
+- Lazy-loaded, versioned in-memory fixture with original optimized photography.
+- Explicit `signedOut`, `demo`, and `account` modes with no demo fallback to IndexedDB.
+- Read-only exploration, invitation dialog, URL/Back behavior, runtime caching, and bounded deployment packaging.
 
 ## Deferred releases
 

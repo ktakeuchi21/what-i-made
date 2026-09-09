@@ -23,6 +23,7 @@
   --radius-lg: 18px;
   --duration-fast: 140ms;
   --duration-standard: 190ms;
+  --demo-banner-height: calc(48px + env(safe-area-inset-top));
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   --serif: ui-serif, Georgia, Cambria, "Times New Roman", serif;
 }
@@ -157,6 +158,39 @@ button:disabled {
   width: 100%;
   min-height: 48px;
   margin-top: 16px;
+}
+
+.auth-content .button + .button {
+  margin-top: 10px;
+}
+
+.demo-banner {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--demo-banner-height);
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) 16px 0;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--moss) 13%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--moss) 35%, var(--border));
+}
+
+.demo-banner > span {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.demo-banner strong { font-size: 0.84rem; }
+.demo-banner small { color: var(--muted-ink); font-size: 0.72rem; }
+.demo-banner .text-button { min-height: 44px; }
+
+.phone-frame.is-demo .app-screen:not([data-screen="auth"]) {
+  inset-block-start: var(--demo-banner-height);
 }
 
 .auth-helper {
@@ -2064,6 +2098,26 @@ select[aria-invalid="true"] {
   margin: 0 0 28px;
 }
 
+.demo-welcome-card {
+  margin: 0 0 22px;
+  padding: 18px;
+  background: color-mix(in srgb, var(--terracotta) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--terracotta) 32%, var(--border));
+  border-radius: var(--radius-md);
+}
+
+.demo-welcome-card h3 {
+  margin: 4px 0 7px;
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  line-height: 1.12;
+}
+
+.demo-welcome-card p:last-child {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
 .archive-safety-card {
   margin: 8px 0 24px;
   padding: 18px;
@@ -2261,6 +2315,14 @@ select[aria-invalid="true"] {
 
 .erase-dialog form {
   padding: 22px;
+}
+
+.erase-dialog > div {
+  padding: 22px;
+}
+
+.demo-invitation-dialog .dialog-actions {
+  grid-template-columns: 1fr;
 }
 
 .erase-dialog h2 {

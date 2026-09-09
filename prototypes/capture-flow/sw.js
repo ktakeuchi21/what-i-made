@@ -1,10 +1,10 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v40";
+const CACHE_NAME = "what-i-made-capture-v42";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=40",
+  "./styles.css?v=42",
   "./config.js?v=35",
   "./transcribe-codec.js?v=16",
   "./transcribe-adapter.js?v=40",
@@ -29,14 +29,14 @@ const APP_SHELL = [
   "./assets/culinary-regions.js?v=16",
   "./dashboard-model.js?v=29",
   "./journal-model.js?v=25",
+  "./demo-archive.js?v=42",
   "./audio-worklet.js",
-  "./app.js?v=40",
+  "./app.js?v=42",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",
   "./assets/apple-touch-icon.png?v=30",
   "./assets/favicon-32.png?v=30",
-  "./assets/sample-oyakodon.jpg",
 ];
 
 self.addEventListener("install", (event) => {
