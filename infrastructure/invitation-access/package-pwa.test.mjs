@@ -4,7 +4,7 @@ import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promise
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { DEMO_MEDIA_BUDGET, STATIC_FILES, demoMediaFiles, packagePwa, validateConfiguration } from "./package-pwa.mjs";
+import { DEMO_MEDIA_BUDGET, STATIC_FILES, demoMediaFiles, inspectWebp, packagePwa, validateConfiguration } from "./package-pwa.mjs";
 
 const configuration = [
   "--auth-domain", "https://what-i-made.auth.us-east-2.amazoncognito.com",
@@ -91,4 +91,14 @@ test("rejects unsafe public configuration and existing output without modifying 
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }
+});
+
+test("inspects WebP dimensions and rejects renamed or metadata-bearing media", async () => {
+  const source = join(process.cwd(), "prototypes/capture-flow/assets/demo/thumb/noodles.webp");
+  const clean = await readFile(source);
+  assert.deepEqual(inspectWebp(clean), { width: 320, height: 240 });
+  assert.throws(() => inspectWebp(Buffer.from("not really a webp")), /valid WebP/);
+  const withExif = Buffer.concat([clean, Buffer.from("EXIF"), Buffer.alloc(4)]);
+  withExif.writeUInt32LE(withExif.length - 8, 4);
+  assert.throws(() => inspectWebp(withExif), /must not contain metadata/);
 });

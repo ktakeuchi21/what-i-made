@@ -4,6 +4,21 @@
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
 
+## Licensed sample photography — September 9, 2026
+
+### Automated proof
+
+- The version-2 demo manifest records 29 distinct Wikimedia Commons photographs with work title, creator, source page, approved open license, license link, and modification disclosure. Validation rejects missing attribution, unsupported rights, mismatched license links, mismatched Commons file titles, and non-Commons source pages.
+- All 58 locally bundled derivatives are metadata-free WebP files with exact 320×240 thumbnail and 1200×900 display dimensions. Every thumbnail remains below 50 KB, every display remains below 250 KB, and the complete set is about 5.1 MB against the 12 MB budget.
+- Jerk chicken, plov, pavlova, and lamingtons now use their own real photographs instead of unrelated shared imagery. The packaging test proves that only the 58 manifest-referenced files ship and rejects renamed, malformed, incorrectly sized, or metadata-bearing WebP files.
+- Browser-facing tests prove that full work-title, creator, license, and crop attribution is rendered for cook and Idea photographs, including the selected photograph in a multi-photo action dialog.
+
+### Browser proof
+
+- The real in-app Chromium browser rendered the new lamington and Mul naengmyeon photographs in the Year, cook, and Idea flows. Cook and Idea details exposed keyboard-accessible photographer and license links plus the visible crop disclosure in the accessibility tree.
+- On the phone-width application panel, attribution wrapped without horizontal overflow and remained visually subordinate to the photograph and dish title. Meaningful image labels continued to identify the fictional dish rather than exposing source filenames.
+- A fresh signed-out origin requested the application shell but no demo manifest or food photograph. Demo media still begins loading only after the visitor chooses the sample archive.
+
 ## Cook Density and Culinary Peaks — September 9, 2026
 
 ### Automated proof

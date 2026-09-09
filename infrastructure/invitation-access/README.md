@@ -8,7 +8,7 @@ Use the ordered [production rollout checklist](../../docs/product/invitation-onl
 
 ## Deploy
 
-The static package includes the public sample repository and manifest. Its packager copies only WebP files referenced by `assets/demo/demo-content.json`, enforces 50 KB thumbnail, 250 KB display, and 12 MB aggregate limits, and leaves the manifest and photographs out of the service-worker app shell so signed-out visitors do not download them before choosing Explore.
+The static package includes the public sample repository and its attribution-bearing version-2 manifest. Its packager copies only metadata-free WebP files referenced by `assets/demo/demo-content.json`, enforces 50 KB thumbnail, 250 KB display, and 12 MB aggregate limits, and leaves the manifest and photographs out of the service-worker app shell so signed-out visitors do not download them before choosing Explore. Every bundled photograph records its Wikimedia Commons page, creator, license, and local modifications; no image is hotlinked at runtime.
 
 1. Install and authenticate the AWS and SAM CLIs for the intended account and region.
 2. Run `sam validate --lint --template-file infrastructure/invitation-access/template.yaml`.

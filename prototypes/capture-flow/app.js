@@ -2421,6 +2421,32 @@
     }
   }
 
+  function renderPhotoCredit(container, attribution) {
+    container.replaceChildren();
+    container.hidden = !attribution;
+    if (!attribution) return;
+    const sourceGroup = document.createElement("span");
+    const licenseGroup = document.createElement("span");
+    const source = document.createElement("a");
+    const license = document.createElement("a");
+    sourceGroup.className = "photo-credit-group";
+    licenseGroup.className = "photo-credit-group";
+    sourceGroup.append("Photo: ");
+    source.textContent = attribution.sourceTitle;
+    source.href = attribution.sourcePage;
+    source.target = "_blank";
+    source.rel = "noopener noreferrer";
+    source.setAttribute("aria-label", `${attribution.sourceTitle}, photograph source on Wikimedia Commons`);
+    license.textContent = attribution.license;
+    license.href = attribution.licenseUrl;
+    license.target = "_blank";
+    license.rel = "noopener noreferrer";
+    license.setAttribute("aria-label", `${attribution.license} license`);
+    sourceGroup.append("“", source, `” by ${attribution.creator}`);
+    licenseGroup.append(license, " · cropped");
+    container.append(sourceGroup, licenseGroup);
+  }
+
   async function renderIdeas() {
     const grid = $("#ideas-grid");
     const empty = $("#ideas-empty");
@@ -2762,6 +2788,7 @@
     clearIdeaObjectUrls();
     state.currentIdeaId = id;
     appendIdeaPhoto($("#idea-detail-photo"), idea, `${idea.title} recipe preview`);
+    renderPhotoCredit($("#idea-photo-credit"), idea.image?.attribution);
     $("#idea-detail-status").textContent = idea.made ? "Made from this idea" : "Not cooked yet";
     $("#idea-detail-title").textContent = idea.title;
     $("#idea-detail-summary").textContent = idea.description || "Your saved recipe snapshot.";
@@ -3168,6 +3195,7 @@
     const photoUrl = photoUrlForBlob(selectedPhoto.blob);
     $("#entry-photo").src = photoUrl;
     $("#entry-photo").alt = `${occasion.dishNames.join(" and ")}${selectedPhoto.id === occasion.mainPhotoId ? ", main photograph" : ", photograph"}`;
+    renderPhotoCredit($("#entry-photo-credit"), selectedPhoto.attribution);
     $("#entry-title").textContent = occasion.dishNames.join(" and ");
     $("#entry-date").textContent = formatCookedDate(occasion.cookedAt);
     entryPhotoGrid.replaceChildren();
@@ -3230,6 +3258,7 @@
     state.photoActionReturnFocus = trigger;
     $("#photo-actions-preview").src = trigger.querySelector("img").src;
     $("#photo-actions-preview").alt = `${occasion.dishNames.join(" and ")} photograph`;
+    renderPhotoCredit($("#photo-dialog-credit"), photo.attribution);
     const assignment = $("#photo-dish-assignment");
     assignment.replaceChildren(new Option("The whole occasion", ""), ...occasion.attempts.map((attempt) => new Option(attempt.dishName, attempt.id)));
     assignment.value = photo.dishAttemptId || "";
@@ -4339,7 +4368,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=44").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=47").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

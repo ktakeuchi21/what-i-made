@@ -87,7 +87,7 @@ The primary flow begins immediately after cooking: add or take a photo, speak or
 7. **Country activity map:** Switch between Cook Density and Culinary Peaks. Both use the same selected-year country cook totals and five-band scale; photographs remain in geographic drill-downs.
 8. **Portable ownership:** Local optimized photographs plus validated export and restore through Apple Files.
 9. **Ideas for later:** Public recipe import, sourced search with an AI fallback, editable local recipe snapshots, and a direct link into cooking capture.
-10. **Public product tour:** A complete fictional year is explorable before sign-in through the real read-only archive interfaces, without opening local archive storage or protected services.
+10. **Public product tour:** A complete fictional year is explorable before sign-in through the real read-only archive interfaces, without opening local archive storage or protected services. The tour uses locally optimized, openly licensed real-food photography with visible source and license attribution in details.
 
 ### Primary flow prototype
 

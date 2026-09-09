@@ -24,6 +24,8 @@ For invitation deployment, generate an allowlisted static directory with `infras
 
 The **Ideas** tab stores recipes to cook later separately from cooking history. The local recipe fixture supports URL import, a three-choice description search, and an AI-fallback state without making network calls. Use a description containing `no results` to exercise the fallback. Production configuration points `WIM_RECIPE_CONFIG.endpoint` at the protected service in `services/recipe-ideas`; saved recipe snapshots and their optimized images remain in IndexedDB.
 
+The public sample archive uses locally bundled, metadata-free derivatives of real Wikimedia Commons food photographs. Its version-2 manifest records the creator, source page, license, and local crop/resize conversion for every image. Attribution appears in sample cook and Idea details. The signed-out page does not fetch the manifest or photographs until **Explore a sample archive** is chosen.
+
 The deployable stack and cutover instructions live in `infrastructure/invitation-access/`. API Gateway rejects missing, expired, wrong-audience, or wrongly scoped tokens before Lambda invocation. Every paid route also consumes an atomic, expiring per-account counter keyed by a digest rather than an email or raw account identifier.
 
 Saved cooks, Ideas, and optimized photographs persist in an account-scoped IndexedDB database on the current device. They are not uploaded or synchronized. Backups exclude transient Idea drafts and all authentication state. The original owner can use the controlled one-time migration prompt to back up and move the former fixed archive into the configured empty owner account; the source database remains untouched.
@@ -71,6 +73,8 @@ node --test prototypes/capture-flow/tests/*.test.cjs \
 ## Sample asset
 
 `assets/sample-oyakodon.jpg` was generated with the built-in image-generation tool for this prototype and optimized locally to a 373 KB JPEG.
+
+This capture-only fixture is separate from `assets/demo/`, whose public-tour photographs are curated from Wikimedia Commons. Maintainers can run `scripts/discover-demo-media.mjs`, inspect candidates with `scripts/review-demo-media.py`, and regenerate approved thumbnail/display derivatives with `scripts/curate-demo-media.py`. The curator fails closed on unsupported licenses or missing attribution.
 
 Final prompt:
 

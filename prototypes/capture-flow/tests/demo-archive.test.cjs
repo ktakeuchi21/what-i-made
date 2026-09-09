@@ -22,6 +22,17 @@ test("validates the complete fictional sample and all regional references", () =
   assert.equal(countries.size, 22);
   assert.equal(representedRegions.size, 13);
   assert.equal(source.fictional, true);
+  assert.equal(source.schemaVersion, 2);
+  assert.equal(Object.keys(source.media).length, 29);
+  assert.ok(Object.values(source.media).every((media) =>
+    media.sourceType === "licensed-photograph"
+    && media.sourcePage.startsWith("https://commons.wikimedia.org/wiki/File:")
+    && media.creator
+    && media.license
+    && media.licenseUrl.startsWith("https://creativecommons.org/")));
+  ["jerk-chicken", "plov", "pavlova", "lamington"].forEach((dishKey) => {
+    assert.equal(source.dishes.find((dish) => dish.key === dishKey).media, dishKey);
+  });
 });
 
 test("builds a previous-year, read-only repository with stable linked records", async () => {
@@ -40,6 +51,9 @@ test("builds a previous-year, read-only repository with stable linked records", 
   assert.deepEqual(await repository.getCook(attempt.id), attempt);
   assert.equal(typeof repository.saveCook, "undefined");
   assert.equal(typeof repository.openDatabase, "undefined");
+  assert.equal(occasions[0].mainPhoto.attribution.sourcePage.startsWith("https://commons.wikimedia.org/"), true);
+  assert.ok(occasions[0].mainPhoto.attribution.creator);
+  assert.ok(ideas[0].image.attribution.license);
 });
 
 test("filters Ideas locally and preserves Made linkage", async () => {
@@ -81,6 +95,22 @@ test("rejects bad references, country drift, dates, and escaping asset paths", (
   const escapedAsset = manifest();
   escapedAsset.media.noodles.thumbnail = "../private/photo.webp";
   assert.throws(() => demo.validateManifest(escapedAsset), /stay inside assets\/demo/);
+
+  const unsupportedLicense = manifest();
+  unsupportedLicense.media.noodles.license = "All rights reserved";
+  assert.throws(() => demo.validateManifest(unsupportedLicense), /license is unsupported/);
+
+  const untrustedSource = manifest();
+  untrustedSource.media.noodles.sourcePage = "https://example.com/copied-photo.jpg";
+  assert.throws(() => demo.validateManifest(untrustedSource), /Wikimedia Commons/);
+
+  const mismatchedLicense = manifest();
+  mismatchedLicense.media.noodles.licenseUrl = "https://creativecommons.org/licenses/by-sa/4.0/";
+  assert.throws(() => demo.validateManifest(mismatchedLicense), /license does not match/);
+
+  const mismatchedTitle = manifest();
+  mismatchedTitle.media.noodles.sourceTitle = "Another photograph.jpg";
+  assert.throws(() => demo.validateManifest(mismatchedTitle), /source title must match/);
 });
 
 test("every manifest media reference exists and remains inside its file budget", () => {

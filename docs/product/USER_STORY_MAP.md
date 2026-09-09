@@ -169,6 +169,7 @@ After cooking, preserve the meal before its context disappears, then use the gro
 
 - See a clear sample-archive action before sign-in.
 - Explore a fictional Year, all 13 map regions, Journal discovery, photo recap, histories, and Ideas.
+- See believable real-food photography while retaining access to each photograph's creator, source, license, and disclosed local crop.
 - Keep the sample visibly labeled and route personal actions to invitation sign-in.
 - Enter a private archive without sample state or records.
 

@@ -11,9 +11,19 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (geography, culinaryRegions) {
   "use strict";
 
-  const MANIFEST_URL = "./assets/demo/demo-content.json?v=2";
+  const MANIFEST_URL = "./assets/demo/demo-content.json?v=3";
   const DEMO_PREFIX = "demo-";
   const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
+  const LICENSE_PATHS = Object.freeze({
+    "CC BY 2.0": "/licenses/by/2.0",
+    "CC BY 3.0": "/licenses/by/3.0",
+    "CC BY 4.0": "/licenses/by/4.0",
+    "CC BY-SA 2.0": "/licenses/by-sa/2.0",
+    "CC BY-SA 3.0": "/licenses/by-sa/3.0",
+    "CC BY-SA 4.0": "/licenses/by-sa/4.0",
+    "CC0": "/publicdomain/zero/1.0/deed.en",
+    "Public domain": "/publicdomain/mark/1.0",
+  });
 
   function invariant(value, message) {
     if (!value) throw new Error(`Sample archive is invalid: ${message}`);
@@ -32,7 +42,7 @@
 
   function validateManifest(manifest) {
     invariant(manifest && typeof manifest === "object" && !Array.isArray(manifest), "manifest must be an object.");
-    invariant(manifest.schemaVersion === 1, "unsupported schema version.");
+    invariant(manifest.schemaVersion === 2, "unsupported schema version.");
     invariant(manifest.fictional === true, "content must be explicitly fictional.");
     invariant(manifest.media && typeof manifest.media === "object", "media catalog is missing.");
     const mediaKeys = new Set(Object.keys(manifest.media));
@@ -40,6 +50,24 @@
     Object.values(manifest.media).forEach((media) => {
       validateAssetPath(media.thumbnail, "thumbnail");
       validateAssetPath(media.display, "display");
+      invariant(media.sourceType === "licensed-photograph", "media must identify a licensed photograph source.");
+      invariant(typeof media.sourceTitle === "string" && media.sourceTitle.trim(), "media source title is missing.");
+      invariant(typeof media.creator === "string" && media.creator.trim(), "media creator is missing.");
+      invariant(Object.hasOwn(LICENSE_PATHS, media.license), "media license is unsupported.");
+      let sourcePage;
+      let licenseUrl;
+      try {
+        sourcePage = new URL(media.sourcePage);
+        licenseUrl = new URL(media.licenseUrl);
+      } catch {
+        invariant(false, "media source and license URLs must be valid.");
+      }
+      invariant(sourcePage.protocol === "https:" && !sourcePage.username && !sourcePage.password && sourcePage.hostname === "commons.wikimedia.org" && sourcePage.pathname.startsWith("/wiki/File:") && !sourcePage.search && !sourcePage.hash, "media source must be a Wikimedia Commons File page.");
+      const sourceTitle = decodeURIComponent(sourcePage.pathname.slice("/wiki/File:".length)).replaceAll("_", " ").normalize("NFC");
+      invariant(sourceTitle === media.sourceTitle.normalize("NFC"), "media source title must match its Commons File page.");
+      const licensePath = licenseUrl.pathname.replace(/\/$/, "");
+      invariant(licenseUrl.protocol === "https:" && !licenseUrl.username && !licenseUrl.password && licenseUrl.hostname === "creativecommons.org" && !licenseUrl.search && !licenseUrl.hash && licensePath === LICENSE_PATHS[media.license], "media license does not match its Creative Commons URL.");
+      invariant(typeof media.modifications === "string" && media.modifications.trim(), "media modifications are missing.");
     });
 
     invariant(Array.isArray(manifest.dishes) && manifest.dishes.length === 28, "28 canonical dishes are required.");
@@ -159,7 +187,15 @@
           thumbnailBlob: photographedMedia.thumbnail,
           mimeType: "image/webp",
           byteLength: 0,
-          alt: `${photographedDish.name}, fictional sample photograph`,
+          alt: `${photographedDish.name}, sample photograph`,
+          attribution: {
+            sourceTitle: photographedMedia.sourceTitle,
+            sourcePage: photographedMedia.sourcePage,
+            creator: photographedMedia.creator,
+            license: photographedMedia.license,
+            licenseUrl: photographedMedia.licenseUrl,
+            modifications: photographedMedia.modifications,
+          },
           createdAt: `${cookedAt}T18:${String(30 + photoIndex).padStart(2, "0")}:00.000Z`,
         };
       });
@@ -210,7 +246,20 @@
         prepTime: "20 minutes",
         cookTime: "35 minutes",
         personalNotes: index % 2 ? "Saved for a relaxed weekend." : "Try this when friends come over.",
-        image: { id: `${idea.id}-image`, displayBlob: media.display, thumbnailBlob: media.thumbnail, alt: `${idea.title}, fictional sample photograph` },
+        image: {
+          id: `${idea.id}-image`,
+          displayBlob: media.display,
+          thumbnailBlob: media.thumbnail,
+          alt: `${idea.title}, sample photograph`,
+          attribution: {
+            sourceTitle: media.sourceTitle,
+            sourcePage: media.sourcePage,
+            creator: media.creator,
+            license: media.license,
+            licenseUrl: media.licenseUrl,
+            modifications: media.modifications,
+          },
+        },
         made: madeIdeaIds.has(idea.id),
         createdAt: `${year}-12-${String(24 - index).padStart(2, "0")}T12:00:00.000Z`,
         updatedAt: `${year}-12-${String(24 - index).padStart(2, "0")}T12:00:00.000Z`,

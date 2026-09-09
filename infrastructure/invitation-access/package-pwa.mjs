@@ -49,6 +49,40 @@ const STATIC_FILES = Object.freeze([
 
 const DEMO_MEDIA_BUDGET = 12 * 1024 * 1024;
 
+function inspectWebp(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 30 || buffer.toString("ascii", 0, 4) !== "RIFF" || buffer.toString("ascii", 8, 12) !== "WEBP") {
+    throw new Error("Demo media must be a valid WebP image.");
+  }
+  if (buffer.readUInt32LE(4) + 8 !== buffer.length) throw new Error("Demo WebP container length is invalid.");
+  let width = 0;
+  let height = 0;
+  for (let offset = 12; offset + 8 <= buffer.length;) {
+    const type = buffer.toString("ascii", offset, offset + 4);
+    const length = buffer.readUInt32LE(offset + 4);
+    const start = offset + 8;
+    const end = start + length;
+    if (end > buffer.length) throw new Error("Demo WebP chunk is truncated.");
+    if (["EXIF", "XMP ", "ICCP"].includes(type)) throw new Error("Demo WebP media must not contain metadata.");
+    if (type === "VP8X") {
+      if (length < 10) throw new Error("Demo WebP extended header is truncated.");
+      if (buffer[start] & 0x2c) throw new Error("Demo WebP metadata flags are not allowed.");
+      width = 1 + buffer.readUIntLE(start + 4, 3);
+      height = 1 + buffer.readUIntLE(start + 7, 3);
+    } else if (type === "VP8 ") {
+      if (length < 10 || !buffer.subarray(start + 3, start + 6).equals(Buffer.from([0x9d, 0x01, 0x2a]))) throw new Error("Demo WebP lossy frame is invalid.");
+      width = buffer.readUInt16LE(start + 6) & 0x3fff;
+      height = buffer.readUInt16LE(start + 8) & 0x3fff;
+    } else if (type === "VP8L") {
+      if (length < 5 || buffer[start] !== 0x2f) throw new Error("Demo WebP lossless frame is invalid.");
+      width = 1 + buffer[start + 1] + ((buffer[start + 2] & 0x3f) << 8);
+      height = 1 + (buffer[start + 2] >> 6) + (buffer[start + 3] << 2) + ((buffer[start + 4] & 0x0f) << 10);
+    }
+    offset = end + (length % 2);
+  }
+  if (!width || !height) throw new Error("Demo WebP dimensions are missing.");
+  return { width, height };
+}
+
 async function demoMediaFiles(source) {
   const manifest = JSON.parse(await readFile(join(source, "assets/demo/demo-content.json"), "utf8"));
   const demoArchive = require(join(source, "demo-archive.js"));
@@ -67,6 +101,11 @@ async function demoMediaFiles(source) {
     const information = await stat(join(source, relativePath));
     const limit = relativePath.includes("/thumb/") ? 50 * 1024 : 250 * 1024;
     if (!information.isFile() || information.size > limit) throw new Error(`Demo media exceeds its file budget: ${relativePath}`);
+    const dimensions = inspectWebp(await readFile(join(source, relativePath)));
+    const expected = relativePath.includes("/thumb/") ? { width: 320, height: 240 } : { width: 1200, height: 900 };
+    if (dimensions.width !== expected.width || dimensions.height !== expected.height) {
+      throw new Error(`Demo media has invalid dimensions: ${relativePath}`);
+    }
     total += information.size;
   }
   if (total > DEMO_MEDIA_BUDGET) throw new Error("Demo media exceeds the 12 MB package budget.");
@@ -229,4 +268,4 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   });
 }
 
-export { DEMO_MEDIA_BUDGET, STATIC_FILES, amplifyHeaders, contentSecurityPolicy, demoMediaFiles, injectConfiguration, packagePwa, parseArguments, validateConfiguration };
+export { DEMO_MEDIA_BUDGET, STATIC_FILES, amplifyHeaders, contentSecurityPolicy, demoMediaFiles, injectConfiguration, inspectWebp, packagePwa, parseArguments, validateConfiguration };

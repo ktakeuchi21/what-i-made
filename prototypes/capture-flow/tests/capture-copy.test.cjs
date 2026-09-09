@@ -32,12 +32,18 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v44/);
-  assert.match(worker, /\.\/app\.js\?v=44/);
-  assert.match(worker, /\.\/styles\.css\?v=44/);
-  assert.match(html, /\.\/app\.js\?v=44/);
-  assert.match(html, /\.\/styles\.css\?v=44/);
-  assert.match(app, /\.\/sw\.js\?v=44/);
+  assert.match(worker, /what-i-made-capture-v47/);
+  assert.match(worker, /\.\/app\.js\?v=47/);
+  assert.match(worker, /\.\/styles\.css\?v=47/);
+  assert.match(html, /\.\/app\.js\?v=47/);
+  assert.match(html, /\.\/styles\.css\?v=47/);
+  assert.match(app, /\.\/sw\.js\?v=47/);
+  assert.match(html, /id="entry-photo-credit"/);
+  assert.match(html, /id="idea-photo-credit"/);
+  assert.match(html, /id="photo-dialog-credit"/);
+  assert.match(app, /source\.textContent = attribution\.sourceTitle/);
+  assert.match(app, /renderPhotoCredit\(\$\("#photo-dialog-credit"\), photo\.attribution\)/);
+  assert.match(app, /licenseGroup\.append\(license, " · cropped"\)/);
 });
 
 test("ships country-level Cook Density and Culinary Peaks map views", () => {
