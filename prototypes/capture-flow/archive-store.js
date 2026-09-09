@@ -106,6 +106,11 @@
       && !(aliases || []).some((alias) => normalizeDishName(alias) === proposed);
   }
 
+  function appendUsefulAlias(dish, proposedName) {
+    dish.aliases = [...(dish.aliases || [])];
+    if (shouldLearnAlias(dish.canonicalName, dish.aliases, proposedName)) dish.aliases.push(String(proposedName).trim());
+  }
+
   function consolidateDishRecords(dishes, attempts, photos = []) {
     const sortedDishes = dishes.map((dish) => ({ ...dish, aliases: [...(dish.aliases || [])] }))
       .sort((left, right) => `${left.createdAt || ""}|${left.id}`.localeCompare(`${right.createdAt || ""}|${right.id}`));
@@ -172,7 +177,7 @@
         id: dishId,
         canonicalName: dishName,
         normalizedName: normalizeDishName(dishName) || undefined,
-        aliases: [],
+        aliases: shouldLearnAlias(dishName, [], input.speechAlias) ? [String(input.speechAlias).trim()] : [],
         country: cleanOptional(input.country),
         countryCode: resolvedCountryKey(input.country) || null,
         mapLocation: null,
@@ -503,6 +508,7 @@
       if (shouldLearnAlias(existingDish.canonicalName, existingDish.aliases, records.dish.canonicalName)) {
         existingDish.aliases.push(records.dish.canonicalName);
       }
+      (records.dish.aliases || []).forEach((alias) => appendUsefulAlias(existingDish, alias));
       if (records.dish.country) existingDish.country = records.dish.country;
       if (!existingDish.defaultMapPhotoId) existingDish.defaultMapPhotoId = records.photo.id;
       existingDish.updatedAt = records.dish.updatedAt;
@@ -571,11 +577,13 @@
         if (!dish && normalizedName && !dishInput.forceNewDish) dish = await requestResult(dishesStore.index("normalizedName").get(normalizedName));
         if (!dish) {
           dish = { id: createId(), canonicalName: dishName, normalizedName, aliases: [], country: cleanOptional(dishInput.country), countryCode: resolvedCountryKey(dishInput.country) || null, mapLocation: null, defaultMapPhotoId: null, createdAt: now, updatedAt: now };
+          appendUsefulAlias(dish, dishInput.speechAlias);
           dishesStore.add(dish);
         } else {
           if (seenDishIds.has(dish.id)) throw new Error("The same dish can appear only once in a cooking occasion.");
           dish.aliases = [...(dish.aliases || [])];
           if (shouldLearnAlias(dish.canonicalName, dish.aliases, dishName)) dish.aliases.push(dishName);
+          appendUsefulAlias(dish, dishInput.speechAlias);
           if (cleanOptional(dishInput.country)) {
             const previousCountryKey = resolvedCountryKey(dish.country);
             dish.country = cleanOptional(dishInput.country);
@@ -922,5 +930,5 @@
     }
   }
 
-  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
+  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, appendUsefulAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
 });

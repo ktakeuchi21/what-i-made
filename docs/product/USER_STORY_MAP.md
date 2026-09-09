@@ -65,8 +65,11 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Accept an explicit or high-confidence country, or choose a lower-confidence country suggestion.
 - Accept, clear, or change proposed dish name, rating, notes, and ingredients.
 - Accept or change the proposed country.
+- Search canonical countries and aliases, then select one map-safe country; ambiguous text such as “Korea” remains unresolved until selected.
+- Review, undo, or replace a uniquely strong international-dish spelling correction.
 - Confirm a unique exact existing-dish match, select an unselected fuzzy candidate, or keep the dish new.
 - Continue manually when voice or parsing fails.
+- Keep uncertain dish transcriptions unchanged and learn confirmed mishearings only as local aliases.
 - Commit the required photo and dish data together.
 - See a clear saved confirmation.
 

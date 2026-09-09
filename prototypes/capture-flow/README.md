@@ -18,6 +18,8 @@ The **Speak your cook** button uses the validated Amazon Transcribe streaming ad
 
 For a safe local simulation, open `http://localhost:4173/prototypes/capture-flow/?voice=fake&assist=fake&recipes=fake`. Add `&voiceFailure=connect` to exercise the recoverable connection-failure state. Smart assistance cleans the finalized voice segment, fills only confident values, and leaves every suggestion editable. Without `assist=fake` or a deployed endpoint, the conservative local parser remains available.
 
+All capture and edit country fields use the bundled map catalog. Typing filters canonical names and aliases; for example, `Korea` offers South Korea and North Korea. Blank remains valid, while unresolved non-empty text must be corrected before save. A versioned on-device international-dish catalog can visibly correct one uniquely strong transcription such as `mool nang myun` → **Mul naengmyeon**, suggest South Korea, and learn the misheard phrase locally after the owner saves.
+
 For invitation deployment, generate an allowlisted static directory with `infrastructure/invitation-access/package-pwa.mjs`. It injects the Cognito domain, public client ID, AWS region, single JWT-protected service API base URL, optional owner-migration digest, strict CSP, and Amplify response-security headers without modifying tracked source. The client requests `openid`, `email`, `what-i-made/capture`, and `what-i-made/recipes`. If invitation auth is present without a valid API base, every network-only feature stays disabled rather than falling back to a legacy endpoint.
 
 The **Ideas** tab stores recipes to cook later separately from cooking history. The local recipe fixture supports URL import, a three-choice description search, and an AI-fallback state without making network calls. Use a description containing `no results` to exercise the fallback. Production configuration points `WIM_RECIPE_CONFIG.endpoint` at the protected service in `services/recipe-ideas`; saved recipe snapshots and their optimized images remain in IndexedDB.
@@ -52,6 +54,8 @@ On Review, **Add another dish** keeps sides and components in the same occasion 
 17. Dish matching: verify a unique exact name or alias is preselected, fuzzy matches remain unselected, country conflicts are excluded, and selecting a match adds the captured spelling to its local aliases.
 18. Private accounts: alternate two local fake accounts and verify complete archive and map-preference isolation; sign out and confirm no previous content remains visible.
 19. Owner migration: from a separate disposable browser origin, run `test-fixtures/private-migration.html` and verify all stores move into the empty fixture namespace while its isolated source remains intact. The fixture lives outside the deployable PWA directory and never opens or deletes the production legacy database name.
+20. Country autocomplete: type `Korea`, choose South Korea, save, and verify the dish appears in East Asia; confirm unresolved text is blocked and focus moves to its inline error.
+21. International dish recognition: parse `mool nang myun`, verify the labeled Mul naengmyeon correction and South Korea suggestion, exercise Undo and Change, then save and verify the misheard phrase is a local alias.
 
 ## Automated checks
 

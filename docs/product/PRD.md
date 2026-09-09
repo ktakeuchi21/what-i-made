@@ -160,6 +160,8 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - **When:** I accept or edit the proposed values and confirm.
 - **Then:** Only my confirmed values are saved to the occasion and canonical dish.
 - **And:** A unique exact canonical-name or alias match may be preselected; fuzzy matches remain unselected choices and archive names never leave the device.
+- **And:** Country is selected from the bundled map catalog through autocomplete; “Korea” offers South Korea and North Korea rather than silently choosing one.
+- **And:** A uniquely strong international-dish correction may replace a difficult transcription with a labeled, undoable canonical spelling and suggest its reviewed country. Saving the correction learns the misheard form only in my local archive.
 
 ### US-05 — Record a multi-dish occasion
 
@@ -298,6 +300,7 @@ These may be reconsidered only after the capture-and-reflection loop is used suc
 | Local data is evicted or accidentally deleted. | Viability | Request persistent storage, expose storage status, make backup prominent, and prove restore before accumulating valuable history. |
 | Large photo archives exceed storage or backup memory. | Feasibility | Store optimized display copies and thumbnails; measure the first 100 photos and a representative one-year JSON export on the owner’s iPhone, then add streaming ZIP export only if observed size requires it. |
 | AI assigns the wrong country or canonical match. | Usability | Return confidence, constrain countries to a reviewed list, require confirmation, support later edits, and preserve manual merge. |
+| Transcription misspells transliterated dish names. | Usability | Use a public culinary Transcribe vocabulary plus a versioned on-device recognition catalog; apply only unique strong corrections with visible Undo and keep uncertain text unchanged. |
 | Map cells become too dense to select or understand. | Usability | Validate zoom and nearest-cell selection on iPhone; provide a geographic summary list and exact-count details. |
 | The private backend is abused or exceeds budget. | Viability | Cognito access tokens validated by API Gateway, per-account and input limits, reserved concurrency when quota permits, redacted logs, $5/$8 alerts, and independent AI kill switches. |
 | A later Expo migration becomes necessary. | Feasibility | Keep domain models, validation, backup schema, and service contracts platform-neutral; accept that UI and device adapters would be rewritten. |

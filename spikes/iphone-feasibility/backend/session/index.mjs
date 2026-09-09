@@ -4,8 +4,9 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { createDurableRateLimiter } = require("./rate-limiter.cjs");
 
-const ALLOWED_KEYS = new Set(["languageCode", "sampleRateHertz"]);
+const ALLOWED_KEYS = new Set(["languageCode", "sampleRateHertz", "useVocabulary"]);
 const REGION_PATTERN = /^[a-z]{2}-[a-z]+-\d$/;
+const VOCABULARY_PATTERN = /^[0-9A-Za-z._-]{1,200}$/;
 
 export function createSessionHandler(dependencies = {}) {
   const allowRequest = dependencies.allowRequest || createDurableRateLimiter(process.env);
@@ -39,6 +40,8 @@ export function createSessionHandler(dependencies = {}) {
       const now = new Date();
       const region = validRegion(process.env.AWS_REGION) ? process.env.AWS_REGION : "us-east-2";
       const expiresSeconds = clampInteger(process.env.PRESIGN_EXPIRES_SECONDS, 5, 30, 15);
+      const vocabularyName = input.useVocabulary !== false && VOCABULARY_PATTERN.test(process.env.TRANSCRIBE_VOCABULARY_NAME || "")
+        ? process.env.TRANSCRIBE_VOCABULARY_NAME : "";
       const websocketUrl = createPresignedTranscribeUrl({
         region,
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -47,6 +50,7 @@ export function createSessionHandler(dependencies = {}) {
         now,
         expiresSeconds,
         sessionId: crypto.randomUUID(),
+        vocabularyName,
       });
       logOutcome(requestId, "issued", Date.now() - startedAt);
       return response(200, {
@@ -54,6 +58,7 @@ export function createSessionHandler(dependencies = {}) {
         expiresAt: new Date(now.getTime() + expiresSeconds * 1000).toISOString(),
         maxCaptureSeconds: 45,
         region,
+        vocabularyApplied: Boolean(vocabularyName),
       });
     } catch {
       logOutcome(requestId, "unavailable", Date.now() - startedAt);
@@ -91,8 +96,9 @@ function requestIdentity(event) {
 function validInput(input) {
   if (!input || Array.isArray(input) || typeof input !== "object") return false;
   const keys = Object.keys(input);
-  return keys.length === 2 && keys.every((key) => ALLOWED_KEYS.has(key)) &&
-    input.languageCode === "en-US" && input.sampleRateHertz === 16000;
+  return (keys.length === 2 || keys.length === 3) && keys.every((key) => ALLOWED_KEYS.has(key)) &&
+    input.languageCode === "en-US" && input.sampleRateHertz === 16000 &&
+    (input.useVocabulary === undefined || typeof input.useVocabulary === "boolean");
 }
 
 function validRegion(region) {
@@ -121,7 +127,7 @@ function formatTimestamp(date) {
 }
 
 export function createPresignedTranscribeUrl(options) {
-  const { region, accessKeyId, secretAccessKey, sessionToken, now, expiresSeconds, sessionId } = options;
+  const { region, accessKeyId, secretAccessKey, sessionToken, now, expiresSeconds, sessionId, vocabularyName } = options;
   if (!accessKeyId || !secretAccessKey || !sessionToken) throw new Error("Temporary Lambda credentials are unavailable.");
   const service = "transcribe";
   const host = `transcribestreaming.${region}.amazonaws.com:8443`;
@@ -141,6 +147,7 @@ export function createPresignedTranscribeUrl(options) {
     "sample-rate": "16000",
     "session-id": sessionId,
   };
+  if (vocabularyName && VOCABULARY_PATTERN.test(vocabularyName)) query["vocabulary-name"] = vocabularyName;
   const requestQuery = Object.entries(query)
     .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
     .map(([key, value]) => `${encode(key)}=${encode(value)}`)

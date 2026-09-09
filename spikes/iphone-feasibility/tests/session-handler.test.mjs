@@ -15,6 +15,7 @@ function configure(overrides = {}) {
     AWS_SECRET_ACCESS_KEY: "test-secret-key-not-a-real-credential",
     AWS_SESSION_TOKEN: "test-session-token-not-a-real-credential",
     PRESIGN_EXPIRES_SECONDS: "15",
+    TRANSCRIBE_VOCABULARY_NAME: "",
   }, overrides);
 }
 
@@ -88,6 +89,16 @@ test("INV-15 and AC-21: valid request returns only a short-lived constrained URL
   assert.ok(url.searchParams.get("X-Amz-Signature"));
   assert.equal(body.maxCaptureSeconds, 45);
   assert.ok(!result.body.includes(process.env.AWS_SECRET_ACCESS_KEY));
+});
+
+test("adds the configured public vocabulary and permits an explicit no-vocabulary fallback", async () => {
+  configure({ TRANSCRIBE_VOCABULARY_NAME: "what-i-made-culinary-terms-v1" });
+  const enhanced = JSON.parse((await handler(event({ languageCode: "en-US", sampleRateHertz: 16000, useVocabulary: true }))).body);
+  assert.equal(new URL(enhanced.websocketUrl).searchParams.get("vocabulary-name"), "what-i-made-culinary-terms-v1");
+  assert.equal(enhanced.vocabularyApplied, true);
+  const fallback = JSON.parse((await handler(event({ languageCode: "en-US", sampleRateHertz: 16000, useVocabulary: false }))).body);
+  assert.equal(new URL(fallback.websocketUrl).searchParams.has("vocabulary-name"), false);
+  assert.equal(fallback.vocabularyApplied, false);
 });
 
 test("INV-15: signer output is deterministic for a fixed session and contains no secret", () => {

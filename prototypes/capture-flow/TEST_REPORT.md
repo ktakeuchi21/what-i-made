@@ -4,6 +4,28 @@
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas, backup/restore, navigation, and responsive behavior
 
+## Country autocomplete and global dish recognition
+
+### Automated proof
+
+- The complete browser, domain, infrastructure, and Transcribe suite passes all 182 tests. New coverage proves ambiguous `Korea` search, explicit country selection, preservation of untouched unresolved history, canonical `KOR` resolution, strict dish-match thresholds and margins, country-conflict suppression, all-13-region catalog coverage, Mul naengmyeon transcription variants, locally learned aliases, optional Transcribe-vocabulary fallback, and independent capture and Recipe Ideas model configuration.
+- Capture assistance passes 21 tests and Recipe Ideas passes 28 tests without regressions. Country codes in the recognition catalog and capture service remain in parity with the bundled geography catalog.
+- The deployment helper builds a bounded, versioned public culinary vocabulary and tests create/update/readiness behavior without reading any private archive. The PWA packager and service-worker asset checks include the new country and dish-recognition modules.
+
+### Browser proof
+
+Using the real in-app Chromium browser against an isolated local account:
+
+- `Mool nang myun` resolved to **Mul naengmyeon**, displayed a visible “Suggested from your note” explanation, populated rating and notes, and suggested **South Korea**. **Undo** restored the original words, cleared only the catalog-derived country, and returned focus to the dish field.
+- Typing `Korea` opened an accessible combobox with **North Korea** and **South Korea** and did not silently choose either. Arrow-key selection chose South Korea; `Atlantis` produced an inline error, blocked saving, and retained focus for correction.
+- Typing the full canonical name without choosing its option also remained invalid, preventing a shared or partial alias from being silently mapped. A spoken Japan association and a later explicit Japan selection both suppressed the Korean spelling correction and retained the original phrase.
+- Saving the confirmed correction stored the canonical dish and South Korea. Year reported one country and the Map exposed **East Asia, 1 dish across 1 country**.
+- The exercised 565-pixel browser surface had zero document-level horizontal overflow. Combobox/listbox roles, active focus, named Undo/Change controls, and the mapped-region label were exposed in the accessibility tree without console errors.
+
+### Remaining deployment and real-device evidence
+
+This workspace does not have the AWS CLI, so the shared vocabulary was not created in AWS. Run the documented vocabulary sync, wait for `READY`, deploy the configured name with the Transcribe signer, and then verify a live iPhone utterance, VoiceOver gestures, 375-pixel portrait, landscape, dark appearance, reduced motion, and unavailable-vocabulary fallback before calling the production rollout complete.
+
 ## Invitation-only private archives
 
 ### Automated proof
@@ -210,7 +232,7 @@ Installed-iPhone VoiceOver announcements, camera handoff from an Idea, largest D
 
 **Evidence:** The assisted confirmation exposed exactly one Country textbox populated with “Japan.” Browser role queries found zero Cuisine fields and zero Approximate map location fields. In the assistance-failure path, the single Country field remained available and blank for manual entry.
 
-**Gap:** Country entry remains freeform rather than a controlled country picker. Recognized country names and aliases now resolve against the bundled 177-country Natural Earth atlas; owner-adjustable label points remain a later enhancement.
+**Gap:** Country entry now requires a canonical autocomplete selection when non-empty. Existing unresolved historical values remain unchanged until edited; owner-adjustable label points remain a separate map capability.
 
 ### Criterion: A representative capture takes less than 20 seconds
 

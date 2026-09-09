@@ -32,10 +32,12 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v39/);
-  assert.match(worker, /\.\/app\.js\?v=39/);
-  assert.match(html, /\.\/app\.js\?v=39/);
-  assert.match(app, /\.\/sw\.js\?v=39/);
+  assert.match(worker, /what-i-made-capture-v40/);
+  assert.match(worker, /\.\/app\.js\?v=40/);
+  assert.match(worker, /\.\/styles\.css\?v=40/);
+  assert.match(html, /\.\/app\.js\?v=40/);
+  assert.match(html, /\.\/styles\.css\?v=40/);
+  assert.match(app, /\.\/sw\.js\?v=40/);
 });
 
 test("owner migration backup falls back to download when native sharing fails", () => {

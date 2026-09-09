@@ -147,7 +147,9 @@ If the app is backgrounded, `visibilitychange` stops capture immediately; return
 
 ## 8. Security, privacy, and operations
 
-The browser origin and the owner token establish access to the session endpoint. Function URL configuration permits only the deployed Amplify origin, `POST`, and the required request headers; it owns preflight responses so Lambda does not add duplicate CORS headers. CORS limits browser origins but is not authentication. Lambda hashes the presented UTF-8 token and uses constant-time comparison against the fixed 32-byte configured digest. Authorization is checked before input-dependent AWS work. Error messages do not distinguish missing from wrong tokens.
+The deployed Amplify origin and a scoped Cognito access token establish access to the session endpoint. API Gateway validates token audience and capture scope before Lambda invocation; the retired shared owner-token and Function URL path are no longer accepted. CORS limits browser origins but is not authentication. Authorization is checked before input-dependent AWS work, and errors do not reveal token details.
+
+The signer may add the configured, READY `en-US` public culinary vocabulary. If a vocabulary-enhanced socket cannot open, the client requests one new signed session with `useVocabulary: false` and continues without blocking manual capture. Private archive dish names are never uploaded into this vocabulary.
 
 The URL signer uses Lambda's temporary execution-role credentials. The role grants `transcribe:StartStreamTranscriptionWebSocket` on `*`, because that streaming action does not support a narrower resource ARN, plus log-stream creation and writes scoped to this function's CloudWatch log group. The signed URL uses a unique session ID, fixed region, locale, encoding, and sample rate, and a 15-second expiry. Content Security Policy permits connections only to the Lambda origin and `wss://transcribestreaming.us-east-2.amazonaws.com:8443`.
 

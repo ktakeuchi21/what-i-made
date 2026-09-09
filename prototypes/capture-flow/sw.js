@@ -1,20 +1,23 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v39";
+const CACHE_NAME = "what-i-made-capture-v40";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=34",
+  "./styles.css?v=40",
   "./config.js?v=35",
   "./transcribe-codec.js?v=16",
-  "./transcribe-adapter.js?v=16",
+  "./transcribe-adapter.js?v=40",
   "./capture-parser.js?v=16",
   "./capture-assistance.js?v=27",
-  "./dish-matcher.js?v=27",
+  "./dish-matcher.js?v=40",
   "./capture-draft.js?v=16",
   "./photo-url.js?v=16",
   "./photo-processor.js?v=16",
   "./assets/world-map-data.js?v=29",
+  "./country-combobox.js?v=40",
+  "./assets/international-dishes.js?v=40",
+  "./dish-recognizer.js?v=40",
   "./map-geometry.js?v=29",
   "./account-context.js?v=31",
   "./auth-session.js?v=38",
@@ -27,7 +30,7 @@ const APP_SHELL = [
   "./dashboard-model.js?v=29",
   "./journal-model.js?v=25",
   "./audio-worklet.js",
-  "./app.js?v=39",
+  "./app.js?v=40",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",

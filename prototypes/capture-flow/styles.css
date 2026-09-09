@@ -1004,6 +1004,83 @@ select[aria-invalid="true"] {
   background: color-mix(in srgb, var(--terracotta) 16%, var(--surface));
 }
 
+.country-combobox {
+  position: relative;
+}
+
+.country-combobox-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: min(264px, 42vh);
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  color: var(--ink);
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ink) 18%, transparent);
+  list-style: none;
+}
+
+.country-combobox-list li {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: calc(var(--radius-sm) - 4px);
+  cursor: pointer;
+}
+
+.country-combobox-list li:hover,
+.country-combobox-list li.is-active {
+  background: color-mix(in srgb, var(--terracotta) 12%, var(--surface-strong));
+}
+
+.country-combobox-error {
+  margin-top: 7px;
+}
+
+.dish-recognition {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--moss) 9%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--moss) 36%, var(--border));
+  border-radius: var(--radius-sm);
+}
+
+.dish-recognition[hidden] {
+  display: none;
+}
+
+.dish-recognition p {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.dish-recognition > div {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.dish-recognition .inline-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 .sticky-action-bar {
   position: relative;
   z-index: 8;

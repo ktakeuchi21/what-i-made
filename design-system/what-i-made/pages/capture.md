@@ -28,6 +28,8 @@ The confirmation screen is one step, not a wizard. Back navigation returns to th
 - Required and optional status is written beside visible labels; placeholders never carry that meaning.
 - Extracted values use **From your note**; inferred values use **Suggested**. Both remain visually editable. Do not show numeric confidence, sparkle icons, or anthropomorphic AI language.
 - Country is the only origin field in capture. Do not ask for cuisine, region, or precise map location.
+- Country uses a searchable combobox backed by the map catalog. Suggestions appear while typing, options and errors remain reachable by keyboard and VoiceOver, blank is valid, and unresolved non-empty text cannot be saved.
+- A unique strong international-dish correction is labeled **Suggested from your note** with 44-pixel Undo and Change actions. Uncertain text remains untouched.
 
 ## Interaction
 
@@ -35,7 +37,7 @@ The confirmation screen is one step, not a wizard. Back navigation returns to th
 - The microphone announces recording state and elapsed time, exposes a visible Stop action, and retains partial transcript after failure.
 - A typed alternative remains visible before microphone permission is requested.
 - Photo plus either a dish name or a describable note control whether Review is enabled; optional fields never block it.
-- A unique exact canonical-name or alias match may be selected initially. Fuzzy candidates are never selected initially, and every match remains a labeled radio choice rather than an automatic merge.
+- A unique exact local canonical-name or alias match may be selected initially. Fuzzy archive candidates are never selected initially, and every archive match remains a labeled radio choice rather than an automatic merge. This is separate from the visible, undoable spelling correction applied to a uniquely recognized international dish.
 - **More dishes** is progressive disclosure on Review. Each added dish keeps its own country, rating, notes, ingredients, canonical-match choice, and optional photograph.
 - One submit commits the occasion, every reviewed dish, and every prepared photograph; partially saved occasions are never shown.
 - The confirmed country seeds an initial map point; precise adjustment belongs to the later dish or map view.

@@ -11,8 +11,15 @@ Use the ordered [production rollout checklist](../../docs/product/invitation-onl
 1. Install and authenticate the AWS and SAM CLIs for the intended account and region.
 2. Run `sam validate --lint --template-file infrastructure/invitation-access/template.yaml`.
 3. Run `sam build --template-file infrastructure/invitation-access/template.yaml`.
-4. Run `sam deploy --guided` and supply the exact deployed PWA origin/callback, a globally unique Cognito domain prefix, and a random image-token secret of at least 32 characters. Set `ServicesEnabled=false` for the initial identity-and-authorization deployment. Leave `ReservedConcurrency` at `0` until the account quota has been raised enough to retain ten unreserved executions; then redeploy with `2`.
-5. Use the stack outputs to build a new static directory without editing tracked source. The packager copies only runtime files, injects the public Cognito/API values and strict CSP, validates the region and optional migration digest, and refuses to overwrite an existing destination:
+4. Create or update the public culinary vocabulary, then wait for `READY`:
+
+   ```sh
+   node infrastructure/invitation-access/sync-transcribe-vocabulary.mjs --region us-east-2 --name what-i-made-culinary-terms-v1
+   ```
+
+   The script derives at most 256 public terms from the bundled, versioned catalog. It never reads an IndexedDB archive or uploads personal dish names.
+5. Run `sam deploy --guided` and supply the exact deployed PWA origin/callback, a globally unique Cognito domain prefix, a random image-token secret of at least 32 characters, the READY `TranscribeVocabularyName`, and separate `CaptureBedrockModelId` and `RecipeBedrockModelId` values. Set `ServicesEnabled=false` for the initial identity-and-authorization deployment. Leave `ReservedConcurrency` at `0` until the account quota has been raised enough to retain ten unreserved executions; then redeploy with `2`.
+6. Use the stack outputs to build a new static directory without editing tracked source. The packager copies only runtime files, injects the public Cognito/API values and strict CSP, validates the region and optional migration digest, and refuses to overwrite an existing destination:
 
    ```sh
    node infrastructure/invitation-access/package-pwa.mjs \
@@ -25,7 +32,7 @@ Use the ordered [production rollout checklist](../../docs/product/invitation-onl
    ```
 
    Omit `--legacy-owner-archive-key` after the controlled owner migration. The requested scopes are `openid email what-i-made/capture what-i-made/recipes`. Authenticated builds intentionally disable network assistance if the API base URL is absent or invalid.
-6. Inspect the generated directory before uploading it to Amplify. It excludes tests, reports, source-generation scripts, and the high-resolution icon master. The packager accepts only the regional Cognito and API Gateway host forms emitted by this stack, preventing a mistyped arbitrary host from receiving access tokens. The generated `customHttp.yml` applies CSP, anti-framing, MIME-sniffing, referrer, permissions, and transport headers using [Amplify Hosting’s supported custom-header format](https://docs.aws.amazon.com/amplify/latest/userguide/setting-custom-headers.html). Do not publish the temporary owner-migration bundle to invited users.
+7. Inspect the generated directory before uploading it to Amplify. It excludes tests, reports, source-generation scripts, and the high-resolution icon master. The packager accepts only the regional Cognito and API Gateway host forms emitted by this stack, preventing a mistyped arbitrary host from receiving access tokens. The generated `customHttp.yml` applies CSP, anti-framing, MIME-sniffing, referrer, permissions, and transport headers using [Amplify Hosting’s supported custom-header format](https://docs.aws.amazon.com/amplify/latest/userguide/setting-custom-headers.html). Do not publish the temporary owner-migration bundle to invited users.
 
 ## One-time owner archive move
 

@@ -15,3 +15,13 @@ test("keeps invitation access email-code-first while satisfying Cognito's pool p
   assert.match(template, /DependsOn: ManagedLoginDomain/);
   assert.match(template, /UseCognitoProvidedValues:\s+true/);
 });
+
+test("configures independent models and optional culinary vocabulary", async () => {
+  const template = await readFile(templateUrl, "utf8");
+  assert.match(template, /CaptureBedrockModelId:[\s\S]*Default: openai\.gpt-oss-20b/);
+  assert.match(template, /RecipeBedrockModelId:[\s\S]*Default: openai\.gpt-5\.6-terra/);
+  assert.match(template, /TRANSCRIBE_VOCABULARY_NAME: !Ref TranscribeVocabularyName/);
+  assert.match(template, /BEDROCK_MODEL_ID: !Ref CaptureBedrockModelId/);
+  assert.match(template, /BEDROCK_MODEL_ID: !Ref RecipeBedrockModelId/);
+  assert.doesNotMatch(template, /^  BedrockModelId:/m);
+});

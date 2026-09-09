@@ -121,10 +121,18 @@
         track.addEventListener?.("ended", () => this.failFromInterruption("The microphone stopped.", run));
 
         this.setState("connecting", "Opening secure AWS session");
-        const session = await this.requestSession(token, run.controller.signal);
+        const session = await this.requestSession(token, run.controller.signal, true);
         this.ensureActive(run);
         this.ensureContextRunning(run, context);
-        await this.openSocket(session.websocketUrl, run);
+        try {
+          await this.openSocket(session.websocketUrl, run);
+        } catch (error) {
+          if (!session.vocabularyApplied || !this.isActive(run)) throw error;
+          this.setState("connecting", "Trying transcription without culinary terms");
+          const fallbackSession = await this.requestSession(token, run.controller.signal, false);
+          this.ensureActive(run);
+          await this.openSocket(fallbackSession.websocketUrl, run);
+        }
         this.ensureActive(run);
         this.ensureContextRunning(run, context);
         await this.connectAudioGraph(run);
@@ -144,7 +152,7 @@
       }
     }
 
-    async requestSession(token, signal) {
+    async requestSession(token, signal, useVocabulary = true) {
       const response = await this.fetchImpl(this.endpoint, {
         method: "POST",
         mode: "cors",
@@ -156,7 +164,7 @@
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ languageCode: "en-US", sampleRateHertz: TARGET_SAMPLE_RATE }),
+        body: JSON.stringify({ languageCode: "en-US", sampleRateHertz: TARGET_SAMPLE_RATE, useVocabulary }),
       });
       let body = {};
       try {
@@ -186,6 +194,7 @@
         this.socket = socket;
         socket.binaryType = "arraybuffer";
         let settled = false;
+        let opened = false;
         const finish = (callback, value) => {
           if (settled) return;
           settled = true;
@@ -196,6 +205,7 @@
           callback(value);
         };
         const handleOpen = () => {
+          opened = true;
           if (!this.isActive(run)) return finish(reject, this.makeError("cancelled", "Transcription was cancelled."));
           finish(resolve);
         };
@@ -215,11 +225,13 @@
           if (this.isActive(run)) this.handleMessage(event.data, run);
         };
         socket.onerror = () => {
+          if (!opened) return;
           if (this.isActive(run) && !["finishing", "complete", "failed"].includes(this.state)) {
             this.failFromInterruption("The transcription connection was interrupted.", run);
           }
         };
         socket.onclose = () => {
+          if (!opened) return;
           if (!this.isActive(run)) return;
           if (this.state === "finishing") this.finishComplete(run);
           else if (this.state === "listening" || this.state === "connecting") {

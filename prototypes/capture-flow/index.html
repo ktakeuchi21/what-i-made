@@ -16,7 +16,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=34" />
+    <link rel="stylesheet" href="./styles.css?v=40" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -191,6 +191,10 @@
                 <label for="dish-name">Dish name <span>Required</span></label>
                 <input id="dish-name" name="dishName" autocomplete="off" required />
                 <p class="field-error" id="dish-error" role="alert" hidden>Enter the dish name to continue.</p>
+                <div class="dish-recognition" id="capture-dish-recognition" role="status" hidden>
+                  <p id="capture-dish-recognition-copy"></p>
+                  <div><button class="inline-button" type="button" id="capture-dish-undo">Undo</button><button class="inline-button" type="button" id="capture-dish-change">Change</button></div>
+                </div>
               </div>
 
               <button class="disclosure-button" id="optional-toggle" type="button" aria-expanded="false" aria-controls="optional-fields">
@@ -254,6 +258,10 @@
               <div class="field-group">
                 <label for="confirm-dish">Dish name <span>Required</span></label>
                 <input id="confirm-dish" required />
+                <div class="dish-recognition" id="confirm-dish-recognition" role="status" hidden>
+                  <p id="confirm-dish-recognition-copy"></p>
+                  <div><button class="inline-button" type="button" id="confirm-dish-undo">Undo</button><button class="inline-button" type="button" id="confirm-dish-change">Change</button></div>
+                </div>
               </div>
               <div class="field-group">
                 <label for="confirm-date">Cooked on</label>
@@ -1023,14 +1031,17 @@
 
     <script src="./config.js?v=35"></script>
     <script src="./transcribe-codec.js?v=16"></script>
-    <script src="./transcribe-adapter.js?v=16"></script>
+    <script src="./transcribe-adapter.js?v=40"></script>
     <script src="./capture-parser.js?v=16"></script>
     <script src="./capture-assistance.js?v=27"></script>
-    <script src="./dish-matcher.js?v=27"></script>
+    <script src="./dish-matcher.js?v=40"></script>
     <script src="./capture-draft.js?v=16"></script>
     <script src="./photo-url.js?v=16"></script>
     <script src="./photo-processor.js?v=16"></script>
     <script src="./assets/world-map-data.js?v=29"></script>
+    <script src="./country-combobox.js?v=40"></script>
+    <script src="./assets/international-dishes.js?v=40"></script>
+    <script src="./dish-recognizer.js?v=40"></script>
     <script src="./map-geometry.js?v=29"></script>
     <script src="./account-context.js?v=31"></script>
     <script src="./auth-session.js?v=38"></script>
@@ -1042,6 +1053,6 @@
     <script src="./assets/culinary-regions.js?v=16"></script>
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
-    <script src="./app.js?v=39"></script>
+    <script src="./app.js?v=40"></script>
   </body>
 </html>

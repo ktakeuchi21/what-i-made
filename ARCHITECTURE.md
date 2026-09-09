@@ -16,7 +16,7 @@ Static PWA + Cognito managed login
       |
       +----> account-scoped IndexedDB archive
       |
-      +----> local photo processing and dish matching
+      +----> local photo processing, country lookup, and dish recognition
       |
       +----> API Gateway JWT authorizer
                     |
@@ -44,7 +44,7 @@ API Gateway JWT authorizer --> Lambda handlers
         +--> bounded external providers
 ```
 
-UI code may depend on authentication, domain, and storage modules. Storage modules receive a SHA-256 archive key, not an email address or raw Cognito subject. Domain modules do not depend on the UI. Lambda services never receive IndexedDB data. Canonical dish matching, saved aliases, photo processing, and archive persistence must remain local.
+UI code may depend on authentication, domain, and storage modules. Storage modules receive a SHA-256 archive key, not an email address or raw Cognito subject. Domain modules do not depend on the UI. Lambda services never receive IndexedDB data. Canonical dish matching, saved aliases, international-dish correction, photo processing, and archive persistence must remain local. The shared Transcribe vocabulary is built only from bundled public terms.
 
 ## Identity and local archives
 
@@ -60,6 +60,8 @@ A previously verified account may open its local archive offline for seven days 
 
 One cooking occasion can contain several dish attempts and photographs. `saveOccasion()` validates the complete input and writes the occasion, dishes, attempts, and photos in one transaction. A selected `matchedDishId` is resolved inside that transaction. Missing IDs, duplicate dishes within an occasion, invalid dates, or invalid photos abort the write.
 
+Country fields resolve through `world-map-data.js`. A non-empty edited value must resolve to one catalog entry before save. Dishes retain the canonical display name and resolved ISO alpha-3 code without changing the IndexedDB schema. Historical unresolved strings remain untouched until the cook edits them.
+
 Year, Map, Journal, recap, dish history, and Made status are derived from local records. Optional `defaultMapPhotoId` and versioned `mapLocation` values live on the canonical dish. Recipe Ideas affect archive counts only after an attempt links through `sourceIdeaId`.
 
 `map-geometry.js` owns map-data versioning, country polygon membership, interior fallbacks, repeat bands, and collision groups. Map customization loads only photographs eligible for the dish and writes the selected reference and approximate point transactionally.
@@ -67,13 +69,15 @@ Year, Map, Journal, recap, dish history, and Made status are derived from local 
 ## Capture lifecycle
 
 1. `photo-processor.js` creates metadata-free display and thumbnail blobs locally.
-2. `transcribe-adapter.js` obtains a short-lived signed session and streams audio directly to Amazon Transcribe. The app keeps returned text, not audio.
+2. `transcribe-adapter.js` obtains a short-lived signed session and streams audio directly to Amazon Transcribe. The signer adds the configured public culinary vocabulary. If that enhanced socket cannot open, the adapter obtains one session without the vocabulary and continues. The app keeps returned text, not audio.
 3. On Done, `capture-assistance.js` sends only `transcript`, `voiceSegment`, and `locale` to the configured service. Typed text is assisted at Review.
 4. API Gateway validates the Cognito issuer, client audience, expiry, and `what-i-made/capture` scope before Lambda invocation.
 5. The Lambda rechecks trusted access-token claims, consumes an atomic per-account rate window, validates hard input limits, and performs one bounded Bedrock request.
 6. Client and server reject extra fields, invalid ratings, unknown countries, oversized values, and more than six dishes. Only untouched fields are populated.
-7. `dish-matcher.js` compares proposals against local names and aliases. Only one exact, country-compatible result may be preselected.
-8. The cook edits and confirms. `archive-store.js` performs the persistent write.
+7. `dish-recognizer.js` compares the extracted phrase with saved local names and the bundled, versioned international catalog. It corrects only one country-compatible candidate above the strict score and margin, shows Undo and Change, and leaves uncertain text untouched.
+8. `dish-matcher.js` separately compares the reviewed proposal against canonical archive identities. Only one exact, country-compatible result may be preselected.
+9. `country-combobox.js` resolves every edited country against the map catalog. `Korea` stays ambiguous; a selected `South Korea` resolves to `KOR`.
+10. The cook edits and confirms. `archive-store.js` performs the persistent write and may learn the accepted raw phrase as a private alias.
 
 Restarting voice, canceling, leaving the screen, or `pagehide` aborts assistance. A timeout or invalid response preserves the verbatim note and leaves manual review available.
 
@@ -83,7 +87,7 @@ API Gateway is the public authorization boundary. Every route requires a Cognito
 
 All paid routes use an atomic DynamoDB counter keyed by SHA-256 subject digest, route, and minute. TTL removes old windows. Missing rate-limit configuration in Cognito mode fails closed. Reserved concurrency and service kill switches provide separate global controls.
 
-The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. The Recipe Ideas service may invoke Mantle and Bedrock Web Search, and may fetch only validated public HTTPS recipe or image resources. The capture, Recipe Ideas, and transcription routes accept only API Gateway-validated Cognito access-token claims and have no shared-token or direct Function URL fallback. Neither service can read an archive. Logs contain operational status, latency, and aggregate token counts, not transcripts, recipes, photos, email addresses, or raw subjects.
+The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. Capture and Recipe Ideas have separate model parameters, so a model availability change in one workflow does not silently change the other. The Recipe Ideas service may invoke Mantle and Bedrock Web Search, and may fetch only validated public HTTPS recipe or image resources. The capture, Recipe Ideas, and transcription routes accept only API Gateway-validated Cognito access-token claims and have no shared-token or direct Function URL fallback. Neither service can read an archive. Logs contain operational status, latency, and aggregate token counts, not transcripts, recipes, photos, email addresses, or raw subjects.
 
 ## Backup and recovery
 
@@ -100,6 +104,8 @@ The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. T
 - Account namespaces and migration: `account-context.js`, `archive-store.js`, `legacy-migration.js`
 - Backup format: `prototypes/capture-flow/archive-backup.js`
 - Map authority: `prototypes/capture-flow/map-geometry.js`
+- Country catalog and selection: `prototypes/capture-flow/assets/world-map-data.js`, `country-combobox.js`
+- International dish catalog and resolver: `assets/international-dishes.js`, `dish-recognizer.js`
 - Capture service: `services/capture-assistance`
 - Recipe service: `services/recipe-ideas`
 - Transcribe signer: `spikes/iphone-feasibility/backend/session`
@@ -108,6 +114,6 @@ The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. T
 
 ## Verification
 
-The client suite covers account namespace isolation, session restoration, refresh and sign-out races, callback-parameter cleanup, the seven-day boundary, backup exclusions, and migration rules. Service tests cover trusted JWT claims, atomic pseudonymous rate counters, redacted logs, hard limits, provider timeouts, and country parity. The SAM template passes `cfn-lint` 1.46 with SAM translator 1.109, and all three Lambda packages have audited dependency lockfiles. A tested deployment packager produces an allowlisted runtime-only PWA directory, injects only validated public stack outputs and the temporary owner-migration digest, and adds the origin-specific CSP plus Amplify response-security headers without modifying tracked source.
+The client suite covers account namespace isolation, session restoration, refresh and sign-out races, callback-parameter cleanup, the seven-day boundary, backup exclusions, country ambiguity, dish-recognition thresholds, local alias learning, and migration rules. Service tests cover trusted JWT claims, atomic pseudonymous rate counters, redacted logs, hard limits, provider timeouts, and country parity. Infrastructure tests cover separate model configuration, the optional vocabulary name, public vocabulary generation, and Transcribe fallback. The SAM template passes `cfn-lint` 1.46 with SAM translator 1.109, and all three Lambda packages have audited dependency lockfiles. A tested deployment packager produces an allowlisted runtime-only PWA directory, injects only validated public stack outputs and the temporary owner-migration digest, and adds the origin-specific CSP plus Amplify response-security headers without modifying tracked source.
 
-Production Cognito email-code behavior, API Gateway pre-Lambda rejection, removal of the old Function URLs, the migration fixture in a real browser, and installed-iPhone sign-in, suspend/resume, and VoiceOver remain evidence gaps until deployment and device testing.
+The culinary vocabulary has not been created in AWS from this workspace. Vocabulary readiness, the live enhanced transcription path, and installed-iPhone VoiceOver behavior remain evidence gaps until deployment and device testing.

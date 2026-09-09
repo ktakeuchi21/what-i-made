@@ -78,6 +78,18 @@ test("builds one internally linked cook for an atomic IndexedDB write", () => {
   assert.equal(records.photo.blob, photoBlob);
 });
 
+test("stores a confirmed speech correction as a local dish alias", () => {
+  const records = buildCookRecords({
+    dishName: "Mul naengmyeon",
+    speechAlias: "mool nang myun",
+    cookedAt: "2026-09-09",
+    country: "South Korea",
+    photoBlob: new Blob(["photo"]),
+  });
+  assert.deepEqual(records.dish.aliases, ["mool nang myun"]);
+  assert.equal(records.dish.countryCode, "KOR");
+});
+
 test("normalizes equivalent dish names without using the name as identity", () => {
   assert.equal(normalizeDishName("  Crème   Brûlée "), "creme brulee");
   assert.equal(normalizeDishName("BIG-MAC"), "big mac");

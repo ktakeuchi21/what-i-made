@@ -18,9 +18,16 @@ Parameters:
     Type: String
     NoEcho: true
     MinLength: 32
-  BedrockModelId:
+  CaptureBedrockModelId:
+    Type: String
+    Default: openai.gpt-oss-20b
+  RecipeBedrockModelId:
     Type: String
     Default: openai.gpt-5.6-terra
+  TranscribeVocabularyName:
+    Type: String
+    Default: ""
+    AllowedPattern: ^$|^[0-9A-Za-z._-]{1,200}$
   ServicesEnabled:
     Type: String
     Default: "true"
@@ -165,7 +172,7 @@ Resources:
       Environment:
         Variables:
           CAPTURE_ASSISTANCE_ENABLED: !Ref ServicesEnabled
-          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_MODEL_ID: !Ref CaptureBedrockModelId
       Policies:
         - Statement:
             - Effect: Allow
@@ -201,6 +208,7 @@ Resources:
         Variables:
           VOICE_ENABLED: !Ref ServicesEnabled
           PRESIGN_EXPIRES_SECONDS: "15"
+          TRANSCRIBE_VOCABULARY_NAME: !Ref TranscribeVocabularyName
       Policies:
         - Statement:
             - Effect: Allow
@@ -231,7 +239,7 @@ Resources:
       Environment:
         Variables:
           RECIPE_IDEAS_ENABLED: !Ref ServicesEnabled
-          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_MODEL_ID: !Ref RecipeBedrockModelId
           IMAGE_TOKEN_SECRET: !Ref ImageTokenSecret
       Policies:
         - Statement:

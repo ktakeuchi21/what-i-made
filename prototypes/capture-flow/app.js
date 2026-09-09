@@ -18,6 +18,8 @@
   const parser = window.WhatIMadeCaptureParser;
   const captureAssistance = window.WhatIMadeCaptureAssistance;
   const dishMatcher = window.WhatIMadeDishMatcher;
+  const dishRecognizer = window.WhatIMadeDishRecognizer;
+  const countryCombobox = window.WhatIMadeCountryCombobox;
   const captureDraft = window.WhatIMadeCaptureDraft;
   const photoUrls = window.WhatIMadePhotoUrls;
   const archive = window.WhatIMadeArchive;
@@ -81,6 +83,7 @@
     assistanceFailed: false,
     primaryMatchedDishId: "",
     primaryForceNewDish: true,
+    primaryDishRecognition: null,
     matchingCooks: [],
     countrySuggestion: null,
     countryProvenance: "",
@@ -209,7 +212,30 @@
   const mapCustomizeDialog = $("#map-customize-dialog");
   const mapLocationStage = $("#map-location-stage");
   const mapEditorMarker = $("#map-editor-marker");
+  const countryPickers = new Map();
   let journalSearchTimer = null;
+
+  function setupCountryPicker(input, options = {}) {
+    if (!input || !countryCombobox?.create || !worldMap) return null;
+    const picker = countryCombobox.create(input, worldMap, options);
+    countryPickers.set(input, picker);
+    return picker;
+  }
+
+  function setCountryValue(input, value) {
+    const picker = countryPickers.get(input) || setupCountryPicker(input);
+    if (picker) picker.setValue(value || "");
+    else input.value = value || "";
+  }
+
+  function validateCountryInput(input) {
+    const picker = countryPickers.get(input) || setupCountryPicker(input);
+    return picker ? picker.validate() : !input.value.trim() || Boolean(worldMap?.findCountry?.(input.value));
+  }
+
+  function countryNameForCode(code) {
+    return worldMap?.countries?.find((country) => country.key === code)?.name || "";
+  }
 
   function mapModeStorageKey(archiveKey = state.archiveKey) {
     return archiveKey ? `what-i-made-map-mode:${archiveKey}` : "what-i-made-map-mode";
@@ -636,6 +662,8 @@
     ingredients.value = sample.ingredients;
     state.suggestedCountry = sample.country;
     state.countryProvenance = "suggested";
+    state.primaryDishRecognition = null;
+    renderPrimaryDishRecognition();
     revealOptionalFields();
     beginTiming();
     updateReadyState();
@@ -644,6 +672,15 @@
   function applyTranscriptSuggestions(value) {
     if (!parser?.parseCaptureTranscript) return;
     const parsed = parser.parseCaptureTranscript(value);
+    const parsedCountry = parsed.country ? worldMap?.findCountry?.(parsed.country) : null;
+    const recognition = dishRecognizer?.resolve?.({ dishName: parsed.dishName, countryCode: parsedCountry?.key || "", cooks: state.matchingCooks, resolveCountry: worldMap?.findCountry });
+    if (recognition) {
+      parsed.dishName = recognition.canonicalName;
+      state.primaryDishRecognition = { ...recognition, applied: true, addedCountry: !parsed.country && Boolean(recognition.countryCode) };
+      if (!parsed.country && recognition.countryCode) parsed.country = countryNameForCode(recognition.countryCode);
+    } else {
+      state.primaryDishRecognition = null;
+    }
     const fields = { dishName, rating, notes, ingredients };
     Object.entries(fields).forEach(([name, element]) => {
       const suggestion = parsed[name];
@@ -651,6 +688,7 @@
     });
     state.suggestedCountry = parsed.country || "";
     state.countryProvenance = parsed.country ? "suggested" : "";
+    renderPrimaryDishRecognition();
     if (parsed.rating || parsed.notes || parsed.ingredients) revealOptionalFields();
     updateReadyState();
   }
@@ -680,12 +718,91 @@
       : { auto: "", optional: { name: country.name, source: dish.countrySource }, provenance: "suggested" };
   }
 
+  function recognitionForParsedDish(dish) {
+    if (!dishRecognizer?.applyToParsedDish) return { ...dish };
+    const originalCountryCode = dish.countryCode || "";
+    const result = dishRecognizer.applyToParsedDish(dish, { cooks: state.matchingCooks, resolveCountry: worldMap?.findCountry });
+    if (!result.recognition) return { ...dish };
+    return {
+      ...result.dish,
+      _recognition: {
+        ...result.recognition,
+        applied: true,
+        addedCountry: !originalCountryCode && Boolean(result.dish.countryCode),
+      },
+    };
+  }
+
+  function renderPrimaryDishRecognition() {
+    const recognition = state.primaryDishRecognition;
+    const visible = Boolean(recognition?.applied);
+    [["capture", dishName], ["confirm", $("#confirm-dish")]].forEach(([prefix, control]) => {
+      const container = $(`#${prefix}-dish-recognition`);
+      container.hidden = !visible || control.value.trim() !== recognition?.canonicalName;
+      if (!container.hidden) {
+        $(`#${prefix}-dish-recognition-copy`).textContent = `Suggested from your note: “${recognition.originalDishName}” was changed to ${recognition.canonicalName}.`;
+      }
+    });
+  }
+
+  function renderConfirmDishPresentation() {
+    const name = $("#confirm-dish").value.trim();
+    $("#confirm-photo").alt = `${name || "Meal"} being reviewed`;
+    $("#confirm-photo-caption").textContent = `${name || "Today’s cook"} · Today`;
+  }
+
+  function undoPrimaryDishRecognition() {
+    const recognition = state.primaryDishRecognition;
+    if (!recognition?.applied) return;
+    recognition.applied = false;
+    dishName.value = recognition.originalDishName;
+    $("#confirm-dish").value = recognition.originalDishName;
+    state.touchedFields.add("dishName");
+    if (recognition.addedCountry) {
+      const recognizedCountry = countryNameForCode(recognition.countryCode);
+      if (state.suggestedCountry === recognizedCountry) state.suggestedCountry = "";
+      if ($("#confirm-country").value === recognizedCountry) setCountryValue($("#confirm-country"), "");
+    }
+    renderPrimaryDishRecognition();
+    renderConfirmDishPresentation();
+    updateReadyState();
+    const confirmVisible = !$("[data-screen='confirm']").hidden;
+    (confirmVisible ? $("#confirm-dish") : dishName).focus();
+  }
+
+  function changePrimaryDishRecognition(control) {
+    state.touchedFields.add("dishName");
+    control.focus();
+    control.select();
+  }
+
+  function primarySpeechAlias() {
+    const recognition = state.primaryDishRecognition;
+    return recognition?.applied && $("#confirm-dish").value.trim() === recognition.canonicalName
+      ? recognition.originalDishName
+      : "";
+  }
+
+  function suppressPrimaryRecognitionForCountry(countryValue) {
+    const recognition = state.primaryDishRecognition;
+    const country = worldMap?.findCountry?.(countryValue);
+    if (!recognition?.applied || !recognition.countryCode || !country || recognition.countryCode === country.key) return;
+    recognition.applied = false;
+    if (dishName.value.trim() === recognition.canonicalName) dishName.value = recognition.originalDishName;
+    if ($("#confirm-dish").value.trim() === recognition.canonicalName) $("#confirm-dish").value = recognition.originalDishName;
+    state.touchedFields.add("dishName");
+    renderPrimaryDishRecognition();
+    renderConfirmDishPresentation();
+    updateReadyState();
+  }
+
   function applyAssistedDishes(dishes, warnings = []) {
-    const proposed = (dishes || []).filter((dish) => dish?.dishName).slice(0, 6);
+    const proposed = (dishes || []).filter((dish) => dish?.dishName).slice(0, 6).map(recognitionForParsedDish);
     state.assistedDishes = proposed.filter((dish) => captureAssistance?.acceptedDishFields?.(dish)?.dishName);
     state.assistanceWarnings = [...warnings, ...(state.assistedDishes.length < proposed.length ? ["A possible dish name was too uncertain to assign."] : [])].slice(0, 6);
     const primary = state.assistedDishes[0];
-    if (!primary) return;
+    state.primaryDishRecognition = primary?._recognition || null;
+    if (!primary) { renderPrimaryDishRecognition(); return; }
     const accepted = captureAssistance?.acceptedDishFields?.(primary) || primary;
     const fields = [
       ["dishName", dishName, accepted.dishName],
@@ -707,6 +824,7 @@
     }
     state.countrySuggestion = country.optional;
     if (primary.rating || primary.notes || primary.ingredientsText) revealOptionalFields();
+    renderPrimaryDishRecognition();
     updateReadyState();
   }
 
@@ -723,6 +841,8 @@
     assistRecovery.hidden = true;
     setAssistanceBusy(true, retry ? "Trying smart suggestions again…" : "Organizing your note…");
     recordingStatus.textContent = "Organizing your note…";
+    try { state.matchingCooks = archive?.listCooks ? await archive.listCooks() : []; } catch { state.matchingCooks = []; }
+    if (requestId !== state.assistanceRequestId || controller.signal.aborted) return false;
     try {
       let result;
       if (!assistanceConfig.enabled || !captureAssistance) throw new Error("Smart assistance is not configured.");
@@ -949,7 +1069,8 @@
     $("#confirm-notes").value = notes.value || (failed ? transcript.value : "");
     $("#confirm-ingredients").value = ingredients.value;
     const inferredCountry = state.assistedDishes.length ? "" : parser?.inferCountry?.(name) || "";
-    $("#confirm-country").value = failed ? "" : state.suggestedCountry || inferredCountry;
+    setCountryValue($("#confirm-country"), failed ? "" : state.suggestedCountry || inferredCountry);
+    renderPrimaryDishRecognition();
 
     $("#assist-warning").hidden = !failed && !state.assistanceFailed && !state.assistanceWarnings.length;
     $("#retry-assistance-confirm").hidden = !state.assistanceFailed || !assistanceConfig.enabled;
@@ -3057,6 +3178,7 @@
 
   function openAddDish() {
     $("#add-dish-form").reset();
+    setCountryValue($("#add-dish-country"), "");
     $("#add-dish-error").hidden = true;
     showScreen("add-dish");
   }
@@ -3066,6 +3188,8 @@
     const button = $("#save-added-dish");
     const input = { dishName: $("#add-dish-name").value.trim(), country: $("#add-dish-country").value.trim(), rating: $("#add-dish-rating").value, notes: $("#add-dish-notes").value.trim(), ingredients: $("#add-dish-ingredients").value.trim(), forceNewDish: $("#add-dish-force-new").checked };
     if (!input.dishName) { $("#add-dish-error").textContent = "Enter a dish name."; $("#add-dish-error").hidden = false; $("#add-dish-name").focus(); return; }
+    if (!validateCountryInput($("#add-dish-country"))) { $("#add-dish-country").focus(); return; }
+    input.country = $("#add-dish-country").value.trim();
     button.disabled = true; button.setAttribute("aria-busy", "true");
     try {
       const photoFile = $("#add-dish-photo").files?.[0];
@@ -3146,7 +3270,7 @@
     };
     editDish.value = state.editOriginal.dishName;
     editDate.value = state.editOriginal.cookedAt;
-    editCountry.value = state.editOriginal.country;
+    setCountryValue(editCountry, state.editOriginal.country);
     editRating.value = state.editOriginal.rating;
     editNotes.value = state.editOriginal.notes;
     editIngredients.value = state.editOriginal.ingredients;
@@ -3226,6 +3350,11 @@
       editDish.focus();
       return;
     }
+    if (!validateCountryInput(editCountry)) {
+      editCountry.focus();
+      return;
+    }
+    values.country = editCountry.value.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(values.cookedAt)) {
       editError.textContent = "Choose a valid cooked date.";
       editError.hidden = false;
@@ -3327,6 +3456,7 @@
       matchedDishId: options.matchedDishId || "",
       forceNewDish: options.forceNewDish ?? !options.matchedDishId,
       fromAssistance: Boolean(options.fromAssistance),
+      recognition: initial._recognition ? { ...initial._recognition } : null,
     };
     const card = document.createElement("fieldset");
     const legend = document.createElement("legend");
@@ -3361,6 +3491,34 @@
       if (required) control.required = true;
       group.append(label, control); card.append(group);
     });
+    const countryControl = card.querySelector('[data-field="country"]');
+    setupCountryPicker(countryControl);
+    if (record.recognition?.applied) {
+      const recognition = document.createElement("div");
+      const copy = document.createElement("p");
+      const actions = document.createElement("div");
+      const undo = document.createElement("button");
+      const change = document.createElement("button");
+      recognition.className = "dish-recognition";
+      recognition.setAttribute("role", "status");
+      copy.textContent = `Suggested from your note: “${record.recognition.originalDishName}” was changed to ${record.recognition.canonicalName}.`;
+      undo.type = "button"; undo.className = "inline-button"; undo.textContent = "Undo";
+      change.type = "button"; change.className = "inline-button"; change.textContent = "Change";
+      undo.addEventListener("click", () => {
+        record.recognition.applied = false;
+        const nameControl = card.querySelector('[data-field="name"]');
+        nameControl.value = record.recognition.originalDishName;
+        if (record.recognition.addedCountry && countryControl.value === countryNameForCode(record.recognition.countryCode)) setCountryValue(countryControl, "");
+        recognition.hidden = true;
+        refreshMatch();
+        nameControl.focus();
+      });
+      change.addEventListener("click", () => {
+        const nameControl = card.querySelector('[data-field="name"]');
+        nameControl.focus(); nameControl.select();
+      });
+      actions.append(undo, change); recognition.append(copy, actions); card.append(recognition);
+    }
     const countryAction = document.createElement("button");
     countryAction.type = "button"; countryAction.className = "inline-button country-suggestion-action";
     countryAction.hidden = !initialCountry.optional;
@@ -3393,7 +3551,7 @@
     state.confirmationDishes.push(record);
     $("#additional-dishes").append(card);
     record.element.querySelector('[data-field="name"]').value = confident("dishName") ? initial.dishName || "" : "";
-    record.element.querySelector('[data-field="country"]').value = initialCountry.auto || "";
+    setCountryValue(record.element.querySelector('[data-field="country"]'), initialCountry.auto || "");
     record.element.querySelector('[data-field="rating"]').value = confident("rating") ? initial.rating || "" : "";
     record.element.querySelector('[data-field="notes"]').value = confident("notes") ? initial.notes || "" : "";
     record.element.querySelector('[data-field="ingredients"]').value = confident("ingredientsText") ? initial.ingredientsText || initial.ingredients || "" : "";
@@ -3408,10 +3566,18 @@
       const selected = [...matchGroup.querySelectorAll('input[type="radio"]')].find((input) => input.value === "new");
       if (selected) { selected.checked = true; record.matchedDishId = ""; record.forceNewDish = true; }
     }
+    const suppressRecognitionForCountry = (country) => {
+      if (!record.recognition?.applied || !record.recognition.countryCode || !country || country.key === record.recognition.countryCode) return;
+      record.recognition.applied = false;
+      const nameControl = record.element.querySelector('[data-field="name"]');
+      if (nameControl.value.trim() === record.recognition.canonicalName) nameControl.value = record.recognition.originalDishName;
+      card.querySelector(".dish-recognition").hidden = true;
+    };
     countryAction.addEventListener("click", () => {
       const control = record.element.querySelector('[data-field="country"]');
-      control.value = initialCountry.optional?.name || "";
+      setCountryValue(control, initialCountry.optional?.name || "");
       countryAction.hidden = true;
+      suppressRecognitionForCountry(worldMap?.findCountry?.(control.value));
       refreshMatch();
       control.focus();
     });
@@ -3422,6 +3588,10 @@
     });
     record.element.querySelector('[data-field="name"]').addEventListener("change", refreshMatch);
     record.element.querySelector('[data-field="country"]').addEventListener("change", refreshMatch);
+    record.element.querySelector('[data-field="country"]').addEventListener("countrycommit", (event) => {
+      suppressRecognitionForCountry(event.detail?.country);
+      refreshMatch();
+    });
     if (record.processed) photoStatus.textContent = "Dish photo ready.";
     record.initialValues = confirmationDishValuesForRecord(record);
     if (options.focus !== false) card.querySelector("input")?.focus();
@@ -3435,6 +3605,8 @@
       rating: record.element.querySelector('[data-field="rating"]').value,
       notes: record.element.querySelector('[data-field="notes"]').value.trim(),
       ingredients: record.element.querySelector('[data-field="ingredients"]').value.trim(),
+      speechAlias: record.recognition?.applied && record.element.querySelector('[data-field="name"]').value.trim() === record.recognition.canonicalName
+        ? record.recognition.originalDishName : "",
       matchedDishId: record.matchedDishId || null,
       forceNewDish: record.forceNewDish,
       processed: record.processed,
@@ -3457,6 +3629,7 @@
         ingredients: $("#confirm-ingredients").value,
         matchedDishId: state.primaryMatchedDishId,
         forceNewDish: state.primaryForceNewDish,
+        recognition: state.primaryDishRecognition ? { ...state.primaryDishRecognition } : null,
       },
       extras: state.confirmationDishes.map((record) => ({ ...confirmationDishValuesForRecord(record), fromAssistance: record.fromAssistance })),
     };
@@ -3468,8 +3641,13 @@
       rating: $("#confirm-rating"), notes: $("#confirm-notes"), ingredients: $("#confirm-ingredients"),
     };
     Object.entries(controls).forEach(([key, control]) => {
-      if (snapshot.primary[key] !== snapshot.baseline[key]) control.value = snapshot.primary[key];
+      if (snapshot.primary[key] !== snapshot.baseline[key]) {
+        if (key === "country") setCountryValue(control, snapshot.primary[key]);
+        else control.value = snapshot.primary[key];
+      }
     });
+    if (snapshot.primary.dishName !== snapshot.baseline.dishName) state.primaryDishRecognition = snapshot.primary.recognition;
+    renderPrimaryDishRecognition();
     if (snapshot.extras.length) {
       clearConfirmationDishes();
       snapshot.extras.forEach((dish) => addConfirmationDish(dish, {
@@ -3497,6 +3675,15 @@
       $("#confirm-dish").focus();
       return;
     }
+    if (!validateCountryInput($("#confirm-country"))) {
+      $("#confirm-country").focus();
+      return;
+    }
+    const invalidExtraCountry = state.confirmationDishes.find((record) => !validateCountryInput(record.element.querySelector('[data-field="country"]')));
+    if (invalidExtraCountry) {
+      invalidExtraCountry.element.querySelector('[data-field="country"]').focus();
+      return;
+    }
 
     const saveButton = $("#save-button");
     saveButton.disabled = true;
@@ -3509,7 +3696,7 @@
       const extraDishes = confirmationDishValues();
       const missing = extraDishes.find((dish) => !dish.dishName);
       if (missing) throw new Error("Enter a name for every additional dish or remove its section.");
-      const dishes = [{ dishName: confirmedName, rating: $("#confirm-rating").value, notes: $("#confirm-notes").value, ingredients: $("#confirm-ingredients").value, country: $("#confirm-country").value, transcript: transcript.value, sourceIdeaId: state.pendingIdeaId, matchedDishId: state.primaryMatchedDishId || null, forceNewDish: state.primaryForceNewDish }, ...extraDishes];
+      const dishes = [{ dishName: confirmedName, rating: $("#confirm-rating").value, notes: $("#confirm-notes").value, ingredients: $("#confirm-ingredients").value, country: $("#confirm-country").value, transcript: transcript.value, sourceIdeaId: state.pendingIdeaId, matchedDishId: state.primaryMatchedDishId || null, forceNewDish: state.primaryForceNewDish, speechAlias: primarySpeechAlias() }, ...extraDishes];
       const photos = [{ blob: photoBlob, dishIndex: 0 }, ...extraDishes.flatMap((dish, index) => dish.processed ? [{ ...dish.processed, dishIndex: index + 1 }] : [])];
       state.currentOccasionId = await archive.saveOccasion({ cookedAt: $("#confirm-date").value, dishes, photos });
       state.currentCookId = state.currentOccasionId;
@@ -3569,6 +3756,7 @@
     state.lastAssistanceInput = null;
     state.primaryMatchedDishId = "";
     state.primaryForceNewDish = true;
+    state.primaryDishRecognition = null;
     state.matchingCooks = [];
     state.touchedFields = new Set();
     state.simulateFailure = Boolean(options.failure);
@@ -3578,6 +3766,10 @@
 
     captureForm.reset();
     confirmForm.reset();
+    setCountryValue($("#confirm-country"), "");
+    setCountryValue($("#add-dish-country"), "");
+    setCountryValue(editCountry, "");
+    renderPrimaryDishRecognition();
     liveTranscript.textContent = "";
     liveTranscriptShell.hidden = true;
     recordingStatus.textContent = "Ready";
@@ -3630,6 +3822,9 @@
   }
 
   async function initializeApp() {
+    setupCountryPicker($("#confirm-country"));
+    setupCountryPicker($("#add-dish-country"));
+    setupCountryPicker(editCountry, { allowPristineUnresolved: true });
     renderWorldMaps();
     resetCapture({ scenario: "blank" });
     if (!archive?.listCooks) return;
@@ -3663,6 +3858,8 @@
   dishName.addEventListener("input", () => {
     beginTiming();
     state.touchedFields.add("dishName");
+    if (state.primaryDishRecognition && dishName.value.trim() !== state.primaryDishRecognition.canonicalName) state.primaryDishRecognition.applied = false;
+    renderPrimaryDishRecognition();
     updateReadyState();
   });
   transcript.addEventListener("input", () => {
@@ -3751,22 +3948,35 @@
   });
   $("#country-suggestion-action").addEventListener("click", () => {
     if (!state.countrySuggestion?.name) return;
-    $("#confirm-country").value = state.countrySuggestion.name;
+    setCountryValue($("#confirm-country"), state.countrySuggestion.name);
     state.suggestedCountry = state.countrySuggestion.name;
     state.countryProvenance = "suggested";
     state.countrySuggestion = null;
+    suppressPrimaryRecognitionForCountry($("#confirm-country").value);
     renderCountrySuggestion();
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
   });
   [$("#confirm-dish"), $("#confirm-country")].forEach((field) => field.addEventListener("change", () => {
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
   }));
+  $("#confirm-country").addEventListener("countrycommit", () => {
+    suppressPrimaryRecognitionForCountry($("#confirm-country").value);
+    renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
+  });
+  $("#confirm-dish").addEventListener("input", () => {
+    if (state.primaryDishRecognition && $("#confirm-dish").value.trim() !== state.primaryDishRecognition.canonicalName) state.primaryDishRecognition.applied = false;
+    renderPrimaryDishRecognition();
+    renderConfirmDishPresentation();
+  });
   $("#confirm-country").addEventListener("input", () => {
     state.countryProvenance = "";
     state.countrySuggestion = null;
     $("#country-suggestion").hidden = true;
     renderCountrySuggestion();
   });
+  [["#capture-dish-undo", undoPrimaryDishRecognition], ["#confirm-dish-undo", undoPrimaryDishRecognition]].forEach(([selector, handler]) => $(selector).addEventListener("click", handler));
+  $("#capture-dish-change").addEventListener("click", () => changePrimaryDishRecognition(dishName));
+  $("#confirm-dish-change").addEventListener("click", () => changePrimaryDishRecognition($("#confirm-dish")));
   $("#add-entry-dish").addEventListener("click", openAddDish);
   $("#cancel-add-dish").addEventListener("click", () => showScreen("entry"));
   $("#add-dish-form").addEventListener("submit", submitAddedDish);
@@ -4012,7 +4222,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=39").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=40").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

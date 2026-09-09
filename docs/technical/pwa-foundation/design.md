@@ -220,7 +220,7 @@ IndexedDB schema version 5 makes the `attempts.occasionId` index non-unique so o
 
 ```json
 POST /v1/parse-cook
-Authorization: Bearer <owner-token>
+Authorization: Bearer <Cognito-access-token>
 Content-Type: application/json
 
 {
@@ -235,6 +235,10 @@ The transcript is limited to 5,000 Unicode characters and the new voice segment 
 Conversational cleanup removes vocal fillers, non-semantic discourse fillers, immediate repetitions, and abandoned false starts while preserving names, meaningful uses of “like,” quantities, negation, comparisons, uncertainty, and cooking details. The client rewrites only the newly finalized voice segment, never pre-existing typed text. Service failure retains the verbatim segment and invokes the conservative local parser.
 
 Existing-dish matching runs only on-device over canonical names and aliases. A unique exact normalized name or alias may be preselected when its resolved country does not conflict. Fuzzy candidates use documented token, bigram, and containment thresholds and remain unselected. Confirming a candidate sends its stable UUID only to the local `saveOccasion()` transaction, which learns the proposed spelling as an alias; archive names are never included in the parsing request.
+
+Country entry is an accessible local combobox over canonical Natural Earth names and aliases. Blank is valid; a non-empty value must resolve to one selected country before save. Ambiguous “Korea” intentionally returns both South Korea and North Korea as choices and never becomes a stored map key by itself.
+
+A versioned bundled international-dish catalog supplies canonical spellings, transliteration variants, and optional reviewed ISO alpha-3 associations across all 13 culinary regions. The local resolver ranks this catalog together with saved dish aliases, filters known country conflicts, and applies a correction only when one candidate clears the strict threshold and margin. The raw phrase remains visible through an undoable **Suggested from your note** notice. Confirmed saves may add that phrase to the selected dish's local aliases; the private archive is never used to build the shared cloud vocabulary.
 
 ### Backup envelope
 
