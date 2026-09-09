@@ -42,7 +42,7 @@ On Review, **Add another dish** keeps sides and components in the same occasion 
 6. Journal durability: save a cook, open **View journal**, reload the page, and verify the journal and entry details remain available.
 7. Culinary map: open **Map**, select a photographic region, browse the country shelf, open a country sheet, and select a dish to see its complete history. Back should restore the country sheet.
 8. Ideas URL: open **Ideas**, import the sample Oyakodon URL, review it, save it, and verify it reopens after reload.
-9. Advanced map: open a region, switch Photo Density and Needle Field, open a dense-country close-up, then use dish history → **Customize map** to choose a photograph and adjust or reset its approximate point.
+9. Advanced map: compare countries in Cook Density, switch to Culinary Peaks, use the photographic region/country shelves for dense areas, then use dish history → **Customize map** to choose a photograph and adjust or reset its approximate point.
 9. Ideas search: describe a dish, choose one of at most three sourced cards, and verify no-result recovery offers manual entry and an explicitly labeled AI draft.
 10. Cook an idea: select **Start a cook**, verify the title and ingredients are prefilled, add the required owner photo, save, and verify the Idea appears under Made without changing its saved recipe.
 11. Backup and restore: open **Backup & storage** from Year, create a backup, inspect it, verify non-empty restore is blocked, erase with the typed confirmation, restore, and compare counts and photographs.

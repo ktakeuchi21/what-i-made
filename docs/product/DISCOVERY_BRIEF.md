@@ -144,9 +144,9 @@ When I look back at months or years of cooking, help me feel proud and inspired 
 - Each dish has one country and one editable primary map location.
 - Approximate locations are acceptable.
 - Nearby dish cells may form a dense field until the user zooms in, but each canonical dish remains independently selectable.
-- The map offers two views of the same dish history: Needle Field and Photo Density.
-- Needle Field gives each dish one column whose height and tone increase with repeat attempts.
-- Photo Density gives each dish one fixed-size cell filled by an owner-selected default photo from that dish's history. The cell becomes brighter and more opaque with repeat attempts, while an exact count remains available on selection.
+- The map offers two views of the same selected-year country activity: Cook Density and Culinary Peaks.
+- Cook Density fills represented countries using five sequential bands based on cook count.
+- Culinary Peaks uses the same bands while adding capped height and an exact count; photographs remain in the region/country drill-downs.
 - The owner can change a dish's default map photo later without changing any cooking record.
 - Hex relief, conventional pin, halo, growing-bubble, photo-pin, and milestone-ring treatments have been rejected.
 
@@ -192,7 +192,7 @@ Because this is a private single-user product, these signals should be evaluated
 ## Open design and technical decisions
 
 - Validate the selected installable web app on the owner's actual iPhone; preserve the documented migration boundary for React Native with Expo.
-- Validate Needle Field and Photo Density on the owner's iPhone, including zoom, dense-cell selection, photo performance, and VoiceOver summaries.
+- Validate Cook Density and Culinary Peaks on the owner's iPhone, including sequential-color legibility, crowded regions, peak readability, shelves, and VoiceOver summaries.
 - Determine the precise photo optimization and portable backup formats during technical design.
 - Define how voice transcription and text classification can remain within the monthly cost ceiling.
 - Explore a visual direction that blends a warm personal cooking journal with an exploratory world-food atlas; avoid both sterile analytics and heavy gamification.

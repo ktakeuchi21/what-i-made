@@ -113,10 +113,10 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Identify dishes first tried in the last 30 days.
 - See revisited dishes whose ratings or notes changed.
 - Open a calendar-year photo recap from Year or Journal, grouped by nonempty months with every cook photograph represented.
-- Switch between Needle Field and Photo Density.
-- Select an individual dish in a dense map area and see its exact attempt count.
-- Change the default photograph used by a dish’s Photo Density cell.
-- Open same-country clusters in a fitted close-up and mixed-country clusters in a nearby-dishes chooser.
+- Switch between Cook Density and Culinary Peaks.
+- Compare selected-year country totals through a five-band color scale, capped peak height, and exact ranked summary.
+- Change the default photograph used by a dish’s geographic drill-down and history.
+- Use photographic region and country shelves when a geographic area is too small or dense to tap precisely.
 - Adjust a dish inside its confirmed country by tap, drag, or directional nudge, or reset it to automatic placement.
 
 ### 5. Protect the history
@@ -222,13 +222,13 @@ Not a product release. Before feature breadth, prove Home Screen installation, c
 
 ### Slice 4 — Culinary atlas
 
-**Outcome:** The archive becomes an inspiring dish-level geographic landscape.
+**Outcome:** The archive becomes an inspiring, immediately comparable geographic landscape.
 
 - Approximate owner-editable dish locations.
-- Needle Field view.
-- Photo Density view.
-- Exact-count selected detail and accessible geographic list.
-- Tap-driven dense-area country close-ups and nearby-dish selection.
+- Cook Density choropleth view.
+- Culinary Peaks height-and-color view.
+- Visible five-band legend, ranked exact-count summary, and accessible geographic shelves.
+- Tap-driven world → region → country → dish navigation with shelf alternatives in dense areas.
 - Editable default map photograph per canonical dish.
 
 ### Slice 5 — Invitation-only private archives

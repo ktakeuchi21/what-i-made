@@ -159,7 +159,7 @@
     return { ...geometry.anchor, countryKey: country.key, mapDataVersion: MAP_DATA_VERSION };
   }
 
-  function repeatBand(count) {
+  function densityBand(count) {
     if (count >= 8) return 5;
     if (count >= 5) return 4;
     if (count >= 3) return 3;
@@ -167,56 +167,35 @@
     return 1;
   }
 
-  function collisionGroups(items, options = {}) {
-    const width = Math.max(1, Number(options.width || 320));
-    const height = Math.max(1, Number(options.height || width / 2));
-    const scale = Math.max(1, Number(options.scale || 1));
-    const separation = Math.max(44, Number(options.separation || 52));
-    const sorted = items.slice().sort((left, right) => String(left.dishId).localeCompare(String(right.dishId)));
-    const parents = sorted.map((_, index) => index);
-    const find = (index) => parents[index] === index ? index : (parents[index] = find(parents[index]));
-    const join = (left, right) => { const a = find(left); const b = find(right); if (a !== b) parents[b] = a; };
-    for (let left = 0; left < sorted.length; left += 1) for (let right = left + 1; right < sorted.length; right += 1) {
-      const dx = Math.abs(sorted[left].position.x - sorted[right].position.x) / 100 * width * scale;
-      const dy = Math.abs(sorted[left].position.y - sorted[right].position.y) / 100 * height * scale;
-      if (Math.hypot(dx, dy) < separation) join(left, right);
-    }
-    const groups = new Map();
-    sorted.forEach((item, index) => {
-      const key = find(index);
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(item);
-    });
-    return [...groups.values()].map((members) => ({
-      members,
-      kind: members.length === 1 ? "dish" : new Set(members.map((item) => item.countryKey)).size === 1 ? "country" : "nearby",
-      x: members.reduce((sum, item) => sum + item.position.x, 0) / members.length,
-      y: members.reduce((sum, item) => sum + item.position.y, 0) / members.length,
-    }));
+  function peakHeight(count) {
+    const total = Math.max(0, Number(count || 0));
+    return total ? Math.min(62, Math.round(10 + (Math.sqrt(total) * 15))) : 0;
   }
 
-  function clusterVisualModel(members, mode = "photo") {
-    const normalizedMode = mode === "needle" ? "needle" : "photo";
-    const visibleLimit = normalizedMode === "needle" ? 5 : 3;
-    const ranked = members.slice().sort((left, right) => {
-      const countDifference = Number(right.attemptCount || 0) - Number(left.attemptCount || 0);
-      if (countDifference) return countDifference;
-      const recencyDifference = String(right.latestCookedAt || "").localeCompare(String(left.latestCookedAt || ""));
-      if (recencyDifference) return recencyDifference;
-      const nameDifference = String(left.dishName || "").localeCompare(String(right.dishName || ""));
-      return nameDifference || String(left.dishId || "").localeCompare(String(right.dishId || ""));
-    });
-    return {
-      mode: normalizedMode,
-      dishCount: ranked.length,
-      cookCount: ranked.reduce((sum, dish) => sum + Math.max(0, Number(dish.attemptCount || 0)), 0),
-      visible: ranked.slice(0, visibleLimit).map((dish) => ({
-        dish,
-        band: repeatBand(Number(dish.attemptCount || 0)),
-      })),
-      hiddenCount: Math.max(0, ranked.length - visibleLimit),
-    };
+  function countryActivityModel(countries) {
+    return (Array.isArray(countries) ? countries : [])
+      .filter((country) => Number(country?.cookCount || 0) > 0)
+      .map((country) => ({
+        country,
+        cookCount: Number(country.cookCount),
+        band: densityBand(Number(country.cookCount)),
+        peakHeight: peakHeight(Number(country.cookCount)),
+      }))
+      .sort((left, right) => right.cookCount - left.cookCount
+        || String(left.country.countryName || "").localeCompare(String(right.country.countryName || ""))
+        || String(left.country.countryKey || "").localeCompare(String(right.country.countryKey || "")));
   }
 
-  return { MAP_DATA_VERSION, parsePath, pointInRings, countryGeometry, isPointInCountry, validateMapLocation, resolvedPosition, repeatBand, collisionGroups, clusterVisualModel };
+  return {
+    MAP_DATA_VERSION,
+    parsePath,
+    pointInRings,
+    countryGeometry,
+    isPointInCountry,
+    validateMapLocation,
+    resolvedPosition,
+    densityBand,
+    peakHeight,
+    countryActivityModel,
+  };
 });

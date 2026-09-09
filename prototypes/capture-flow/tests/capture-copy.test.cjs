@@ -32,12 +32,28 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v43/);
-  assert.match(worker, /\.\/app\.js\?v=43/);
-  assert.match(worker, /\.\/styles\.css\?v=43/);
-  assert.match(html, /\.\/app\.js\?v=43/);
-  assert.match(html, /\.\/styles\.css\?v=43/);
-  assert.match(app, /\.\/sw\.js\?v=43/);
+  assert.match(worker, /what-i-made-capture-v44/);
+  assert.match(worker, /\.\/app\.js\?v=44/);
+  assert.match(worker, /\.\/styles\.css\?v=44/);
+  assert.match(html, /\.\/app\.js\?v=44/);
+  assert.match(html, /\.\/styles\.css\?v=44/);
+  assert.match(app, /\.\/sw\.js\?v=44/);
+});
+
+test("ships country-level Cook Density and Culinary Peaks map views", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+  assert.match(html, />Cook Density</);
+  assert.match(html, />Culinary Peaks</);
+  assert.match(app, /`Cooks in \$\{state\.dashboardModel\?\.year/);
+  assert.match(html, /3–4/);
+  assert.doesNotMatch(html, />Photo Density|>Needle Field/);
+  assert.match(app, /countryActivityModel/);
+  assert.match(app, /Warmer, stronger country color shows where you cooked more/);
+  assert.match(app, /Peak height and warmer color show where you cooked more/);
+  assert.match(app, /clearMapShelfObjectUrls\(\);[\s\S]*countryShelf\.replaceChildren\(\)/);
+  assert.match(css, /data-level="world"\]\[data-map-mode="peaks"\][\s\S]*--map-peak-shift: 12%/);
 });
 
 test("signed-out discovery and demo safety copy ship together", () => {

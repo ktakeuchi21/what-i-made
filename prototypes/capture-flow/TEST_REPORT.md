@@ -2,7 +2,23 @@
 
 > **Updated:** September 9, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
-> **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas, backup/restore, navigation, and responsive behavior
+> **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Cook Density and Culinary Peaks — September 9, 2026
+
+### Automated proof
+
+- The complete client, domain, and voice regression suite passes all 182 tests after removing the retired per-dish collision model.
+- New geometry coverage proves the fixed 1, 2, 3–4, 5–7, and 8+ country cook bands; zero-count exclusion; deterministic count/name/key ordering; monotonic square-root peak height; and the 62-pixel cap.
+- Static UI checks prove the new labels, legend, year-scoped explanation, version-44 service-worker assets, and absence of the retired Photo Density and Needle Field controls.
+
+### Browser proof
+
+- In the real in-app Chromium browser, the fictional world map colored all 22 represented countries and exposed all 13 culinary regions in the photographic shelf. Cook Density named Japan, India, and Nigeria as the exact top three without horizontal overflow or console errors.
+- Switching to Culinary Peaks produced 22 peaks using the same country totals and correct `aria-pressed` state. Peak heights ranged from 25 to 44 pixels in the sample, and Japan's five-cook peak was visibly taller and warmer than one- and two-cook countries.
+- East Asia isolated Japan at five cooks and South Korea at two cooks in both modes. The country shelf exposed both exact totals, and opening Japan moved focus into a three-dish sheet reporting five cooks.
+- At a 565-pixel mobile panel, controls measured 44 pixels high, the document width matched the viewport, the five-band legend remained on one line, and the bottom navigation remained usable. A separate 1280-pixel pass preserved the same 22-country/13-region content and logged no console errors.
+- The demo legend reported “Cooks in 2025.” A maximum 62-pixel Canada peak in the world-map harness retained 22 pixels of clearance above its count at the 398-pixel phone-frame width, proving the reserved northern margin prevents clipping.
 
 ## Dense map-mode correction — September 9, 2026
 

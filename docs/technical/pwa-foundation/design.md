@@ -145,7 +145,7 @@ The deployment must set AWS budget alerts at $5 and $8 per month. Pricing can ch
 - Voice input always has a visible typed alternative.
 - The parsing API accepts text only and rejects oversized or malformed input.
 - The app records no third-party product analytics.
-- The map can switch between Needle Field and Photo Density without changing stored dish or attempt data.
+- The map can switch between Cook Density and Culinary Peaks without changing stored dish or attempt data.
 - The owner can replace a dish's default map photo with any eligible photo from that dish's history.
 - A saved occasion exposes every photograph and supports adding more from Camera or Library, assignment to a dish or the whole occasion, main-photo promotion, and deletion of non-main photographs.
 - The main photograph cannot be deleted until another photograph is promoted, and an occasion cannot lose its final dish.
@@ -302,8 +302,8 @@ Operations use structured status logs, a $5 warning budget, an $8 urgent budget,
 - `AC-10`: AI output with missing, invalid, or extra fields is rejected and shown as an editable raw transcript rather than stored.
 - `AC-11`: Merging two dish records preserves every attempt and photo and leaves one stable canonical dish ID.
 - `AC-12`: The deployed AWS configuration has the parsing request caps, endpoint-specific concurrency caps, log redaction, transcription kill switch, and $5/$8 budget alerts described in this design.
-- `AC-13`: Repeating one dish updates only that dish's Needle Field column and Photo Density cell; country geometry, country fill, and neighboring dishes remain unchanged.
-- `AC-14`: Changing a dish's default map photo updates its Photo Density cell without modifying any occasion, attempt, rating, note, or photo record.
+- `AC-13`: Saving another mapped attempt updates only the selected-year aggregate for its confirmed country; both Cook Density and Culinary Peaks derive from that same total without modifying archive records.
+- `AC-14`: Changing a dish's default map photo updates its geographic drill-down without modifying any occasion, attempt, rating, note, photo record, country fill, or peak.
 - `AC-15`: Deleting a selected default photo chooses the most recent remaining eligible photo transactionally, or clears the reference when none remains.
 - `AC-15a`: Saving a default photo and in-country approximate point commits both preferences atomically; cancelling or submitting an invalid point writes neither.
 - `AC-16`: Saving two dishes creates one Journal occasion and one dashboard cook while preserving two independently editable dish attempts and two dish-history contributions.
@@ -334,7 +334,7 @@ A network inspection test blocks and records outbound requests while a photo is 
 ## 12. Open questions
 
 - The owner's actual iPhone model and iOS/Safari version must be recorded before the voice spike. This does not block general implementation, but it blocks declaring browser speech complete.
-- Needle Field and Photo Density are implemented as a remembered focused-region segmented control. Tap-driven country close-ups and nearby-dish sheets handle density; physical-iPhone gesture, VoiceOver, and safe-area validation remains.
+- Cook Density and Culinary Peaks are implemented as a remembered world/region segmented control. A visible scale, exact ranked summary, and photographic region/country shelves handle crowded geography; physical-iPhone VoiceOver, color legibility, and safe-area validation remains.
 - The final product name and app icon are undecided. They do not block task breakdown.
 - Multi-year segmented backup should be reconsidered after measuring the first 100 optimized photos. It does not block version one.
 

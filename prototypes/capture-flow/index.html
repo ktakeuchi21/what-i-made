@@ -16,7 +16,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=43" />
+    <link rel="stylesheet" href="./styles.css?v=44" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -565,11 +565,21 @@
             <fieldset class="map-mode-control" id="map-mode-control" hidden>
               <legend>Map view</legend>
               <div class="segmented-control">
-                <button type="button" id="map-mode-photo" aria-pressed="true">Photo Density</button>
-                <button type="button" id="map-mode-needle" aria-pressed="false">Needle Field</button>
+                <button type="button" id="map-mode-density" aria-pressed="true">Cook Density</button>
+                <button type="button" id="map-mode-peaks" aria-pressed="false">Culinary Peaks</button>
               </div>
             </fieldset>
-            <div class="atlas-stage" id="full-map" aria-label="Photo map of saved dishes">
+            <div class="map-density-legend" id="map-density-legend" role="group" aria-labelledby="map-density-legend-title">
+              <span class="map-density-legend-title" id="map-density-legend-title">Cooks in selected year</span>
+              <ol>
+                <li><i data-density-band="1" aria-hidden="true"></i><span>1</span></li>
+                <li><i data-density-band="2" aria-hidden="true"></i><span>2</span></li>
+                <li><i data-density-band="3" aria-hidden="true"></i><span>3–4</span></li>
+                <li><i data-density-band="4" aria-hidden="true"></i><span>5–7</span></li>
+                <li><i data-density-band="5" aria-hidden="true"></i><span>8+</span></li>
+              </ol>
+            </div>
+            <div class="atlas-stage" id="full-map" aria-label="Cook Density map of saved dishes">
               <div class="atlas-map-layer" id="atlas-map-layer">
                 <svg class="world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g data-world-countries></g></svg>
                 <div class="map-cells" id="full-map-cells"></div>
@@ -1064,7 +1074,7 @@
     <script src="./country-combobox.js?v=40"></script>
     <script src="./assets/international-dishes.js?v=40"></script>
     <script src="./dish-recognizer.js?v=40"></script>
-    <script src="./map-geometry.js?v=43"></script>
+    <script src="./map-geometry.js?v=44"></script>
     <script src="./account-context.js?v=31"></script>
     <script src="./auth-session.js?v=38"></script>
     <script src="./archive-store.js?v=31"></script>
@@ -1076,6 +1086,6 @@
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
     <script src="./demo-archive.js?v=42"></script>
-    <script src="./app.js?v=43"></script>
+    <script src="./app.js?v=44"></script>
   </body>
 </html>

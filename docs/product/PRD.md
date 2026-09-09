@@ -74,7 +74,7 @@ Market sizing, competitive monetization, and growth strategy are intentionally o
 
 What I Made begins as a connected, installable PWA optimized for the owner’s iPhone. The archive and optimized photographs remain local to the device. Manual backup and restore use a portable archive saved through Apple Files. The physical-iPhone test selected Amazon Transcribe after Safari browser speech recognition failed; keyboard Dictation remains a fallback that Apple may process after its own disclosure. For the custom button, audio streams directly to Amazon Transcribe. What I Made and its Lambda do not durably store or log audio, and an AWS Transcribe service-improvement opt-out policy is required before real cooking notes are sent. After **Done**, the final transcript text—not audio or photographs—is sent to protected capture assistance, which removes conversational filler and proposes up to six editable dish records. Typed notes use the same assistance when Review is selected. Owner-created cooking photographs do not leave the phone; public recipe images may pass through the protected Recipe Ideas service solely to create the selected local snapshot.
 
-The primary flow begins immediately after cooking: add or take a photo, speak or enter the dish and optional review, confirm the structured result, and save. The owner can later edit any record, match or merge canonical dishes, browse a chronological journal, compare repeated attempts, review the current year, and explore each canonical dish through Needle Field and Photo Density map views. A separate Ideas collection accepts public recipe links or sourced dish searches, keeps owner-confirmed recipe snapshots locally, and links them to capture only when cooked.
+The primary flow begins immediately after cooking: add or take a photo, speak or enter the dish and optional review, confirm the structured result, and save. The owner can later edit any record, match or merge canonical dishes, browse a chronological journal, compare repeated attempts, review the current year, and compare selected-year country activity through Cook Density and Culinary Peaks. A separate Ideas collection accepts public recipe links or sourced dish searches, keeps owner-confirmed recipe snapshots locally, and links them to capture only when cooked.
 
 ### Required first-release capabilities
 
@@ -84,7 +84,7 @@ The primary flow begins immediately after cooking: add or take a photo, speak or
 4. **Assisted confirmation:** Voice transcript and text classification propose structured fields; the owner confirms or corrects every suggestion.
 5. **Canonical dish history:** Suggested existing-dish matches, manual merge, stable identity, and repeat-attempt progression.
 6. **Journal and reflection:** Search by dish name; filter by dish, country, date, and rating; current-year dashboard; new dishes in the last 30 days; calendar-year recap.
-7. **Dish-level map:** Switch between Needle Field and Photo Density. Repetition changes only the canonical dish marker, never the whole country.
+7. **Country activity map:** Switch between Cook Density and Culinary Peaks. Both use the same selected-year country cook totals and five-band scale; photographs remain in geographic drill-downs.
 8. **Portable ownership:** Local optimized photographs plus validated export and restore through Apple Files.
 9. **Ideas for later:** Public recipe import, sourced search with an AI fallback, editable local recipe snapshots, and a direct link into cooking capture.
 10. **Public product tour:** A complete fictional year is explorable before sign-in through the real read-only archive interfaces, without opening local archive storage or protected services.
@@ -213,21 +213,21 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 
 ### US-10 — Explore dishes geographically
 
-**As the owner-cook, I want two dish-level map views, so that I can experience the breadth and density of my cooking without misrepresenting an entire country.**
+**As the owner-cook, I want two country-level map views, so that I can immediately compare where I cooked most during the selected year.**
 
 - **Scenario:** Switch map treatments.
-- **Given:** Multiple canonical dishes have approximate map locations and attempt counts.
-- **When:** I switch between Needle Field and Photo Density.
-- **Then:** The same independently selectable dishes appear with exact counts available, and only the repeated dish’s own column or photo cell changes strength.
+- **Given:** The selected year contains mapped cooking attempts across multiple countries.
+- **When:** I switch between Cook Density and Culinary Peaks.
+- **Then:** The same countries and exact totals appear using either sequential country color or height plus color, with a visible legend and equivalent shelf navigation.
 
 ### US-11 — Choose a map photograph
 
-**As the owner-cook, I want to choose the representative photograph for a dish, so that its Photo Density cell uses the image that best represents it to me.**
+**As the owner-cook, I want to choose the representative photograph for a dish, so that its geographic drill-down and history use the image that best represents it to me.**
 
 - **Scenario:** Replace the default map photograph.
 - **Given:** A canonical dish has more than one eligible photograph.
 - **When:** I select a different photograph as its map default.
-- **Then:** The Photo Density cell updates without changing any cooking occasion, attempt, rating, note, or photograph.
+- **Then:** The dish's chosen photograph updates without changing any cooking occasion, attempt, rating, note, photograph, or country density total.
 
 ### US-12 — Protect and restore the archive
 
@@ -312,9 +312,9 @@ These may be reconsidered only after the capture-and-reflection loop is used suc
 | --- | --- | --- | --- |
 | Does the capture prototype achieve a median under 20 seconds? | Product owner | Before production capture implementation | Open — test ten representative captures on the actual iPhone. |
 | Does browser voice recognition meet acceptable latency and correction effort? | Product owner | Before selecting a transcription adapter | Open — record iPhone model/iOS version and run ten representative cooking notes. |
-| Which photograph becomes the initial default map photo: first eligible, most recent, or an explicit choice? | Product owner | Before Photo Density implementation | Resolved — the first eligible photo stays stable until the owner changes it in Customize map. |
-| Is a toggle within one Map screen preferable to two entry points? | Product owner | Before Map implementation | Resolved — one labeled segmented control appears in focused regions and remembers the last mode. |
-| What exact brightness curve remains legible without overstating high repeat counts? | Product owner | Before Photo Density implementation | Resolved — five calm bands cover 1, 2, 3–4, 5–7, and 8+ cooks; exact counts are always exposed. |
+| Which photograph becomes the initial default map photo: first eligible, most recent, or an explicit choice? | Product owner | Before geographic drill-down implementation | Resolved — the first eligible photo stays stable until the owner changes it in Customize map. |
+| Is a toggle within one Map screen preferable to two entry points? | Product owner | Before Map implementation | Resolved — one labeled segmented control appears at world and region levels and remembers the last mode. |
+| What exact density curve remains legible without overstating high cook counts? | Product owner | Before density implementation | Resolved — five sequential bands cover 1, 2, 3–4, 5–7, and 8+ selected-year cooks; exact leaders and counts are also exposed in text and shelves. |
 | What product name and app icon should ship? | Product owner | Before installation testing | Resolved — ship as What I Made with the A1 ivory steaming-bowl mark on a full-bleed terracotta field. |
 | Are annual backup parts ever needed? | Product owner | After approximately 100 optimized photos | Deferred until real archive size is measured. |
 

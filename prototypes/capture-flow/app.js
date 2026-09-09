@@ -49,14 +49,14 @@
     photoBlob: null,
     objectUrl: "",
     archiveObjectUrls: [],
-    mapMarkerObjectUrls: [],
+    mapShelfObjectUrls: [],
     currentCookId: "",
     dashboardModel: null,
     mapNavigation: { level: "world", regionId: "", countryKey: "" },
-    mapMode: "photo",
+    mapMode: "density",
     archiveKey: "",
+    mapWorldShelfScroll: 0,
     mapRegionShelfScroll: 0,
-    mapDetailDishIds: [],
     mapReturnFocusElement: null,
     mapSheetReturnState: null,
     dishReturnCountryKey: "",
@@ -271,24 +271,26 @@
   }
 
   function readMapMode(archiveKey = state.archiveKey) {
-    try { return localStorage.getItem(mapModeStorageKey(archiveKey)) === "needle" ? "needle" : "photo"; }
-    catch { return "photo"; }
+    try {
+      const stored = localStorage.getItem(mapModeStorageKey(archiveKey));
+      return stored === "peaks" || stored === "needle" ? "peaks" : "density";
+    } catch { return "density"; }
   }
 
   function setMapMode(mode, options = {}) {
-    state.mapMode = mode === "needle" ? "needle" : "photo";
+    state.mapMode = mode === "peaks" || mode === "needle" ? "peaks" : "density";
     if (!isDemoMode()) {
       try { localStorage.setItem(mapModeStorageKey(), state.mapMode); } catch {}
     }
-    $("#map-mode-photo").setAttribute("aria-pressed", String(state.mapMode === "photo"));
-    $("#map-mode-needle").setAttribute("aria-pressed", String(state.mapMode === "needle"));
+    $("#map-mode-density").setAttribute("aria-pressed", String(state.mapMode === "density"));
+    $("#map-mode-peaks").setAttribute("aria-pressed", String(state.mapMode === "peaks"));
+    $("#full-map").dataset.mapMode = state.mapMode;
     if (options.render !== false) {
-      if (state.mapNavigation.level === "region") {
+      if (state.mapNavigation.level === "world") {
+        renderMapActivity(state.dashboardModel?.countries || []);
+      } else if (state.mapNavigation.level === "region") {
         const region = state.dashboardModel?.regions.find((candidate) => candidate.id === state.mapNavigation.regionId);
-        if (region) renderRegionDishes(region);
-      } else if (state.mapNavigation.level === "country-detail") {
-        const country = countryForKey(state.mapNavigation.countryKey);
-        if (country) renderCountryDetailMarkers(country);
+        if (region) renderRegionActivity(region);
       }
     }
   }
@@ -325,8 +327,8 @@
     state.dashboardModel = null;
     state.currentCookId = "";
     state.mapNavigation = { level: "world", regionId: "", countryKey: "" };
+    state.mapWorldShelfScroll = 0;
     state.mapRegionShelfScroll = 0;
-    state.mapDetailDishIds = [];
     state.mapSheetReturnState = null;
     state.currentDishHistoryId = "";
     state.dishReturnCountryKey = "";
@@ -411,7 +413,7 @@
       state.archiveKey = "";
       state.authSession = null;
       state.accessToken = "";
-      state.mapMode = "photo";
+      state.mapMode = "density";
       state.recapYear = repository.year;
       $("#app-main").classList.add("is-demo");
       $("#demo-banner").hidden = false;
@@ -1317,7 +1319,7 @@
   function clearArchiveObjectUrls() {
     state.archiveObjectUrls.forEach((url) => URL.revokeObjectURL(url));
     state.archiveObjectUrls = [];
-    clearMapMarkerObjectUrls();
+    clearMapShelfObjectUrls();
   }
 
   function trustedPhotoUrl(value, ownedUrls) {
@@ -1344,13 +1346,13 @@
     return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.archiveObjectUrls);
   }
 
-  function clearMapMarkerObjectUrls() {
-    state.mapMarkerObjectUrls.forEach((url) => URL.revokeObjectURL(url));
-    state.mapMarkerObjectUrls = [];
+  function clearMapShelfObjectUrls() {
+    state.mapShelfObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    state.mapShelfObjectUrls = [];
   }
 
-  function mapMarkerPhotoUrl(dish) {
-    return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.mapMarkerObjectUrls);
+  function mapShelfPhotoUrlForDish(dish) {
+    return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.mapShelfObjectUrls);
   }
 
   function pluralize(count, singular, plural = `${singular}s`) {
@@ -1377,10 +1379,21 @@
     });
   }
 
-  function updateMapCountryStyles(regionId = "", countryKey = "") {
+  function updateMapCountryStyles(regionId = "", countryKey = "", countries = []) {
+    const activity = new Map(mapGeometry.countryActivityModel(countries)
+      .map((entry) => [entry.country.countryKey, entry]));
     $$("#full-map .world-country").forEach((country) => {
+      const entry = activity.get(country.dataset.countryKey);
       country.classList.toggle("is-selected", country.dataset.countryKey === countryKey);
       country.classList.toggle("is-in-region", Boolean(regionId) && country.dataset.regionId === regionId);
+      country.classList.toggle("has-density", Boolean(entry));
+      if (entry) {
+        country.dataset.densityBand = String(entry.band);
+        country.dataset.cookCount = String(entry.cookCount);
+      } else {
+        delete country.dataset.densityBand;
+        delete country.dataset.cookCount;
+      }
     });
   }
 
@@ -1828,205 +1841,55 @@
     }
   }
 
-  function makeMapCluster(className, x, y, label, dishes, overflowCount, onClick) {
-    const button = document.createElement("button");
-    const photos = document.createElement("span");
-    const visibleLabel = document.createElement("span");
-    button.type = "button";
-    button.className = className;
-    button.style.setProperty("--map-x", `${x}%`);
-    button.style.setProperty("--map-y", `${y}%`);
-    button.setAttribute("aria-label", label);
-    photos.className = "cluster-photos";
-    dishes.forEach((dish) => {
-      const image = document.createElement("img");
-      image.src = mapPhotoUrlForDish(dish);
-      image.alt = "";
-      photos.append(image);
-    });
-    visibleLabel.className = "cluster-label";
-    visibleLabel.textContent = label.split(",")[0];
-    button.append(photos, visibleLabel);
-    if (overflowCount > 0) {
-      const overflow = document.createElement("span");
-      overflow.className = className === "country-map-cluster" ? "country-cluster-count" : "cluster-overflow";
-      overflow.textContent = className === "country-map-cluster" ? String(overflowCount) : `+${overflowCount}`;
-      button.append(overflow);
-    }
-    button.addEventListener("click", onClick);
-    return button;
+  function mapModeLabel() {
+    return state.mapMode === "peaks" ? "Culinary Peaks" : "Cook Density";
   }
 
-  function makeDishMapMarker(dish) {
-    const button = document.createElement("button");
+  function mapActivitySummary(countries) {
+    const activity = mapGeometry.countryActivityModel(countries);
+    if (!activity.length) return "Add a confirmed country to a cook to begin your map.";
+    const leaders = activity.slice(0, 3)
+      .map(({ country, cookCount }) => `${country.countryName}, ${pluralize(cookCount, "cook")}`)
+      .join("; ");
+    const explanation = state.mapMode === "peaks"
+      ? "Peak height and warmer color show where you cooked more."
+      : "Warmer, stronger country color shows where you cooked more.";
+    return `${mapModeLabel()} is active. ${explanation} Most cooked: ${leaders}.`;
+  }
+
+  function makeCulinaryPeak(entry) {
+    const geometry = mapGeometry.countryGeometry(entry.country.countryKey);
+    const point = geometry?.anchor || { x: entry.country.point[0], y: entry.country.point[1] };
+    const peak = document.createElement("span");
+    const column = document.createElement("span");
     const count = document.createElement("span");
-    button.type = "button";
-    button.className = `dish-map-marker is-${state.mapMode}`;
-    button.dataset.dishId = dish.dishId;
-    button.style.setProperty("--map-x", `${dish.position.x}%`);
-    button.style.setProperty("--map-y", `${dish.position.y}%`);
-    button.dataset.band = String(mapGeometry.repeatBand(dish.attemptCount));
-    button.setAttribute("aria-label", `${dish.dishName}, ${dish.countryName}, ${pluralize(dish.attemptCount, "cook")}, ${state.mapMode === "photo" ? "Photo Density" : "Needle Field"}`);
-    count.className = "dish-map-marker-count";
-    count.textContent = String(dish.attemptCount);
-    if (state.mapMode === "photo") {
-      const image = document.createElement("img");
-      image.src = mapMarkerPhotoUrl(dish);
-      image.alt = "";
-      button.append(image, count);
-    } else {
-      const needle = document.createElement("span");
-      needle.className = "needle-visual";
-      button.append(needle, count);
-    }
-    button.addEventListener("click", () => void openDishHistory(dish.dishId, button));
-    return button;
+    peak.className = "culinary-peak";
+    peak.dataset.countryKey = entry.country.countryKey;
+    peak.dataset.densityBand = String(entry.band);
+    peak.style.setProperty("--map-x", `${point.x}%`);
+    peak.style.setProperty("--map-y", `${point.y}%`);
+    peak.style.setProperty("--peak-height", `${entry.peakHeight}px`);
+    peak.setAttribute("aria-hidden", "true");
+    column.className = "culinary-peak-column";
+    count.className = "culinary-peak-count";
+    count.textContent = String(entry.cookCount);
+    peak.append(column, count);
+    return peak;
   }
 
-  function makeCollisionControl(group, options) {
-    const countries = [...new Set(group.members.map((dish) => dish.countryName))];
-    const visual = mapGeometry.clusterVisualModel(group.members, state.mapMode);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `dense-map-cluster is-${visual.mode}`;
-    button.style.setProperty("--map-x", `${group.x}%`);
-    button.style.setProperty("--map-y", `${group.y}%`);
-    button.dataset.mode = visual.mode;
-    const artwork = document.createElement("span");
-    if (visual.mode === "photo") {
-      artwork.className = "dense-photo-stack";
-      visual.visible.forEach(({ dish, band }) => {
-        const image = document.createElement("img");
-        image.src = mapMarkerPhotoUrl(dish);
-        image.alt = "";
-        image.dataset.band = String(band);
-        artwork.append(image);
-      });
-    } else {
-      artwork.className = "dense-needle-field";
-      visual.visible.forEach(({ band }) => {
-        const needle = document.createElement("span");
-        needle.className = "dense-needle";
-        needle.dataset.band = String(band);
-        artwork.append(needle);
-      });
-    }
-    const count = document.createElement("span");
-    count.className = "dense-cluster-count";
-    count.textContent = String(visual.dishCount);
-    count.setAttribute("aria-hidden", "true");
-    button.append(artwork, count);
-    const location = countries.length === 1 ? countries[0] : countries.join(" and ");
-    const modeLabel = visual.mode === "photo" ? "Photo Density" : "Needle Field";
-    button.setAttribute("aria-label", `${pluralize(visual.dishCount, "dish", "dishes")} near ${location}, ${pluralize(visual.cookCount, "cook")}, ${modeLabel}; ${options.actionLabel}`);
-    button.addEventListener("click", () => options.onClick(button));
-    return button;
-  }
-
-  function renderRegionDishes(region) {
-    clearMapMarkerObjectUrls();
+  function renderMapActivity(countries, options = {}) {
     fullMapCells.replaceChildren();
-    const bounds = { width: fullMapCells.clientWidth, height: fullMapCells.clientHeight };
-    const groups = mapGeometry.collisionGroups(region.countries.flatMap((country) => country.dishes), {
-      width: bounds.width || 390,
-      height: bounds.height || 252,
-      scale: region.scale,
-    });
-    groups.forEach((group) => {
-      if (group.kind === "dish") {
-        fullMapCells.append(makeDishMapMarker(group.members[0]));
-        return;
-      }
-      fullMapCells.append(makeCollisionControl(group, group.kind === "country" ? {
-        actionLabel: "open country close-up",
-        onClick: (button) => openCountryDetail(group.members[0].countryKey, button),
-      } : {
-        actionLabel: "browse nearby dishes",
-        onClick: (button) => openNearbySheet(group.members, region, button),
-      }));
-    });
-    const modeLabel = state.mapMode === "photo" ? "Photo Density" : "Needle Field";
-    $("#map-status").textContent = groups.some((group) => group.kind !== "dish")
-      ? `${modeLabel} is active. Nearby dishes share one non-overlapping control; tap a group for every dish and exact count.`
-      : `${modeLabel} is active. ${pluralize(region.countryCount, "country", "countries")} represented in your cooking this year.`;
+    const activity = mapGeometry.countryActivityModel(countries);
+    updateMapCountryStyles(options.regionId || "", options.countryKey || "", countries);
+    if (state.mapMode === "peaks") activity.forEach((entry) => fullMapCells.append(makeCulinaryPeak(entry)));
+    $("#full-map").dataset.mapMode = state.mapMode;
+    $("#full-map").setAttribute("aria-label", `${mapModeLabel()} map of ${state.dashboardModel?.year || "the selected year"} cooking`);
+    $("#map-density-legend-title").textContent = `Cooks in ${state.dashboardModel?.year || "the selected year"}`;
+    $("#map-status").textContent = mapActivitySummary(countries);
   }
 
-  function setCountryViewport(countryKey) {
-    const geometry = mapGeometry.countryGeometry(countryKey);
-    if (!geometry) return 1;
-    const width = Math.max(2, (geometry.bounds.maxX - geometry.bounds.minX) / 10);
-    const height = Math.max(2, (geometry.bounds.maxY - geometry.bounds.minY) / 5);
-    const scale = Math.min(9, Math.max(3.2, Math.min(70 / width, 62 / height)));
-    const point = [(geometry.bounds.minX + geometry.bounds.maxX) / 20, (geometry.bounds.minY + geometry.bounds.maxY) / 10];
-    setMapViewport({ point, scale });
-    return scale;
-  }
-
-  function renderCountryDishShelf(country) {
-    countryShelf.replaceChildren();
-    country.dishes.forEach((dish) => {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      const image = document.createElement("img");
-      const copy = document.createElement("span");
-      button.type = "button";
-      button.className = "country-card";
-      button.dataset.dishId = dish.dishId;
-      button.setAttribute("aria-label", `${dish.dishName}, ${pluralize(dish.attemptCount, "cook")}, open all-time history`);
-      image.src = mapPhotoUrlForDish(dish); image.alt = ""; image.loading = "lazy";
-      copy.className = "country-card-copy";
-      copy.innerHTML = `<strong></strong><span></span>`;
-      copy.querySelector("strong").textContent = dish.dishName;
-      copy.querySelector("span").textContent = pluralize(dish.attemptCount, "cook");
-      button.append(image, copy);
-      button.addEventListener("click", () => void openDishHistory(dish.dishId, button));
-      item.append(button); countryShelf.append(item);
-    });
-  }
-
-  function renderCountryDetailMarkers(country) {
-    clearMapMarkerObjectUrls();
-    fullMapCells.replaceChildren();
-    const scale = setCountryViewport(country.countryKey);
-    const bounds = { width: fullMapCells.clientWidth, height: fullMapCells.clientHeight };
-    const groups = mapGeometry.collisionGroups(country.dishes, {
-      width: bounds.width || 390,
-      height: bounds.height || 252,
-      scale,
-    });
-    groups.forEach((group) => {
-      if (group.kind === "dish") {
-        fullMapCells.append(makeDishMapMarker(group.members[0]));
-        return;
-      }
-      fullMapCells.append(makeCollisionControl(group, {
-        actionLabel: "browse the complete country list",
-        onClick: (button) => openCountrySheet(country.countryKey, button),
-      }));
-    });
-    const modeLabel = state.mapMode === "photo" ? "Photo Density" : "Needle Field";
-    $("#map-status").textContent = groups.some((group) => group.kind !== "dish")
-      ? `${modeLabel} is active. Overlapping dishes share one control; the shelf below includes every dish and exact count.`
-      : `${modeLabel} is active. Every dish is also available in the shelf below.`;
-  }
-
-  function openCountryDetail(countryKey, trigger = null) {
-    const country = countryForKey(countryKey);
-    const region = country && state.dashboardModel?.regions.find((candidate) => candidate.id === country.regionId);
-    if (!country || !region) return;
-    state.mapRegionShelfScroll = countryShelf.scrollLeft;
-    state.mapNavigation = { level: "country-detail", regionId: region.id, countryKey };
-    state.mapReturnFocusElement = trigger;
-    renderCountryDishShelf(country);
-    $("#full-map").dataset.level = "region";
-    $("#map-eyebrow").textContent = `${region.name} · ${pluralize(country.dishCount, "dish", "dishes")}`;
-    $("#map-title").textContent = country.countryName;
-    $("#map-summary").textContent = "Choose a dish on the close-up map or from the shelf below.";
-    $("#country-shelf-title").textContent = `Dishes from ${country.countryName}`;
-    $("#map-back-label").textContent = region.name;
-    renderCountryDetailMarkers(country);
-    updateMapCountryStyles(region.id, countryKey);
-    window.requestAnimationFrame(() => $("#map-title").focus({ preventScroll: true }));
+  function renderRegionActivity(region) {
+    renderMapActivity(region.countries, { regionId: region.id });
   }
 
   function setMapViewport(region = null) {
@@ -2042,37 +1905,54 @@
   function renderWorldMapLevel() {
     const model = state.dashboardModel;
     state.mapNavigation = { level: "world", regionId: "", countryKey: "" };
-    clearMapMarkerObjectUrls();
-    fullMapCells.replaceChildren();
-    model.regions.filter((region) => region.dishCount > 0).forEach((region) => {
-      const label = `${region.name}, ${pluralize(region.dishCount, "dish", "dishes")} across ${pluralize(region.countryCount, "country", "countries")}`;
-      fullMapCells.append(makeMapCluster(
-        "region-map-cluster",
-        region.point[0],
-        region.point[1],
-        label,
-        region.featuredDishes,
-        region.hiddenDishCount,
-        () => openMapRegion(region.id),
-      ));
-    });
     $("#full-map").dataset.level = "world";
     $("#map-eyebrow").textContent = `${model.year} · ${pluralize(model.mappedDishes.length, "mapped dish", "mapped dishes")}`;
     $("#map-title").textContent = "Your culinary atlas";
-    $("#map-summary").textContent = "Choose a culinary region to explore the dishes you made there.";
-    $("#map-status").textContent = model.regions.some((region) => region.dishCount)
-      ? "Photo stacks show up to three frequently cooked dishes while mixing countries."
-      : "Add a confirmed country to a cook to begin your map.";
-    $("#country-shelf-section").hidden = true;
-    $("#map-mode-control").hidden = true;
+    $("#map-summary").textContent = "Compare where you cooked most, then choose a region to explore.";
+    $("#map-mode-control").hidden = false;
+    setMapMode(state.mapMode, { render: false });
     $("#map-back").hidden = true;
     $("#map-back-label").textContent = "World";
     $("#map-header-spacer").hidden = false;
     setMapViewport();
-    updateMapCountryStyles();
+    renderMapActivity(model.countries);
+    renderWorldRegionShelf(model.regions);
+    countryShelf.scrollLeft = state.mapWorldShelfScroll || 0;
+  }
+
+  function renderWorldRegionShelf(regions) {
+    clearMapShelfObjectUrls();
+    countryShelf.replaceChildren();
+    regions.filter((region) => region.dishCount > 0).forEach((region) => {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      const image = document.createElement("img");
+      const copy = document.createElement("span");
+      const name = document.createElement("strong");
+      const meta = document.createElement("span");
+      button.type = "button";
+      button.className = "country-card";
+      button.dataset.regionId = region.id;
+      button.setAttribute("aria-label", `${region.name}, ${pluralize(region.dishCount, "dish", "dishes")} across ${pluralize(region.countryCount, "country", "countries")}, ${pluralize(region.cookCount, "cook")}`);
+      image.src = mapShelfPhotoUrlForDish(region.featuredDishes[0]);
+      image.alt = "";
+      image.loading = "lazy";
+      copy.className = "country-card-copy";
+      name.textContent = region.name;
+      meta.textContent = `${pluralize(region.countryCount, "country", "countries")} · ${pluralize(region.cookCount, "cook")}`;
+      copy.append(name, meta);
+      button.append(image, copy);
+      button.addEventListener("click", () => openMapRegion(region.id));
+      item.append(button);
+      countryShelf.append(item);
+    });
+    $("#country-shelf-title").textContent = "Culinary regions";
+    $("#country-shelf-section").hidden = false;
+    $("#region-empty").hidden = countryShelf.children.length > 0;
   }
 
   function renderCountryShelf(region) {
+    clearMapShelfObjectUrls();
     countryShelf.replaceChildren();
     region.countries.forEach((country) => {
       const item = document.createElement("li");
@@ -2085,7 +1965,7 @@
       button.className = "country-card";
       button.dataset.countryKey = country.countryKey;
       button.setAttribute("aria-label", `${country.countryName}, ${pluralize(country.dishCount, "dish", "dishes")}, ${pluralize(country.cookCount, "cook")}`);
-      image.src = mapPhotoUrlForDish(country.topDish);
+      image.src = mapShelfPhotoUrlForDish(country.topDish);
       image.alt = "";
       image.loading = "lazy";
       copy.className = "country-card-copy";
@@ -2103,6 +1983,7 @@
   function openMapRegion(regionId) {
     const region = state.dashboardModel?.regions.find((candidate) => candidate.id === regionId);
     if (!region) return;
+    if (state.mapNavigation.level === "world") state.mapWorldShelfScroll = countryShelf.scrollLeft;
     state.mapNavigation = { level: "region", regionId, countryKey: "" };
     renderCountryShelf(region);
     countryShelf.scrollLeft = state.mapRegionShelfScroll || 0;
@@ -2118,9 +1999,8 @@
     $("#map-back-label").textContent = "World";
     $("#map-header-spacer").hidden = true;
     setMapViewport(region);
-    updateMapCountryStyles(region.id);
     window.requestAnimationFrame(() => {
-      renderRegionDishes(region);
+      renderRegionActivity(region);
       $("#map-title").focus({ preventScroll: true });
     });
   }
@@ -2182,38 +2062,10 @@
       item.append(button);
       countryDishGrid.append(item);
     });
-    updateMapCountryStyles(region.id, countryKey);
-    setMapBackgroundInert(true);
-    countrySheetLayer.hidden = false;
-    window.requestAnimationFrame(() => $("#close-country-sheet").focus({ preventScroll: true }));
-  }
-
-  function openNearbySheet(dishes, region, trigger = null) {
-    if (!dishes.length || !region) return;
-    state.mapSheetReturnState = { ...state.mapNavigation };
-    state.mapNavigation = { level: "nearby", regionId: region.id, countryKey: "" };
-    state.mapDetailDishIds = dishes.map((dish) => dish.dishId);
-    state.mapReturnFocusElement = trigger instanceof HTMLElement ? trigger : null;
-    $("#country-sheet-region").textContent = region.name;
-    $("#country-sheet-title").textContent = "Nearby dishes";
-    $("#country-sheet-summary").textContent = `${pluralize(dishes.length, "dish", "dishes")} share this part of the map.`;
-    countryDishGrid.replaceChildren();
-    dishes.slice().sort((left, right) => left.countryName.localeCompare(right.countryName) || left.dishName.localeCompare(right.dishName)).forEach((dish) => {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      const image = document.createElement("img");
-      const copy = document.createElement("span");
-      const name = document.createElement("strong");
-      const meta = document.createElement("small");
-      button.type = "button"; button.className = "country-dish-card";
-      button.dataset.dishId = dish.dishId;
-      button.setAttribute("aria-label", `${dish.dishName}, ${dish.countryName}, ${pluralize(dish.attemptCount, "cook")}`);
-      image.src = mapPhotoUrlForDish(dish); image.alt = ""; image.loading = "lazy";
-      name.textContent = dish.dishName; meta.textContent = `${dish.countryName} · ${pluralize(dish.attemptCount, "cook")}`;
-      copy.append(name, meta); button.append(image, copy);
-      button.addEventListener("click", () => void openDishHistory(dish.dishId, button));
-      item.append(button); countryDishGrid.append(item);
-    });
+    const visibleCountries = state.mapSheetReturnState?.level === "world"
+      ? state.dashboardModel.countries
+      : region.countries;
+    updateMapCountryStyles(region.id, countryKey, visibleCountries);
     setMapBackgroundInert(true);
     countrySheetLayer.hidden = false;
     window.requestAnimationFrame(() => $("#close-country-sheet").focus({ preventScroll: true }));
@@ -2230,7 +2082,11 @@
     state.mapNavigation = returnState;
     state.mapSheetReturnState = null;
     state.mapReturnFocusElement = null;
-    updateMapCountryStyles(regionId, returnState.level === "country-detail" ? returnState.countryKey : "");
+    const returnRegion = state.dashboardModel?.regions.find((candidate) => candidate.id === returnState.regionId);
+    const returnCountries = returnState.level === "world"
+      ? state.dashboardModel?.countries || []
+      : returnRegion?.countries || [];
+    updateMapCountryStyles(regionId, "", returnCountries);
     if (options.restoreFocus !== false && returnFocus?.isConnected) {
       window.requestAnimationFrame(() => returnFocus.focus({ preventScroll: true }));
     }
@@ -2266,15 +2122,13 @@
     returnState.focusSurface = trigger?.closest("#country-dish-grid")
       ? "sheet"
       : trigger?.closest("#country-shelf") ? "shelf" : "map";
-    if (returnState.level === "country" || returnState.level === "nearby") {
+    if (returnState.level === "country") {
       returnState.sheetReturnState = state.mapSheetReturnState ? { ...state.mapSheetReturnState } : null;
     }
-    const visibleLevel = returnState.level === "country" || returnState.level === "nearby"
+    const visibleLevel = returnState.level === "country"
       ? returnState.sheetReturnState?.level
       : returnState.level;
-    if (visibleLevel === "country-detail") returnState.detailShelfScroll = countryShelf.scrollLeft;
-    else if (visibleLevel === "region") returnState.regionShelfScroll = countryShelf.scrollLeft;
-    if (returnState.level === "nearby") returnState.dishIds = state.mapDetailDishIds.slice();
+    if (visibleLevel === "region") returnState.regionShelfScroll = countryShelf.scrollLeft;
     state.dishHistoryRequestId = requestId;
     trigger?.setAttribute("aria-disabled", "true");
     trigger?.setAttribute("aria-busy", "true");
@@ -4312,11 +4166,8 @@
     void renderJournal({ restoreScroll: false }).then(() => journalSearch.focus({ preventScroll: true }));
   });
   $("#map-back").addEventListener("click", () => {
-    if (state.mapNavigation.level === "country" || state.mapNavigation.level === "nearby") closeCountrySheet();
-    else if (state.mapNavigation.level === "country-detail") {
-      openMapRegion(state.mapNavigation.regionId);
-      window.requestAnimationFrame(() => { countryShelf.scrollLeft = state.mapRegionShelfScroll; });
-    } else {
+    if (state.mapNavigation.level === "country") closeCountrySheet();
+    else {
       renderWorldMapLevel();
       window.requestAnimationFrame(() => $("#map-title").focus({ preventScroll: true }));
     }
@@ -4331,21 +4182,8 @@
     else if (returnState.regionId) {
       state.mapRegionShelfScroll = returnState.regionShelfScroll ?? 0;
       openMapRegion(returnState.regionId);
-      if (returnState.level === "country-detail") {
-        openCountryDetail(returnState.countryKey);
-        countryShelf.scrollLeft = returnState.detailShelfScroll ?? 0;
-      }
-      else if (returnState.level === "country") {
-        if (returnState.sheetReturnState?.level === "country-detail") {
-          openCountryDetail(returnState.sheetReturnState.countryKey);
-          countryShelf.scrollLeft = returnState.detailShelfScroll ?? 0;
-        }
+      if (returnState.level === "country") {
         openCountrySheet(returnState.countryKey, countryShelf.querySelector(`[data-country-key="${returnState.countryKey}"]`));
-      }
-      else if (returnState.level === "nearby") {
-        const dishes = state.dashboardModel.mappedDishes.filter((dish) => returnState.dishIds?.includes(dish.dishId));
-        const region = state.dashboardModel.regions.find((candidate) => candidate.id === returnState.regionId);
-        openNearbySheet(dishes, region);
       }
       window.requestAnimationFrame(() => {
         const focusRoot = returnState.focusSurface === "sheet"
@@ -4357,8 +4195,8 @@
     state.dishReturnFocusElement = null;
     state.dishReturnMapState = null;
   });
-  $("#map-mode-photo").addEventListener("click", () => setMapMode("photo"));
-  $("#map-mode-needle").addEventListener("click", () => setMapMode("needle"));
+  $("#map-mode-density").addEventListener("click", () => setMapMode("density"));
+  $("#map-mode-peaks").addEventListener("click", () => setMapMode("peaks"));
   $("#customize-map").addEventListener("click", (event) => void openMapCustomize(event.currentTarget));
   $("#close-map-customize").addEventListener("click", () => closeMapCustomize());
   $("#cancel-map-customize").addEventListener("click", () => closeMapCustomize());
@@ -4403,12 +4241,11 @@
   window.addEventListener("resize", () => {
     window.clearTimeout(mapResizeTimer);
     mapResizeTimer = window.setTimeout(() => {
-      if (state.mapNavigation.level === "region") {
+      if (state.mapNavigation.level === "world") {
+        renderMapActivity(state.dashboardModel?.countries || []);
+      } else if (state.mapNavigation.level === "region") {
         const region = state.dashboardModel?.regions.find((candidate) => candidate.id === state.mapNavigation.regionId);
-        if (region) renderRegionDishes(region);
-      } else if (state.mapNavigation.level === "country-detail") {
-        const country = countryForKey(state.mapNavigation.countryKey);
-        if (country) renderCountryDetailMarkers(country);
+        if (region) renderRegionActivity(region);
       }
     }, 120);
   });
@@ -4502,7 +4339,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=43").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=44").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });
