@@ -108,6 +108,6 @@ The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. T
 
 ## Verification
 
-The client suite covers account namespace isolation, session restoration, refresh and sign-out races, the seven-day boundary, backup exclusions, and migration rules. Service tests cover trusted JWT claims, atomic pseudonymous rate counters, redacted logs, hard limits, provider timeouts, and country parity. The SAM template passes `cfn-lint` 1.46 with SAM translator 1.109, and all three Lambda packages have audited dependency lockfiles.
+The client suite covers account namespace isolation, session restoration, refresh and sign-out races, callback-parameter cleanup, the seven-day boundary, backup exclusions, and migration rules. Service tests cover trusted JWT claims, atomic pseudonymous rate counters, redacted logs, hard limits, provider timeouts, and country parity. The SAM template passes `cfn-lint` 1.46 with SAM translator 1.109, and all three Lambda packages have audited dependency lockfiles. A tested deployment packager produces an allowlisted runtime-only PWA directory, injects only validated public stack outputs and the temporary owner-migration digest, and adds the origin-specific CSP plus Amplify response-security headers without modifying tracked source.
 
 Production Cognito email-code behavior, API Gateway pre-Lambda rejection, removal of the old Function URLs, the migration fixture in a real browser, and installed-iPhone sign-in, suspend/resume, and VoiceOver remain evidence gaps until deployment and device testing.

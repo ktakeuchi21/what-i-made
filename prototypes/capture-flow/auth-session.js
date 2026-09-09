@@ -322,13 +322,26 @@
       finally { refreshPromise = null; refreshController = null; }
     }
 
-    async function completeCallback() {
+    function takeCallback() {
       if (!config.enabled || config.fake) return null;
+      const callbackUrl = location.href;
+      const callbackParameters = new URL(callbackUrl).searchParams;
+      const hasOAuthResponse = ["code", "state", "error", "error_description"].some((name) => callbackParameters.has(name));
+      if (!hasOAuthResponse) return null;
+      // Remove one-time OAuth values before touching either browser storage or the
+      // network. Cleanup failures are deliberately independent: broken storage
+      // must never prevent address-bar sanitization.
+      try { history?.replaceState?.(history.state, "", withoutOAuthParameters(callbackUrl)); } catch {}
       let transaction = null;
       try { transaction = JSON.parse(transactionStorage?.getItem(OAUTH_TRANSACTION_KEY) || "null"); } catch {}
-      const callback = parseCallback(location.href, transaction, now());
+      try { transactionStorage?.removeItem(OAUTH_TRANSACTION_KEY); } catch {}
+      return { callbackUrl, transaction };
+    }
+
+    async function completeCallback(context) {
+      if (!context) return null;
+      const callback = parseCallback(context.callbackUrl, context.transaction, now());
       if (!callback) return null;
-      transactionStorage?.removeItem(OAUTH_TRANSACTION_KEY);
       const tokens = await requestTokens(config, {
         grant_type: "authorization_code",
         client_id: config.clientId,
@@ -336,13 +349,12 @@
         redirect_uri: config.redirectUri,
         code_verifier: callback.verifier,
       }, fetchImpl, callback.nonce, now());
-      const session = await saveVerifiedSession(tokens);
-      history?.replaceState?.(history.state, "", withoutOAuthParameters(location.href));
-      return session;
+      return saveVerifiedSession(tokens);
     }
 
     async function restore() {
       if (!config.enabled) return { kind: "disabled" };
+      const callbackContext = takeCallback();
       let cleanupPending = false;
       try { cleanupPending = guardStorage?.getItem(SIGN_OUT_PENDING_KEY) === "1"; } catch {}
       if (cleanupPending) {
@@ -371,7 +383,7 @@
         await storage.write(record);
         return publicSession(record);
       }
-      const callbackSession = await completeCallback();
+      const callbackSession = await completeCallback(callbackContext);
       if (callbackSession) return callbackSession;
       if (!record?.subject) return { kind: "signedOut" };
       if (navigator?.onLine === false) {

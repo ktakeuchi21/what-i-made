@@ -4,6 +4,8 @@ const localFakeAuth = ["127.0.0.1", "localhost"].includes(window.location.hostna
 
 const configuredAuthDomain = document.querySelector('meta[name="wim-auth-domain"]')?.content.trim() || "";
 const configuredAuthClientId = document.querySelector('meta[name="wim-auth-client-id"]')?.content.trim() || "";
+const configuredAwsRegion = document.querySelector('meta[name="wim-aws-region"]')?.content.trim() || "";
+const awsRegion = /^[a-z]{2}-[a-z]+-\d$/.test(configuredAwsRegion) ? configuredAwsRegion : "";
 const invitationAuthConfigured = localFakeAuth || Boolean(configuredAuthDomain && configuredAuthClientId);
 const configuredServiceApiEndpoint = document.querySelector('meta[name="wim-service-api-endpoint"]')?.content.trim() || "";
 let serviceApiEndpoint = "";
@@ -28,7 +30,7 @@ window.WIM_AUTH_CONFIG = Object.freeze({
 window.WIM_VOICE_CONFIG = Object.freeze({
   enabled: invitationAuthConfigured && (localFakeVoice || Boolean(serviceApiEndpoint)),
   sessionEndpoint: serviceApiEndpoint ? `${serviceApiEndpoint}/v1/transcribe-session` : "",
-  region: "us-east-2",
+  region: awsRegion,
   maxCaptureSeconds: 45,
   fake: localFakeVoice,
   fakeFailure: localFakeVoice ? voiceParameters.get("voiceFailure") || "" : "",

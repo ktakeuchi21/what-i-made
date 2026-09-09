@@ -4007,7 +4007,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=34").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=38").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

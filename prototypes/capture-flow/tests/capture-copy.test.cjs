@@ -22,3 +22,12 @@ test("ships no owner-token setup or legacy service endpoint fallback", () => {
   assert.doesNotMatch(config, /wim-(?:recipe|capture-assistance|transcribe-session)-endpoint/i);
   assert.match(app, /Invitation sign-in is not configured\. The private archive remains locked\./);
 });
+
+test("service worker caches OAuth navigations only under the canonical shell URL", () => {
+  const worker = fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8");
+  const navigationBranch = worker.slice(worker.indexOf('if (event.request.mode === "navigate")'), worker.indexOf("event.respondWith(\n    fetch(event.request)", worker.indexOf('if (event.request.mode === "navigate")') + 1));
+  assert.match(navigationBranch, /new Response\(await response\.clone\(\)\.arrayBuffer\(\)/);
+  assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
+  assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
+  assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
+});

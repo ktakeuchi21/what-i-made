@@ -4,6 +4,7 @@ const crypto = require("node:crypto").webcrypto;
 
 const {
   OAUTH_TRANSACTION_MAX_AGE_MS,
+  OAUTH_TRANSACTION_KEY,
   normalizeAuthConfig,
   createAuthorizationRequest,
   parseCallback,
@@ -87,6 +88,96 @@ test("removes OAuth response data without deleting unrelated app parameters", ()
     withoutOAuthParameters("https://app.example.test/index.html?voice=fake&code=secret&state=state#capture"),
     "/index.html?voice=fake#capture",
   );
+});
+
+test("removes callback parameters and the PKCE transaction even when callback verification fails", async () => {
+  const callbackLocation = { href: "https://app.example.test/index.html?view=year&code=secret&state=wrong#capture" };
+  const transaction = transactionStorage();
+  transaction.setItem(OAUTH_TRANSACTION_KEY, JSON.stringify({ state: "expected", nonce: "nonce", verifier: "verifier", createdAt: 1000 }));
+  const replacements = [];
+  const client = createAuthClient(config, {
+    storage: memoryStorage(),
+    transactionStorage: transaction,
+    location: callbackLocation,
+    history: { state: null, replaceState: (_state, _title, url) => replacements.push(url) },
+    navigator: { onLine: true },
+    now: () => 1001,
+  });
+  await assert.rejects(() => client.restore(), /could not be verified/i);
+  assert.deepEqual(replacements, ["/index.html?view=year#capture"]);
+  assert.equal(transaction.getItem(OAUTH_TRANSACTION_KEY), null);
+});
+
+test("sanitizes callback before archive storage and survives transaction-storage failure", async () => {
+  const events = [];
+  const client = createAuthClient(config, {
+    storage: {
+      read: async () => { events.push("archive-read"); return null; },
+      write: async () => {},
+      clear: async () => {},
+    },
+    transactionStorage: {
+      getItem: () => { events.push("transaction-read"); throw new Error("storage blocked"); },
+      removeItem: () => { events.push("transaction-remove"); throw new Error("storage blocked"); },
+    },
+    location: { href: "https://app.example.test/index.html?code=secret&state=wrong#capture" },
+    history: { state: null, replaceState: (_state, _title, url) => events.push(`url:${url}`) },
+    navigator: { onLine: true },
+    now: () => 1001,
+  });
+
+  await assert.rejects(() => client.restore(), /could not be verified/i);
+  assert.equal(events[0], "url:/index.html#capture");
+  assert.deepEqual(events.slice(1), ["transaction-read", "transaction-remove", "archive-read"]);
+});
+
+test("sanitizes callback even when archive storage cannot be read", async () => {
+  const replacements = [];
+  const transaction = transactionStorage();
+  transaction.setItem(OAUTH_TRANSACTION_KEY, JSON.stringify({ state: "expected", nonce: "nonce", verifier: "verifier", createdAt: 1000 }));
+  const client = createAuthClient(config, {
+    storage: {
+      read: async () => { throw new Error("archive unavailable"); },
+      write: async () => {},
+      clear: async () => {},
+    },
+    transactionStorage: transaction,
+    location: { href: "https://app.example.test/index.html?code=secret&state=expected" },
+    history: { state: null, replaceState: (_state, _title, url) => replacements.push(url) },
+    navigator: { onLine: true },
+    now: () => 1001,
+  });
+
+  await assert.rejects(() => client.restore(), /archive unavailable/i);
+  assert.deepEqual(replacements, ["/index.html"]);
+  assert.equal(transaction.getItem(OAUTH_TRANSACTION_KEY), null);
+});
+
+test("pending sign-out cleanup discards a sanitized callback without exchanging it", async () => {
+  const events = [];
+  const transaction = transactionStorage();
+  transaction.setItem(OAUTH_TRANSACTION_KEY, JSON.stringify({ state: "expected", nonce: "nonce", verifier: "verifier", createdAt: 1000 }));
+  const client = createAuthClient(config, {
+    storage: {
+      read: async () => { events.push("archive-read"); return null; },
+      write: async () => { events.push("archive-write"); },
+      clear: async () => { events.push("archive-clear"); },
+    },
+    transactionStorage: transaction,
+    guardStorage: {
+      getItem: () => "1",
+      removeItem: () => events.push("guard-clear"),
+    },
+    location: { href: "https://app.example.test/index.html?code=secret&state=expected" },
+    history: { state: null, replaceState: (_state, _title, url) => events.push(`url:${url}`) },
+    navigator: { onLine: true },
+    fetch: async () => { events.push("fetch"); throw new Error("must not fetch"); },
+    now: () => 1001,
+  });
+
+  assert.deepEqual(await client.restore(), { kind: "signedOut", reason: "cleanupComplete" });
+  assert.deepEqual(events, ["url:/index.html", "archive-clear", "guard-clear"]);
+  assert.equal(transaction.getItem(OAUTH_TRANSACTION_KEY), null);
 });
 
 test("requires the returned identity token to match the request nonce", () => {

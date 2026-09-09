@@ -246,6 +246,8 @@ Resources:
           Properties: { ApiId: !Ref PrivateApi, Path: /v1/recipes/image, Method: GET, Auth: { Authorizer: CognitoJwt, AuthorizationScopes: [what-i-made/recipes] } }
 
 Outputs:
+  AwsRegion:
+    Value: !Ref "AWS::Region"
   UserPoolId:
     Value: !Ref UserPool
   WebClientId:

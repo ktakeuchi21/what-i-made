@@ -1,11 +1,11 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v34";
+const CACHE_NAME = "what-i-made-capture-v38";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=34",
-  "./config.js?v=34",
+  "./config.js?v=35",
   "./transcribe-codec.js?v=16",
   "./transcribe-adapter.js?v=16",
   "./capture-parser.js?v=16",
@@ -17,7 +17,7 @@ const APP_SHELL = [
   "./assets/world-map-data.js?v=29",
   "./map-geometry.js?v=29",
   "./account-context.js?v=31",
-  "./auth-session.js?v=32",
+  "./auth-session.js?v=38",
   "./archive-store.js?v=31",
   "./idea-store.js?v=18",
   "./archive-backup.js?v=29",
@@ -27,7 +27,7 @@ const APP_SHELL = [
   "./dashboard-model.js?v=29",
   "./journal-model.js?v=25",
   "./audio-worklet.js",
-  "./app.js?v=34",
+  "./app.js?v=38",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",
@@ -55,6 +55,28 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then(async (response) => {
+          if (response.ok) {
+            // Cloned fetch responses retain their original URL metadata. Rebuild
+            // the shell so callback values cannot survive as cached Response.url.
+            const canonicalResponse = new Response(await response.clone().arrayBuffer(), {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers,
+            });
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put("./index.html", canonicalResponse);
+          }
+          return response;
+        })
+        .catch(() => caches.match("./index.html")),
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -67,7 +89,6 @@ self.addEventListener("fetch", (event) => {
       .catch(async () => {
         const cached = await caches.match(event.request);
         if (cached) return cached;
-        if (event.request.mode === "navigate") return caches.match("./index.html");
         throw new Error("No cached response is available.");
       }),
   );
