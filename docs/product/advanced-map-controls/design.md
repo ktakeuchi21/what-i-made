@@ -4,6 +4,8 @@
 
 The Map keeps its photographic world-level region clusters and adds dish-level Photo Density and Needle Field views after a region is selected. Dense controls never overlap: same-country groups open a fitted country close-up, while mixed-country groups open an accessible nearby-dishes chooser. Free pan and pinch zoom remain out of scope.
 
+Collision groups remain faithful to the active view instead of becoming a third generic marker style. Photo Density groups show up to three deterministically ranked dish photographs with a dish-count badge. Needle Field groups show up to five individual repeat-banded columns with the same dish-count badge. In either mode, the single 52-pixel group control exposes the exact dish and cook totals to assistive technology and opens a list containing every grouped dish.
+
 Canonical dishes may store an owner-selected default map photograph and one versioned approximate point inside their confirmed country. Both remain local, editable presentation preferences. They do not change attempts, photographs, country totals, or all-time history.
 
 ## Interaction

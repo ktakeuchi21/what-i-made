@@ -195,5 +195,28 @@
     }));
   }
 
-  return { MAP_DATA_VERSION, parsePath, pointInRings, countryGeometry, isPointInCountry, validateMapLocation, resolvedPosition, repeatBand, collisionGroups };
+  function clusterVisualModel(members, mode = "photo") {
+    const normalizedMode = mode === "needle" ? "needle" : "photo";
+    const visibleLimit = normalizedMode === "needle" ? 5 : 3;
+    const ranked = members.slice().sort((left, right) => {
+      const countDifference = Number(right.attemptCount || 0) - Number(left.attemptCount || 0);
+      if (countDifference) return countDifference;
+      const recencyDifference = String(right.latestCookedAt || "").localeCompare(String(left.latestCookedAt || ""));
+      if (recencyDifference) return recencyDifference;
+      const nameDifference = String(left.dishName || "").localeCompare(String(right.dishName || ""));
+      return nameDifference || String(left.dishId || "").localeCompare(String(right.dishId || ""));
+    });
+    return {
+      mode: normalizedMode,
+      dishCount: ranked.length,
+      cookCount: ranked.reduce((sum, dish) => sum + Math.max(0, Number(dish.attemptCount || 0)), 0),
+      visible: ranked.slice(0, visibleLimit).map((dish) => ({
+        dish,
+        band: repeatBand(Number(dish.attemptCount || 0)),
+      })),
+      hiddenCount: Math.max(0, ranked.length - visibleLimit),
+    };
+  }
+
+  return { MAP_DATA_VERSION, parsePath, pointInRings, countryGeometry, isPointInCountry, validateMapLocation, resolvedPosition, repeatBand, collisionGroups, clusterVisualModel };
 });

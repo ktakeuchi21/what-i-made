@@ -4,6 +4,20 @@
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas, backup/restore, navigation, and responsive behavior
 
+## Dense map-mode correction — September 9, 2026
+
+### Automated proof
+
+- The full client, domain, and voice regression suite passes all 183 tests. New coverage proves deterministic frequency/recency/name ranking, Photo Density's three-image limit, Needle Field's five-column limit, repeat-band assignment, exact aggregate cook counts, and hidden-item counts for dense clusters.
+- Syntax checks pass for the updated browser and geometry modules. The existing collision tests continue to prove deterministic grouping, same-country versus mixed-country behavior, and the 44-pixel minimum separation boundary.
+
+### Browser proof
+
+- At 375×812, dense East Asia changed visibly between a three-photograph stack and a four-column Needle Field while keeping the same four dishes and seven cooks.
+- The segmented control exposed the correct `aria-pressed` state, the live status named the active mode, and the dense control's accessible name stated dish count, cook count, mode, location, and action.
+- The dense control measured 52×52 CSS pixels, the document width matched the 375-pixel viewport, and its sheet exposed all four underlying dishes with exact counts. The exercised flow produced no console errors or warnings.
+- Visual inspection confirmed both treatments remain readable over the map, retain the warm journal styling, and do not create overlapping hit areas.
+
 ## Public sample archive — September 9, 2026
 
 ### Automated proof

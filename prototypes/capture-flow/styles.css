@@ -2511,13 +2511,82 @@ select[aria-invalid="true"] {
 }
 
 .dense-map-cluster {
+  display: block;
+  overflow: visible;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+}
+
+.dense-photo-stack,
+.dense-needle-field {
+  position: absolute;
+  inset: 2px;
+}
+
+.dense-photo-stack img {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  background: var(--surface);
+  border: 2px solid var(--surface-strong);
+  border-radius: 11px;
+  box-shadow: 0 4px 12px rgb(15 18 14 / 30%);
+}
+
+.dense-photo-stack img:nth-child(1) { transform: translate(-5px, -3px) rotate(-7deg); }
+.dense-photo-stack img:nth-child(2) { transform: translate(3px, -1px) rotate(5deg); }
+.dense-photo-stack img:nth-child(3) { transform: translate(0, 5px) rotate(-1deg); }
+.dense-photo-stack img[data-band="1"] { opacity: 0.72; }
+.dense-photo-stack img[data-band="2"] { opacity: 0.79; }
+.dense-photo-stack img[data-band="3"] { opacity: 0.86; }
+.dense-photo-stack img[data-band="4"] { opacity: 0.93; }
+.dense-photo-stack img[data-band="5"] { opacity: 1; filter: saturate(1.08); }
+
+.dense-needle-field {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 7px 6px;
+  background: color-mix(in srgb, var(--surface-strong) 74%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  border-radius: 13px;
+  box-shadow: 0 4px 12px rgb(15 18 14 / 22%);
+}
+
+.dense-needle {
+  width: 5px;
+  height: 12px;
+  flex: 0 0 5px;
+  background: color-mix(in srgb, var(--terracotta) 35%, var(--moss));
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 4px 4px 1px 1px;
+  box-shadow: 0 2px 5px rgb(15 18 14 / 20%);
+}
+
+.dense-needle[data-band="2"] { height: 18px; background: color-mix(in srgb, var(--terracotta) 48%, var(--moss)); }
+.dense-needle[data-band="3"] { height: 25px; background: color-mix(in srgb, var(--terracotta) 61%, var(--moss)); }
+.dense-needle[data-band="4"] { height: 33px; background: color-mix(in srgb, var(--terracotta) 75%, var(--moss)); }
+.dense-needle[data-band="5"] { height: 40px; background: var(--terracotta); }
+
+.dense-cluster-count {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
   display: grid;
+  min-width: 22px;
+  height: 22px;
+  padding-inline: 4px;
   place-items: center;
   color: var(--on-terracotta);
   background: var(--terracotta);
-  border: 3px solid var(--surface-strong);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgb(15 18 14 / 28%);
+  border: 2px solid var(--canvas);
+  border-radius: 12px;
+  font-size: 0.65rem;
   font-weight: 850;
 }
 

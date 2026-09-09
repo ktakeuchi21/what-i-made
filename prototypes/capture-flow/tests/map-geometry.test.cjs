@@ -57,3 +57,24 @@ test("detects vertical overlap using the letterboxed map layer height", () => {
 test("maps repeat counts into the five calm visual bands", () => {
   assert.deepEqual([1, 2, 3, 4, 5, 7, 8, 100].map(geometry.repeatBand), [1, 2, 3, 3, 4, 4, 5, 5]);
 });
+
+test("builds deterministic mode-aware visuals for dense clusters", () => {
+  const members = [
+    { dishId: "d", dishName: "D", attemptCount: 1, latestCookedAt: "2025-09-01" },
+    { dishId: "b", dishName: "B", attemptCount: 3, latestCookedAt: "2025-08-01" },
+    { dishId: "a", dishName: "A", attemptCount: 3, latestCookedAt: "2025-09-01" },
+    { dishId: "c", dishName: "C", attemptCount: 2, latestCookedAt: "2025-10-01" },
+    { dishId: "e", dishName: "E", attemptCount: 1, latestCookedAt: "2025-08-01" },
+    { dishId: "f", dishName: "F", attemptCount: 1, latestCookedAt: "2025-07-01" },
+  ];
+  const photo = geometry.clusterVisualModel(members, "photo");
+  assert.equal(photo.mode, "photo");
+  assert.equal(photo.dishCount, 6);
+  assert.equal(photo.cookCount, 11);
+  assert.equal(photo.hiddenCount, 3);
+  assert.deepEqual(photo.visible.map(({ dish, band }) => [dish.dishId, band]), [["a", 3], ["b", 3], ["c", 2]]);
+  const needle = geometry.clusterVisualModel(members, "needle");
+  assert.equal(needle.mode, "needle");
+  assert.equal(needle.hiddenCount, 1);
+  assert.deepEqual(needle.visible.map(({ dish }) => dish.dishId), ["a", "b", "c", "d", "e"]);
+});

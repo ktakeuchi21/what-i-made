@@ -1883,21 +1883,43 @@
     return button;
   }
 
-  function makeCollisionControl(group, region) {
+  function makeCollisionControl(group, options) {
     const countries = [...new Set(group.members.map((dish) => dish.countryName))];
+    const visual = mapGeometry.clusterVisualModel(group.members, state.mapMode);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "dense-map-cluster";
+    button.className = `dense-map-cluster is-${visual.mode}`;
     button.style.setProperty("--map-x", `${group.x}%`);
     button.style.setProperty("--map-y", `${group.y}%`);
-    button.textContent = `+${group.members.length}`;
-    if (group.kind === "country") {
-      button.setAttribute("aria-label", `${group.members.length} dishes in ${countries[0]}, open close-up`);
-      button.addEventListener("click", () => openCountryDetail(group.members[0].countryKey, button));
+    button.dataset.mode = visual.mode;
+    const artwork = document.createElement("span");
+    if (visual.mode === "photo") {
+      artwork.className = "dense-photo-stack";
+      visual.visible.forEach(({ dish, band }) => {
+        const image = document.createElement("img");
+        image.src = mapMarkerPhotoUrl(dish);
+        image.alt = "";
+        image.dataset.band = String(band);
+        artwork.append(image);
+      });
     } else {
-      button.setAttribute("aria-label", `${group.members.length} nearby dishes across ${countries.join(" and ")}`);
-      button.addEventListener("click", () => openNearbySheet(group.members, region, button));
+      artwork.className = "dense-needle-field";
+      visual.visible.forEach(({ band }) => {
+        const needle = document.createElement("span");
+        needle.className = "dense-needle";
+        needle.dataset.band = String(band);
+        artwork.append(needle);
+      });
     }
+    const count = document.createElement("span");
+    count.className = "dense-cluster-count";
+    count.textContent = String(visual.dishCount);
+    count.setAttribute("aria-hidden", "true");
+    button.append(artwork, count);
+    const location = countries.length === 1 ? countries[0] : countries.join(" and ");
+    const modeLabel = visual.mode === "photo" ? "Photo Density" : "Needle Field";
+    button.setAttribute("aria-label", `${pluralize(visual.dishCount, "dish", "dishes")} near ${location}, ${pluralize(visual.cookCount, "cook")}, ${modeLabel}; ${options.actionLabel}`);
+    button.addEventListener("click", () => options.onClick(button));
     return button;
   }
 
@@ -1911,11 +1933,22 @@
       scale: region.scale,
     });
     groups.forEach((group) => {
-      fullMapCells.append(group.kind === "dish" ? makeDishMapMarker(group.members[0]) : makeCollisionControl(group, region));
+      if (group.kind === "dish") {
+        fullMapCells.append(makeDishMapMarker(group.members[0]));
+        return;
+      }
+      fullMapCells.append(makeCollisionControl(group, group.kind === "country" ? {
+        actionLabel: "open country close-up",
+        onClick: (button) => openCountryDetail(group.members[0].countryKey, button),
+      } : {
+        actionLabel: "browse nearby dishes",
+        onClick: (button) => openNearbySheet(group.members, region, button),
+      }));
     });
+    const modeLabel = state.mapMode === "photo" ? "Photo Density" : "Needle Field";
     $("#map-status").textContent = groups.some((group) => group.kind !== "dish")
-      ? "Nearby dishes are grouped where full-size controls would overlap. Tap a group for a closer view."
-      : `${pluralize(region.countryCount, "country", "countries")} represented in your cooking this year.`;
+      ? `${modeLabel} is active. Nearby dishes share one non-overlapping control; tap a group for every dish and exact count.`
+      : `${modeLabel} is active. ${pluralize(region.countryCount, "country", "countries")} represented in your cooking this year.`;
   }
 
   function setCountryViewport(countryKey) {
@@ -1966,16 +1999,15 @@
         fullMapCells.append(makeDishMapMarker(group.members[0]));
         return;
       }
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "dense-map-cluster";
-      button.style.setProperty("--map-x", `${group.x}%`);
-      button.style.setProperty("--map-y", `${group.y}%`);
-      button.textContent = `+${group.members.length}`;
-      button.setAttribute("aria-label", `${group.members.length} overlapping dishes in ${country.countryName}, browse the complete list`);
-      button.addEventListener("click", () => openCountrySheet(country.countryKey, button));
-      fullMapCells.append(button);
+      fullMapCells.append(makeCollisionControl(group, {
+        actionLabel: "browse the complete country list",
+        onClick: (button) => openCountrySheet(country.countryKey, button),
+      }));
     });
+    const modeLabel = state.mapMode === "photo" ? "Photo Density" : "Needle Field";
+    $("#map-status").textContent = groups.some((group) => group.kind !== "dish")
+      ? `${modeLabel} is active. Overlapping dishes share one control; the shelf below includes every dish and exact count.`
+      : `${modeLabel} is active. Every dish is also available in the shelf below.`;
   }
 
   function openCountryDetail(countryKey, trigger = null) {
@@ -1990,7 +2022,6 @@
     $("#map-eyebrow").textContent = `${region.name} · ${pluralize(country.dishCount, "dish", "dishes")}`;
     $("#map-title").textContent = country.countryName;
     $("#map-summary").textContent = "Choose a dish on the close-up map or from the shelf below.";
-    $("#map-status").textContent = "The close-up uses approximate culinary locations. Every dish remains available below.";
     $("#country-shelf-title").textContent = `Dishes from ${country.countryName}`;
     $("#map-back-label").textContent = region.name;
     renderCountryDetailMarkers(country);
@@ -4471,7 +4502,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=42").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=43").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

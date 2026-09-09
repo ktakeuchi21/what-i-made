@@ -35,6 +35,7 @@
 ## Advanced dish controls
 
 - Focused regions expose one labeled segmented control for Photo Density and Needle Field. Photo Density is the initial mode; the last owner choice is remembered on-device.
+- Dense-area controls visually preserve the selected mode: overlapping photographs become a small photo stack, while overlapping needles become a compact multi-column field. The badge counts grouped dishes, and the accessible label also states the exact cook total.
 - Both modes use five repeat bands: 1, 2, 3–4, 5–7, and 8+ selected-year cooks. Photo cells never grow; needles change height. Exact numeric counts remain visible.
 - Collision groups preserve 44-pixel targets with 8-pixel separation. Same-country groups open a fitted country close-up; mixed-country groups open a nearby-dishes sheet grouped by country.
 - Country close-ups remain tap-driven. Free pan, pinch zoom, and horizontal scrolling inside the map are not introduced.

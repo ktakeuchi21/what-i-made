@@ -32,12 +32,12 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v42/);
-  assert.match(worker, /\.\/app\.js\?v=42/);
-  assert.match(worker, /\.\/styles\.css\?v=42/);
-  assert.match(html, /\.\/app\.js\?v=42/);
-  assert.match(html, /\.\/styles\.css\?v=42/);
-  assert.match(app, /\.\/sw\.js\?v=42/);
+  assert.match(worker, /what-i-made-capture-v43/);
+  assert.match(worker, /\.\/app\.js\?v=43/);
+  assert.match(worker, /\.\/styles\.css\?v=43/);
+  assert.match(html, /\.\/app\.js\?v=43/);
+  assert.match(html, /\.\/styles\.css\?v=43/);
+  assert.match(app, /\.\/sw\.js\?v=43/);
 });
 
 test("signed-out discovery and demo safety copy ship together", () => {
