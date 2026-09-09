@@ -17,6 +17,7 @@
 - The segmented control exposed the correct `aria-pressed` state, the live status named the active mode, and the dense control's accessible name stated dish count, cook count, mode, location, and action.
 - The dense control measured 52×52 CSS pixels, the document width matched the 375-pixel viewport, and its sheet exposed all four underlying dishes with exact counts. The exercised flow produced no console errors or warnings.
 - Visual inspection confirmed both treatments remain readable over the map, retain the warm journal styling, and do not create overlapping hit areas.
+- Amplify production deployment job 18 succeeded on September 9, 2026. The live `?demo=1` archive loaded the version-43 assets; East Asia switched from three photographs to four needles, retained its four-dish/seven-cook label and 52×52 control, and opened all four underlying dishes.
 
 ## Public sample archive — September 9, 2026
 
