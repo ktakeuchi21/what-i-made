@@ -15,6 +15,7 @@
   const authConfig = window.WIM_AUTH_CONFIG || { enabled: false };
   const voiceConfig = window.WIM_VOICE_CONFIG || { enabled: false, sessionEndpoint: "", maxCaptureSeconds: 45, fake: false };
   const assistanceConfig = window.WIM_CAPTURE_ASSISTANCE_CONFIG || { enabled: false, endpoint: "", fake: false, timeoutMs: 10000 };
+  const activityConfig = window.WIM_ACTIVITY_CONFIG || { enabled: false, endpoint: "", clientVersion: "unknown" };
   const parser = window.WhatIMadeCaptureParser;
   const captureAssistance = window.WhatIMadeCaptureAssistance;
   const dishMatcher = window.WhatIMadeDishMatcher;
@@ -38,6 +39,8 @@
   const accountContext = window.WhatIMadeAccountContext;
   const authApi = window.WhatIMadeAuth;
   const authClient = authApi?.createAuthClient ? authApi.createAuthClient(authConfig) : null;
+  const activityApi = window.WhatIMadeActivity;
+  const activityClient = activityApi?.createActivityClient ? activityApi.createActivityClient(activityConfig) : null;
   const state = {
     mode: "signedOut",
     demoRepository: null,
@@ -520,6 +523,7 @@
     state.countrySuggestion = null;
     state.touchedFields = new Set();
     state.archiveKey = "";
+    activityClient?.setAccount?.("");
     captureForm.reset();
     confirmForm.reset();
     editForm.reset();
@@ -547,6 +551,7 @@
     if (isDemoMode()) resetDemoTransientState();
     state.mode = "account";
     state.archiveKey = archiveKey;
+    activityClient?.setAccount?.(archiveKey);
     state.mapMode = readMapMode(archiveKey);
     state.authSession = session;
     state.accessToken = session.accessToken || "";
@@ -557,6 +562,7 @@
       : "This device opens only this account’s local archive.";
     await initializeApp();
     await offerLegacyMigration();
+    void flushActivity();
   }
 
   function migrationMarkerKey() {
@@ -803,6 +809,22 @@
       }
       throw error;
     }
+  }
+
+  async function flushActivity() {
+    if (state.mode !== "account" || !activityClient || !activityConfig.enabled || navigator.onLine === false) return;
+    await activityClient.flush(async () => {
+      const session = await authClient.getSessionForNetwork();
+      if (state.mode !== "account" || !state.authSession?.subject || session.subject !== state.authSession.subject) throw new Error("The active account changed before activity could be synchronized.");
+      state.authSession = session;
+      state.accessToken = session.accessToken;
+      return session.accessToken;
+    }).catch(() => {});
+  }
+
+  function recordActivity(type) {
+    if (state.mode !== "account" || !activityClient || !activityConfig.enabled) return;
+    void activityClient.record(type).then(() => flushActivity()).catch(() => {});
   }
 
   async function lockPrivateArchive(reason, clearSession = true) {
@@ -2827,8 +2849,10 @@
     button.setAttribute("aria-busy", "true");
     button.textContent = state.ideaReviewMode === "refresh" ? "Saving refreshed recipe…" : "Saving idea…";
     error.hidden = true;
+    const activityType = state.ideaReviewMode === "new" ? "idea_created" : "idea_updated";
     try {
       const id = await ideas.saveIdea(input, state.ideaDraftImage);
+      recordActivity(activityType);
       await ideas.clearDraft();
       state.ideaDraft = null;
       state.ideaDraftImage = null;
@@ -3315,7 +3339,7 @@
       remove.type = "button"; remove.className = "text-button danger-text"; remove.textContent = "Remove dish"; remove.disabled = occasion.attempts.length <= 1;
       remove.addEventListener("click", async () => {
         if (!window.confirm(`Remove ${attempt.dishName} from this occasion? Its non-main assigned photos will also be removed.`)) return;
-        try { await archive.removeDishAttempt(occasion.id, attempt.id); await openCook(occasion.id, { returnTo: state.entryReturnScreen, status: `${attempt.dishName} removed.` }); }
+        try { await archive.removeDishAttempt(occasion.id, attempt.id); recordActivity("cook_updated"); await openCook(occasion.id, { returnTo: state.entryReturnScreen, status: `${attempt.dishName} removed.` }); }
         catch (error) { entryStatus.textContent = error.message; entryStatus.hidden = false; }
       });
       actions.append(edit, remove);
@@ -3371,6 +3395,7 @@
         processed.push(photoProcessor?.processPhoto ? await photoProcessor.processPhoto(files[index]) : { blob: files[index] });
       }
       await archive.addPhotosToOccasion(state.currentOccasionId, processed);
+      recordActivity("cook_updated");
       await refreshEntry(`${files.length} ${files.length === 1 ? "photo" : "photos"} added.`);
     } catch (error) {
       entryStatus.textContent = error.message || "The photographs could not be added. Nothing was changed.";
@@ -3400,6 +3425,7 @@
       const photoFile = $("#add-dish-photo").files?.[0];
       if (photoFile) input.photo = photoProcessor?.processPhoto ? await photoProcessor.processPhoto(photoFile) : { blob: photoFile };
       await archive.addDishToOccasion(state.currentOccasionId, input);
+      recordActivity("cook_updated");
       await refreshEntry(`${input.dishName} added.`);
     } catch (error) { $("#add-dish-error").textContent = error.message || "The dish could not be added."; $("#add-dish-error").hidden = false; }
     finally { button.disabled = false; button.removeAttribute("aria-busy"); }
@@ -3585,6 +3611,7 @@
         ...values,
         ...(state.editPhotoBlob ? { photoBlob: state.editPhotoBlob } : {}),
       });
+      recordActivity("cook_updated");
       saved = true;
     } catch (error) {
       editError.textContent = error.message || "Your changes could not be saved. Nothing was lost.";
@@ -3904,6 +3931,8 @@
       const dishes = [{ dishName: confirmedName, rating: $("#confirm-rating").value, notes: $("#confirm-notes").value, ingredients: $("#confirm-ingredients").value, country: $("#confirm-country").value, transcript: transcript.value, sourceIdeaId: state.pendingIdeaId, matchedDishId: state.primaryMatchedDishId || null, forceNewDish: state.primaryForceNewDish, speechAlias: primarySpeechAlias() }, ...extraDishes];
       const photos = [{ blob: photoBlob, dishIndex: 0 }, ...extraDishes.flatMap((dish, index) => dish.processed ? [{ ...dish.processed, dishIndex: index + 1 }] : [])];
       state.currentOccasionId = await archive.saveOccasion({ cookedAt: $("#confirm-date").value, dishes, photos });
+      recordActivity("cook_created");
+      if (dishes.some((dish) => dish.sourceIdeaId)) recordActivity("idea_completed");
       state.currentCookId = state.currentOccasionId;
       const seconds = state.startedAt === null ? null : Math.max(1, Math.round((performance.now() - state.startedAt) / 1000));
       const confirmedRating = $("#confirm-rating").value || "—";
@@ -4228,16 +4257,16 @@
   $("#close-photo-actions").addEventListener("click", closePhotoActions);
   photoActionsDialog.addEventListener("cancel", (event) => { event.preventDefault(); closePhotoActions(); });
   $("#photo-dish-assignment").addEventListener("change", async (event) => {
-    try { await archive.updatePhoto(state.currentOccasionId, state.selectedEntryPhotoId, { dishAttemptId: event.target.value || null }); closePhotoActions(); await refreshEntry("Photo assignment updated."); }
+    try { await archive.updatePhoto(state.currentOccasionId, state.selectedEntryPhotoId, { dishAttemptId: event.target.value || null }); recordActivity("cook_updated"); closePhotoActions(); await refreshEntry("Photo assignment updated."); }
     catch (error) { $("#photo-actions-message").textContent = error.message; }
   });
   $("#make-main-photo").addEventListener("click", async () => {
-    try { await archive.updatePhoto(state.currentOccasionId, state.selectedEntryPhotoId, { makeMain: true }); closePhotoActions(); await refreshEntry("Main photo updated."); }
+    try { await archive.updatePhoto(state.currentOccasionId, state.selectedEntryPhotoId, { makeMain: true }); recordActivity("cook_updated"); closePhotoActions(); await refreshEntry("Main photo updated."); }
     catch (error) { $("#photo-actions-message").textContent = error.message; }
   });
   $("#delete-entry-photo").addEventListener("click", async () => {
     if (!window.confirm("Delete this photograph?")) return;
-    try { await archive.deletePhoto(state.currentOccasionId, state.selectedEntryPhotoId); closePhotoActions(); await refreshEntry("Photo deleted."); }
+    try { await archive.deletePhoto(state.currentOccasionId, state.selectedEntryPhotoId); recordActivity("cook_updated"); closePhotoActions(); await refreshEntry("Photo deleted."); }
     catch (error) { $("#photo-actions-message").textContent = error.message; }
   });
   $("#journal-photo-recap").addEventListener("click", () => {
@@ -4404,6 +4433,7 @@
     const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (!idea || !window.confirm(`Delete ${idea.title}? Your cooked history will stay intact.`)) return;
     await ideas.deleteIdea(idea.id);
+    recordActivity("idea_deleted");
     state.currentIdeaId = "";
     await openIdeas({ restoreScroll: false });
   });
@@ -4441,6 +4471,7 @@
     if (adapter) void adapter.cancel("Page closed");
   });
   window.addEventListener("pageshow", () => void validateVisibleAccount());
+  window.addEventListener("online", () => void flushActivity());
   document.addEventListener("visibilitychange", () => void validateVisibleAccount());
   window.addEventListener("popstate", () => {
     const wantsDemo = new URLSearchParams(window.location.search).get("demo") === "1";
@@ -4453,7 +4484,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=49").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=51").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

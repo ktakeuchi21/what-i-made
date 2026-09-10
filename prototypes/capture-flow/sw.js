@@ -1,11 +1,11 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v49";
+const CACHE_NAME = "what-i-made-capture-v51";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css?v=49",
-  "./config.js?v=35",
+  "./config.js?v=51",
   "./transcribe-codec.js?v=16",
   "./transcribe-adapter.js?v=40",
   "./capture-parser.js?v=16",
@@ -20,7 +20,8 @@ const APP_SHELL = [
   "./dish-recognizer.js?v=40",
   "./map-geometry.js?v=44",
   "./account-context.js?v=31",
-  "./auth-session.js?v=49",
+  "./auth-session.js?v=51",
+  "./activity-client.js?v=51",
   "./archive-store.js?v=31",
   "./idea-store.js?v=18",
   "./archive-backup.js?v=29",
@@ -31,7 +32,7 @@ const APP_SHELL = [
   "./journal-model.js?v=25",
   "./demo-archive.js?v=49",
   "./audio-worklet.js",
-  "./app.js?v=49",
+  "./app.js?v=51",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",
@@ -57,6 +58,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.includes("/admin/") || requestUrl.pathname.includes("/privacy/")) return;
 
   if (event.request.mode === "navigate") {
     event.respondWith(

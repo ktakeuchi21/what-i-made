@@ -23,7 +23,7 @@ window.WIM_AUTH_CONFIG = Object.freeze({
   domain: configuredAuthDomain,
   clientId: configuredAuthClientId,
   redirectUri: `${window.location.origin}${window.location.pathname}`,
-  scopes: ["openid", "email", "what-i-made/capture", "what-i-made/recipes"],
+  scopes: ["openid", "email", "what-i-made/capture", "what-i-made/recipes", "what-i-made/activity", "what-i-made/admin"],
   legacyOwnerArchiveKey: document.querySelector('meta[name="wim-legacy-owner-archive-key"]')?.content.trim().toLowerCase() || "",
 });
 
@@ -73,4 +73,10 @@ window.WIM_RECIPE_CONFIG = Object.freeze({
   enabled: invitationAuthConfigured && (localRecipeService || Boolean(deployedRecipeEndpoint)),
   endpoint: deployedRecipeEndpoint,
   fake: localRecipeService,
+});
+
+window.WIM_ACTIVITY_CONFIG = Object.freeze({
+  enabled: invitationAuthConfigured && Boolean(serviceApiEndpoint),
+  endpoint: serviceApiEndpoint,
+  clientVersion: "51",
 });

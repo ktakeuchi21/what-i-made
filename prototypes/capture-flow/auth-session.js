@@ -9,7 +9,7 @@
   "use strict";
 
   const AUTH_DB_NAME = "what-i-made-auth-v1";
-  const AUTH_DB_VERSION = 1;
+  const AUTH_DB_VERSION = 2;
   const AUTH_STORE_NAME = "session";
   const SESSION_ID = "current";
   const OAUTH_TRANSACTION_KEY = "what-i-made-oauth-transaction";
@@ -222,6 +222,8 @@
         const request = indexedDb.open(AUTH_DB_NAME, AUTH_DB_VERSION);
         request.onupgradeneeded = () => {
           if (!request.result.objectStoreNames.contains(AUTH_STORE_NAME)) request.result.createObjectStore(AUTH_STORE_NAME, { keyPath: "id" });
+          if (!request.result.objectStoreNames.contains("activityOutbox")) request.result.createObjectStore("activityOutbox", { keyPath: "id" });
+          if (!request.result.objectStoreNames.contains("activityMeta")) request.result.createObjectStore("activityMeta", { keyPath: "id" });
         };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error || new Error("Private sign-in storage could not be opened."));

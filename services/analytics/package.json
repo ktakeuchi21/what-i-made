@@ -1,0 +1,14 @@
+{
+  "name": "what-i-made-owner-analytics-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "lambda.js",
+  "scripts": { "test": "node --test tests/*.test.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.888.0",
+    "@aws-sdk/client-dynamodb": "^3.888.0",
+    "@aws-sdk/client-lambda": "^3.888.0"
+  }
+}

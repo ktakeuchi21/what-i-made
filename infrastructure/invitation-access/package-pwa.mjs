@@ -24,6 +24,7 @@ const STATIC_FILES = Object.freeze([
   "map-geometry.js",
   "account-context.js",
   "auth-session.js",
+  "activity-client.js",
   "archive-store.js",
   "idea-store.js",
   "archive-backup.js",
@@ -45,6 +46,12 @@ const STATIC_FILES = Object.freeze([
   "assets/favicon-32.png",
   "assets/sample-oyakodon.jpg",
   "assets/demo/demo-content.json",
+  "admin/index.html",
+  "admin/admin.css",
+  "admin/admin-request.js",
+  "admin/admin.js",
+  "privacy/index.html",
+  "privacy/privacy.css",
 ]);
 
 const DEMO_MEDIA_BUDGET = 12 * 1024 * 1024;
@@ -251,6 +258,8 @@ async function packagePwa(values = process.argv.slice(2)) {
     const sourceHtml = await readFile(join(staging, "index.html"), "utf8");
     const configuredHtml = injectConfiguration(sourceHtml, configuration);
     await writeFile(join(staging, "index.html"), configuredHtml, "utf8");
+    const adminHtml = await readFile(join(staging, "admin/index.html"), "utf8");
+    await writeFile(join(staging, "admin/index.html"), injectConfiguration(adminHtml, configuration), "utf8");
     await writeFile(join(staging, "customHttp.yml"), amplifyHeaders(contentSecurityPolicy(configuration)), "utf8");
     await rename(staging, output);
   } catch (error) {

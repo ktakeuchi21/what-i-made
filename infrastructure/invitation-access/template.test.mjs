@@ -25,3 +25,15 @@ test("configures independent models and optional culinary vocabulary", async () 
   assert.match(template, /BEDROCK_MODEL_ID: !Ref RecipeBedrockModelId/);
   assert.doesNotMatch(template, /^  BedrockModelId:/m);
 });
+
+test("adds owner-only metadata analytics without archive storage", async () => {
+  const template = await readFile(templateUrl, "utf8");
+  assert.match(template, /AnalyticsTable:[\s\S]*TimeToLiveSpecification:[\s\S]*AttributeName: expiresAt/);
+  assert.match(template, /GroupName: what-i-made-admins/);
+  assert.match(template, /PostAuthentication: !GetAtt AnalyticsPostAuthenticationFunction\.Arn/);
+  assert.match(template, /Path: \/v1\/activity\/events[\s\S]*AuthorizationScopes: \[what-i-made\/activity\]/);
+  assert.match(template, /Path: \/v1\/admin\/analytics\/summary[\s\S]*AuthorizationScopes: \[what-i-made\/admin\]/);
+  assert.match(template, /CallbackURLs: \[!Ref CallbackUrl, !Ref AdminCallbackUrl\]/);
+  assert.match(template, /AllowMethods: \[GET, POST, DELETE, OPTIONS\]/);
+  assert.doesNotMatch(template, /dishName|recipeTitle|photoBlob/);
+});

@@ -19,11 +19,15 @@ test("packages only allowlisted runtime files with public invitation configurati
   try {
     await packagePwa(["--output", output, ...configuration, "--legacy-owner-archive-key", "a".repeat(64)]);
     const html = await readFile(join(output, "index.html"), "utf8");
+    const adminHtml = await readFile(join(output, "admin/index.html"), "utf8");
     assert.match(html, /wim-auth-domain" content="https:\/\/what-i-made\.auth\.us-east-2\.amazoncognito\.com"/);
     assert.match(html, /wim-auth-client-id" content="12345678abcdefgh"/);
     assert.match(html, /wim-service-api-endpoint" content="https:\/\/abc123\.execute-api\.us-east-2\.amazonaws\.com"/);
     assert.match(html, /wim-legacy-owner-archive-key" content="a{64}"/);
     assert.match(html, /http-equiv="Content-Security-Policy"/);
+    assert.match(adminHtml, /wim-auth-domain" content="https:\/\/what-i-made\.auth\.us-east-2\.amazoncognito\.com"/);
+    assert.match(adminHtml, /wim-service-api-endpoint" content="https:\/\/abc123\.execute-api\.us-east-2\.amazonaws\.com"/);
+    assert.match(adminHtml, /http-equiv="Content-Security-Policy"/);
     assert.match(html, /meta name="referrer" content="no-referrer"/);
     assert.match(html, /connect-src 'self' https:\/\/what-i-made\.auth\.us-east-2\.amazoncognito\.com https:\/\/abc123\.execute-api\.us-east-2\.amazonaws\.com wss:\/\/transcribestreaming\.us-east-2\.amazonaws\.com:8443/);
     assert.deepEqual((await readdir(output)).sort(), [...new Set([...STATIC_FILES.map((path) => path.split("/")[0]), "customHttp.yml"])].sort());
@@ -40,6 +44,7 @@ test("packages only allowlisted runtime files with public invitation configurati
     assert.equal(DEMO_MEDIA_BUDGET, 12 * 1024 * 1024);
     assert.equal((await readdir(output)).includes("tests"), false);
     assert.equal((await readdir(output)).includes("TEST_REPORT.md"), false);
+    assert.ok((await stat(join(output, "privacy/index.html"))).isFile());
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

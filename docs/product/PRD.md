@@ -95,14 +95,14 @@ The interactive capture and confirmation prototype lives at [`prototypes/capture
 
 ## 6. Success metrics
 
-Because there is one owner and no third-party analytics, success is evaluated through direct use, small local counters, and explicit real-device tests.
+Because this is a small invitation-only product, success is evaluated through direct use, privacy-safe first-party activity metadata, local product signals, and explicit real-device tests. The owner dashboard never receives archive content.
 
 ### Primary metric
 
 - **Cooking capture coverage:** Number of newly cooked occasions recorded divided by the owner’s recalled cooking occasions during a four-week trial.
 - **Baseline:** Approximately 0% structured records today.
 - **Target:** 🔶 **Assumption:** At least 80% during the first four weeks is a practical interpretation of “most dishes.”
-- **Measurement:** A local weekly review; no external analytics.
+- **Measurement:** A weekly owner review of completed sign-ins and metadata-only cook and Idea activity; no third-party analytics.
 
 ### Secondary metrics
 
@@ -248,6 +248,15 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - **Then:** Each account opens only its SHA-256-scoped local database, the prior account disappears before the next opens, and no archive record or photograph is synchronized to AWS.
 - **And:** Account and sign-out remain directly reachable from every top-level archive destination; sign-out preserves local records and returns to invitation sign-in.
 
+### US-14 — Review invitation activity privately
+
+**As the product owner, I want a private analytics view, so that I can understand whether invited people sign in and record cooks without seeing their archive content.**
+
+- **Given:** My Cognito account belongs to the owner analytics group.
+- **When:** I open `/admin/` and choose a date range.
+- **Then:** I see invited-account status, completed sign-ins, active users, and metadata-only cook and Idea counts tracked since launch.
+- **And:** Dish names, countries, ratings, notes, recipe details, photographs, and local archive identifiers never appear in analytics requests or storage.
+
 ### Cross-cutting constraints
 
 - The target surface is an iPhone Home Screen PWA over HTTPS.
@@ -261,6 +270,7 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - All AI-derived fields remain editable and require confirmation.
 - The app contains no shipped AWS credentials and sends no photographs externally.
 - Invitation membership uses Cognito managed email-code login; self-registration is disabled, explicit sign-out returns to an interactive invited-email login, and protected services require scoped access tokens.
+- First-party owner analytics record completed authentication and successful action types only. Detailed events expire after 12 months, and only the owner Cognito group may read or erase them.
 - Offline archive access ends seven days after the last successful authorization without deleting local data.
 - Touch targets are at least 44 by 44 CSS pixels, visible labels remain present, and core behavior works with VoiceOver, keyboard navigation, enlarged text, landscape, and reduced motion.
 - Detailed technical invariants and acceptance criteria remain authoritative in the [PWA foundation](../technical/pwa-foundation/design.md).

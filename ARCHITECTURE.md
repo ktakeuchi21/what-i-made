@@ -2,7 +2,7 @@
 
 ## Executive summary
 
-What I Made is a static, invitation-only iPhone web app for keeping separate private cooking archives. A public, fictional sample archive is available before sign-in and is isolated from every private archive. An account-scoped IndexedDB database is the source of truth for cooks, dishes, attempts, photographs, recipe Ideas, and Idea images. Cognito establishes membership but stores no archive content. The app may stream a live microphone to Amazon Transcribe and send explicitly submitted text to JWT-protected AWS services. Archive records and personal photographs stay on the device.
+What I Made is a static, invitation-only iPhone web app for keeping separate private cooking archives. A public, fictional sample archive is available before sign-in and is isolated from every private archive. An account-scoped IndexedDB database is the source of truth for cooks, dishes, attempts, photographs, recipe Ideas, and Idea images. Cognito establishes membership but stores no archive content. The app may stream a live microphone to Amazon Transcribe, send explicitly submitted text to JWT-protected AWS services, and send content-free action types to a first-party analytics service. Archive records and personal photographs stay on the device.
 
 The load-bearing rule is that an authenticated account context must be selected before an archive opens. Remote services may propose editable text, but they never read or write the archive.
 
@@ -32,6 +32,9 @@ Static PWA + Cognito managed login
                     +----> capture assistance -----------> Bedrock
                     +----> Recipe Ideas -----------------> recipe sites / Bedrock
                     +----> DynamoDB pseudonymous rate windows
+                    +----> metadata activity -----------> DynamoDB analytics
+
+Owner at /admin/ --> Cognito admin group --> analytics read API
 ```
 
 `infrastructure/invitation-access/template.yaml` defines the Cognito pool, scoped web client, HTTP API, Lambdas, and rate-limit table. The PWA accepts one protected API base URL and fails closed when invitation auth is enabled without it.
@@ -56,7 +59,15 @@ UI code may depend on authentication, domain, and storage modules. Storage modul
 
 ## Identity and local archives
 
-`auth-session.js` implements Cognito Authorization Code with PKCE, nonce and state verification, refresh, sign-out, and a retained session in the separate `what-i-made-auth-v1` database. It verifies the user-info subject before accepting a session. Refresh cannot change the active subject, and generation plus abort guards prevent an older request from reviving a signed-out session.
+`auth-session.js` implements Cognito Authorization Code with PKCE, nonce and state verification, refresh, sign-out, and a retained session in the separate `what-i-made-auth-v1` database. Version 2 of that authentication database also contains a bounded activity outbox and its overflow marker. Outbox rows carry the originating opaque account digest, preventing a later account from submitting them. They contain only an event ID, allowlisted action type, occurrence time, and client version. The session boundary verifies the user-info subject before accepting a session. Refresh cannot change the active subject, and generation plus abort guards prevent an older request from reviving a signed-out session.
+
+## Owner analytics
+
+The metadata pipeline is separate from the archive. Cognito's post-authentication trigger records a completed sign-in and deliberately returns the authentication event if analytics storage is unavailable. After a successful local archive transaction, `activity-client.js` queues an allowlisted cook or Idea action and asynchronously sends batches of at most 50. Failed delivery cannot fail or roll back a local save. The device queue holds at most 500 events; an overflow is reported as partial analytics.
+
+`services/analytics` validates client event objects with no additional fields, derives the account key from the trusted access-token subject, and ignores any client identity. DynamoDB holds pseudonymous events, per-account summaries, a 12-month event TTL, and an active generation. Reads fail closed above 10,000 current-generation records, and owner lists and timelines use bounded cursor pages. Global erasure switches generations before asynchronous physical deletion; writers condition-check that generation in the same transaction, and a consistent empty verification pass completes before the UI reports physical removal.
+
+The `/admin/` static page loads authentication and analytics code only, never archive repositories. API Gateway checks the admin scope, and the analytics Lambda additionally requires `what-i-made-admins` in the verified group claim. It joins current Cognito directory data with pseudonymous counters at read time, so email is not stored in analytics events. The public `/privacy/` page documents this boundary. The consumer service worker does not intercept admin or privacy navigation and never caches authenticated analytics responses.
 
 `account-context.js` derives a non-readable archive key from the Cognito subject. `archive-store.js` uses that key in an account-specific IndexedDB name and closes stale handles during account changes. IndexedDB version 5 holds occasions, dishes, attempts, cooking photos, Ideas, Idea images, and recoverable Idea drafts. Account-specific map mode uses the same archive key in local storage.
 
@@ -116,6 +127,7 @@ The capture service may invoke Bedrock Mantle or the bounded Runtime fallback. C
 - International dish catalog and resolver: `assets/international-dishes.js`, `dish-recognizer.js`
 - Capture service: `services/capture-assistance`
 - Recipe service: `services/recipe-ideas`
+- Metadata analytics: `services/analytics`, `prototypes/capture-flow/activity-client.js`, `prototypes/capture-flow/admin`
 - Transcribe signer: `spikes/iphone-feasibility/backend/session`
 - AWS stack: `infrastructure/invitation-access/template.yaml`
 - Detailed product decision: `docs/product/invitation-only-access/design.md`
