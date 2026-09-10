@@ -65,8 +65,11 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Accept an explicit or high-confidence country, or choose a lower-confidence country suggestion.
 - Accept, clear, or change proposed dish name, rating, notes, and ingredients.
 - Accept or change the proposed country.
+- Search canonical countries and aliases, then select one map-safe country; ambiguous text such as “Korea” remains unresolved until selected.
+- Review, undo, or replace a uniquely strong international-dish spelling correction.
 - Confirm a unique exact existing-dish match, select an unselected fuzzy candidate, or keep the dish new.
 - Continue manually when voice or parsing fails.
+- Keep uncertain dish transcriptions unchanged and learn confirmed mishearings only as local aliases.
 - Commit the required photo and dish data together.
 - See a clear saved confirmation.
 
@@ -110,10 +113,10 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Identify dishes first tried in the last 30 days.
 - See revisited dishes whose ratings or notes changed.
 - Open a calendar-year photo recap from Year or Journal, grouped by nonempty months with every cook photograph represented.
-- Switch between Needle Field and Photo Density.
-- Select an individual dish in a dense map area and see its exact attempt count.
-- Change the default photograph used by a dish’s Photo Density cell.
-- Open same-country clusters in a fitted close-up and mixed-country clusters in a nearby-dishes chooser.
+- Switch between Cook Density and Culinary Peaks.
+- Compare selected-year country totals through a five-band color scale, capped peak height, and exact ranked summary.
+- Change the default photograph used by a dish’s geographic drill-down and history.
+- Use photographic region and country shelves when a geographic area is too small or dense to tap precisely.
 - Adjust a dish inside its confirmed country by tap, drag, or directional nudge, or reset it to automatic placement.
 
 ### 5. Protect the history
@@ -134,6 +137,42 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Reject corrupt, truncated, or unsupported archives without writing records.
 - Restore all supported data into an empty installation.
 - Confirm restored counts, relationships, and readable optimized images.
+
+### 6. Enter a private invited archive
+
+**Steps**
+
+1. Open the shared PWA link.
+2. Sign in with an invited email and one-time code.
+3. Use only that account's local archive.
+4. Sign out without deleting it.
+
+**Tasks**
+
+- Reject self-registration and uninvited identities.
+- Retain a verified session so normal launches do not require another code.
+- Derive a non-readable account namespace before opening IndexedDB.
+- Keep local features available for up to seven days offline.
+- Require a current scoped token for voice and recipe services.
+- Open Account from every top-level archive view and sign out on this device without erasing its archive.
+- Move the original owner's fixed archive once, only into the configured empty owner archive.
+
+### 7. Understand the product before joining
+
+**Steps**
+
+1. Open the shared app link without an account session.
+2. Enter a fictional sample archive.
+3. Explore the real read-only product surfaces.
+4. Return to sign-in or start an invited session.
+
+**Tasks**
+
+- See a clear sample-archive action before sign-in.
+- Explore a fictional Year, all 13 map regions, Journal discovery, photo recap, histories, and Ideas.
+- See believable real-food photography while retaining access to each photograph's creator, source, license, and disclosed local crop.
+- Keep the sample visibly labeled and route personal actions to invitation sign-in.
+- Enter a private archive without sample state or records.
 
 ## Vertical release slices
 
@@ -185,14 +224,32 @@ Not a product release. Before feature breadth, prove Home Screen installation, c
 
 ### Slice 4 — Culinary atlas
 
-**Outcome:** The archive becomes an inspiring dish-level geographic landscape.
+**Outcome:** The archive becomes an inspiring, immediately comparable geographic landscape.
 
 - Approximate owner-editable dish locations.
-- Needle Field view.
-- Photo Density view.
-- Exact-count selected detail and accessible geographic list.
-- Tap-driven dense-area country close-ups and nearby-dish selection.
+- Cook Density choropleth view.
+- Culinary Peaks height-and-color view.
+- Visible five-band legend, ranked exact-count summary, and accessible geographic shelves.
+- Tap-driven world → region → country → dish navigation with shelf alternatives in dense areas.
 - Editable default map photograph per canonical dish.
+
+### Slice 5 — Invitation-only private archives
+
+**Outcome:** A small invited group can use one app link without sharing archive data or service credentials.
+
+- Owner-administered Cognito membership with email one-time-code managed login.
+- Separate account-scoped IndexedDB archives on the same device.
+- Bounded offline access and complete sign-out cleanup.
+- JWT- and scope-protected paid services with durable pseudonymous rate limits.
+- Controlled, verified migration of the original owner's local archive.
+
+### Slice 6 — Public sample archive
+
+**Outcome:** A prospective invitee can understand the product before signing in without creating or contaminating an archive.
+
+- Lazy-loaded, versioned in-memory fixture with original optimized photography.
+- Explicit `signedOut`, `demo`, and `account` modes with no demo fallback to IndexedDB.
+- Read-only exploration, invitation dialog, URL/Back behavior, runtime caching, and bounded deployment packaging.
 
 ## Deferred releases
 

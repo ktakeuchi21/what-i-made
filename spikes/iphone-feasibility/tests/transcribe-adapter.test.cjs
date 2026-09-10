@@ -148,6 +148,41 @@ test("AC-21: session response must use the exact regional Transcribe path", asyn
   await assert.rejects(adapter.requestSession("token"), /invalid/);
 });
 
+test("requests culinary vocabulary first and retries once without it when the socket cannot open", async () => {
+  const audio = createAudioHarness();
+  const bodies = [];
+  class Socket {
+    static instances = [];
+    constructor(url) {
+      this.url = url; this.readyState = 0; this.listeners = new Map(); this.sent = [];
+      Socket.instances.push(this);
+      queueMicrotask(() => {
+        if (Socket.instances.length === 1) this.emit("error");
+        else { this.readyState = 1; this.emit("open"); }
+      });
+    }
+    addEventListener(name, callback) { if (!this.listeners.has(name)) this.listeners.set(name, new Set()); this.listeners.get(name).add(callback); }
+    removeEventListener(name, callback) { this.listeners.get(name)?.delete(callback); }
+    emit(name, event = {}) { [...(this.listeners.get(name) || [])].forEach((callback) => callback(event)); }
+    send(value) { this.sent.push(value); }
+    close() { this.readyState = 3; }
+  }
+  const adapter = new AwsTranscribeAdapter({
+    endpoint: "https://example.invalid/session",
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body); bodies.push(body);
+      return { ok: true, json: async () => ({ ...validSession, vocabularyApplied: body.useVocabulary }) };
+    },
+    WebSocketImpl: Socket,
+    AudioContextImpl: audio.AudioContext,
+    mediaDevices: audio.mediaDevices,
+  });
+  await adapter.start("access-token");
+  assert.deepEqual(bodies.map((body) => body.useVocabulary), [true, false]);
+  assert.equal(adapter.state, "listening");
+  await adapter.cancel("Finished test");
+});
+
 test("INV-16 and AC-18: cancellation while the session request is pending cannot open a late socket", async () => {
   const audio = createAudioHarness();
   const pendingFetch = deferred();

@@ -1,7 +1,8 @@
 "use strict";
 
-const crypto = require("node:crypto");
 const { validateProviderResult } = require("./parser");
+const { requestIdentity } = require("./request-identity");
+const { createDurableRateLimiter } = require("./rate-limiter");
 
 const MAX_BODY_BYTES = 8192;
 const REQUESTS_PER_MINUTE = 10;
@@ -9,7 +10,6 @@ const REQUESTS_PER_MINUTE = 10;
 function response(statusCode, body) {
   return { statusCode, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" }, body: JSON.stringify(body) };
 }
-function header(headers, name) { return String(Object.entries(headers || {}).find(([key]) => key.toLowerCase() === name)?.[1] || ""); }
 function metricUsage(value) {
   return ["inputTokens", "outputTokens", "totalTokens"].reduce((result, key) => {
     if (Number.isInteger(value?.[key]) && value[key] >= 0) result[key] = value[key];
@@ -28,14 +28,6 @@ function cleanedTokensComeFromSegment(voiceSegment, cleanedVoiceText) {
     return true;
   });
 }
-function authorized(headers, expectedHex) {
-  if (!/^[a-f0-9]{64}$/i.test(expectedHex || "")) return false;
-  const match = /^Bearer ([A-Za-z0-9_-]{32,128})$/.exec(header(headers, "authorization"));
-  if (!match) return false;
-  const actual = crypto.createHash("sha256").update(match[1]).digest();
-  const expected = Buffer.from(expectedHex, "hex");
-  return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
-}
 function readBody(event) {
   const source = typeof event.body === "string" ? event.body : "";
   if (source.length > MAX_BODY_BYTES * 2) throw new Error("invalid_request");
@@ -52,16 +44,7 @@ function readBody(event) {
 function createHandler(dependencies = {}, environment = process.env) {
   const logger = dependencies.logger || console;
   const now = dependencies.now || Date.now;
-  let rateWindowStartedAt = null;
-  let rateWindowCount = 0;
-  const allowRequest = dependencies.allowRequest || ((timestamp) => {
-    if (rateWindowStartedAt === null || timestamp - rateWindowStartedAt >= 60000) {
-      rateWindowStartedAt = timestamp;
-      rateWindowCount = 0;
-    }
-    rateWindowCount += 1;
-    return rateWindowCount <= REQUESTS_PER_MINUTE;
-  });
+  const allowRequest = dependencies.allowRequest || createDurableRateLimiter(environment, { client: dependencies.rateLimitClient });
   return async function handler(event = {}) {
     const requestId = event.requestContext?.requestId || "unknown";
     const startedAt = now();
@@ -70,8 +53,11 @@ function createHandler(dependencies = {}, environment = process.env) {
       return response(statusCode, body);
     };
     if (environment.CAPTURE_ASSISTANCE_ENABLED !== "true") return finish(503, { error: "disabled" });
-    if (!authorized(event.headers, environment.OWNER_TOKEN_SHA256)) return finish(401, { error: "unauthorized" });
-    if (!allowRequest(startedAt)) return finish(429, { error: "rate_limited" });
+    const identity = requestIdentity(event, environment);
+    if (!identity) return finish(401, { error: "unauthorized" });
+    try {
+      if (!await allowRequest(identity.accountKey, "/v1/parse-cook", startedAt, REQUESTS_PER_MINUTE)) return finish(429, { error: "rate_limited" });
+    } catch { return finish(503, { error: "unavailable" }); }
     const method = event.requestContext?.http?.method || event.httpMethod;
     const path = event.rawPath || event.path;
     if (method !== "POST" || path !== "/v1/parse-cook") return finish(405, { error: "invalid_request" });
@@ -92,4 +78,4 @@ function createHandler(dependencies = {}, environment = process.env) {
   };
 }
 
-module.exports = { REQUESTS_PER_MINUTE, createHandler, testing: { authorized, cleanedTokensComeFromSegment, metricUsage, readBody } };
+module.exports = { REQUESTS_PER_MINUTE, createHandler, testing: { cleanedTokensComeFromSegment, metricUsage, readBody } };

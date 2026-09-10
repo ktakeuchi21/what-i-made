@@ -81,7 +81,7 @@
         throw error;
       }
       if (!this.endpoint) throw this.makeError("not_configured", "AWS transcription is not configured.");
-      if (!token) throw this.makeError("missing_token", "Save the owner token before starting.");
+      if (!token) throw this.makeError("missing_token", "Sign in or finish private voice setup before starting.");
       if (!this.AudioContextImpl || !this.mediaDevices?.getUserMedia || !this.WebSocketImpl) {
         throw this.makeError("unsupported", "This browser does not expose the required audio APIs.");
       }
@@ -121,10 +121,18 @@
         track.addEventListener?.("ended", () => this.failFromInterruption("The microphone stopped.", run));
 
         this.setState("connecting", "Opening secure AWS session");
-        const session = await this.requestSession(token, run.controller.signal);
+        const session = await this.requestSession(token, run.controller.signal, true);
         this.ensureActive(run);
         this.ensureContextRunning(run, context);
-        await this.openSocket(session.websocketUrl, run);
+        try {
+          await this.openSocket(session.websocketUrl, run);
+        } catch (error) {
+          if (!session.vocabularyApplied || !this.isActive(run)) throw error;
+          this.setState("connecting", "Trying transcription without culinary terms");
+          const fallbackSession = await this.requestSession(token, run.controller.signal, false);
+          this.ensureActive(run);
+          await this.openSocket(fallbackSession.websocketUrl, run);
+        }
         this.ensureActive(run);
         this.ensureContextRunning(run, context);
         await this.connectAudioGraph(run);
@@ -144,7 +152,7 @@
       }
     }
 
-    async requestSession(token, signal) {
+    async requestSession(token, signal, useVocabulary = true) {
       const response = await this.fetchImpl(this.endpoint, {
         method: "POST",
         mode: "cors",
@@ -156,7 +164,7 @@
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ languageCode: "en-US", sampleRateHertz: TARGET_SAMPLE_RATE }),
+        body: JSON.stringify({ languageCode: "en-US", sampleRateHertz: TARGET_SAMPLE_RATE, useVocabulary }),
       });
       let body = {};
       try {
@@ -166,7 +174,7 @@
       }
       if (!response.ok) {
         const messages = {
-          401: "The owner token was not accepted.",
+          401: "Your private service session was not accepted. Sign in again.",
           413: "The transcription request was too large.",
           503: "AWS transcription is temporarily disabled.",
         };
@@ -186,6 +194,7 @@
         this.socket = socket;
         socket.binaryType = "arraybuffer";
         let settled = false;
+        let opened = false;
         const finish = (callback, value) => {
           if (settled) return;
           settled = true;
@@ -196,6 +205,7 @@
           callback(value);
         };
         const handleOpen = () => {
+          opened = true;
           if (!this.isActive(run)) return finish(reject, this.makeError("cancelled", "Transcription was cancelled."));
           finish(resolve);
         };
@@ -215,11 +225,13 @@
           if (this.isActive(run)) this.handleMessage(event.data, run);
         };
         socket.onerror = () => {
+          if (!opened) return;
           if (this.isActive(run) && !["finishing", "complete", "failed"].includes(this.state)) {
             this.failFromInterruption("The transcription connection was interrupted.", run);
           }
         };
         socket.onclose = () => {
+          if (!opened) return;
           if (!this.isActive(run)) return;
           if (this.state === "finishing") this.finishComplete(run);
           else if (this.state === "listening" || this.state === "connecting") {
@@ -414,7 +426,7 @@
       this.runId = 0;
     }
     async start(token) {
-      if (!token) throw new Error("Save the owner token before starting.");
+      if (!token) throw new Error("Sign in or finish private voice setup before starting.");
       const runId = ++this.runId;
       this.state = "connecting";
       this.onState("connecting", "Opening test session");

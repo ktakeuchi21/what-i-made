@@ -1,7 +1,9 @@
 # Capture assistance service
 
-Protected Lambda Function URL service for `POST /v1/parse-cook`. It sends only the submitted text to Amazon Bedrock and logs only request ID, route, status, latency, and available aggregate token counts.
+Lambda service for the API Gateway-protected `POST /v1/parse-cook` route. It sends only submitted text to Amazon Bedrock and logs only request ID, route, status, latency, and aggregate token counts.
 
-Required environment variables are documented in `.env.example`: `CAPTURE_ASSISTANCE_ENABLED=true`, `OWNER_TOKEN_SHA256`, `AWS_REGION`, and optionally `BEDROCK_MODEL_ID`. The provider uses the Mantle Responses endpoint for supported GPT models and Bedrock InvokeModel for `openai.gpt-oss-*` models, retaining strict structured output in both cases. Configure reserved concurrency at 2, exact-origin Function URL CORS, the existing $5/$8 budget alarms, and `iam-policy.json`. Keep Bedrock invocation logging disabled. The handler also applies a best-effort ten-request-per-minute warm-instance guard for the single owner token; reserved concurrency, budgets, and the kill switch remain the hard operational backstops across cold starts. Package the contents of this directory with `lambda.handler` as the handler.
+Required variables are documented in `.env.example`. API Gateway supplies validated JWT claims and the handler rechecks access-token use and the configured client ID. There is no shared-token fallback. `RATE_LIMIT_TABLE` is mandatory and provides atomic, expiring per-subject limits; missing configuration fails closed. Configure reserved concurrency, budgets, and disabled model-invocation logging through the invitation stack. Package with `lambda.handler`.
 
-The function URL is public only at the network layer; every request still requires the private owner token, verified in constant time. Set `CAPTURE_ASSISTANCE_ENABLED=false` as the independent kill switch. Logs contain request ID, route, status, latency, and available aggregate token counts only.
+Set `CAPTURE_ASSISTANCE_ENABLED=false` as the independent kill switch. Do not expose a Lambda Function URL after invitation cutover.
+
+`BEDROCK_MODEL_ID` belongs only to capture assistance. The invitation stack configures it through `CaptureBedrockModelId`, independently from Recipe Ideas, so an unavailable search-capable model does not disable voice parsing. Client-side international-dish resolution remains the final authority and never sends saved archive names to this service.

@@ -1,22 +1,151 @@
 # Capture Flow Prototype Test Report
 
-> **Updated:** September 7, 2026  
+> **Updated:** September 9, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
-> **Scope:** Capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, accurate Natural Earth photo map, Ideas recipe collection, backup/restore, navigation, and responsive behavior
+> **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Reachable account sign-in and sign-out — September 9, 2026
+
+### Automated proof
+
+- Cognito remains administrator-create-only with public self-registration disabled and email OTP enabled. Authorization Code with PKCE now requests an interactive managed-login screen after an explicit sign-out, while ordinary retained-session launches continue directly into the private archive.
+- Browser-facing checks prove that Account is reachable from Year, Map, Journal, Ideas, capture, and Backup & storage; its bottom sheet has modal semantics, focus trapping, a visible close action, current invited identity, and **Sign out on this device**.
+- Sign-out tests prove that the account database closes before rendered archive state and owned photograph URLs are cleared, the retained session is tombstoned and removed, late refreshes cannot reopen it, and Cognito receives only the registered client ID and logout URI.
+
+### Browser proof
+
+- In an isolated fake invited account, Account opened from capture with `alice@example.test`, trapped focus in the modal sheet, and Escape returned focus to the originating Account control.
+- **Sign out on this device** closed the archive and displayed the signed-out discovery screen with **Sign in with email** and its one-time-code explanation. Explicit sign-in reopened only Alice's local test archive; the browser logged zero errors or warnings.
+- At 375×812 and 812×375, the Account sheet kept its full identity, privacy explanation, Close action, and 48-pixel sign-out control visible without horizontal overflow.
+
+### Remaining device proof
+
+- A production or canary invited account must complete the real managed email-code flow and hosted logout redirect on an iPhone after this static release is deployed. The existing Cognito membership and allowed callback/logout URLs do not require a stack migration.
+
+## Licensed sample photography — September 9, 2026
+
+### Automated proof
+
+- The version-2 demo manifest records 29 distinct Wikimedia Commons photographs with work title, creator, source page, approved open license, license link, and modification disclosure. Validation rejects missing attribution, unsupported rights, mismatched license links, mismatched Commons file titles, and non-Commons source pages.
+- All 58 locally bundled derivatives are metadata-free WebP files with exact 320×240 thumbnail and 1200×900 display dimensions. Every thumbnail remains below 50 KB, every display remains below 250 KB, and the complete set is about 5.1 MB against the 12 MB budget.
+- Jerk chicken, plov, pavlova, and lamingtons now use their own real photographs instead of unrelated shared imagery. The packaging test proves that only the 58 manifest-referenced files ship and rejects renamed, malformed, incorrectly sized, or metadata-bearing WebP files.
+- Browser-facing tests prove that full work-title, creator, license, and crop attribution is rendered for cook and Idea photographs, including the selected photograph in a multi-photo action dialog.
+
+### Browser proof
+
+- The real in-app Chromium browser rendered the new lamington and Mul naengmyeon photographs in the Year, cook, and Idea flows. Cook and Idea details exposed keyboard-accessible photographer and license links plus the visible crop disclosure in the accessibility tree.
+- On the phone-width application panel, attribution wrapped without horizontal overflow and remained visually subordinate to the photograph and dish title. Meaningful image labels continued to identify the fictional dish rather than exposing source filenames.
+- A fresh signed-out origin requested the application shell but no demo manifest or food photograph. Demo media still begins loading only after the visitor chooses the sample archive.
+
+## Cook Density and Culinary Peaks — September 9, 2026
+
+### Automated proof
+
+- The complete client, domain, and voice regression suite passes all 182 tests after removing the retired per-dish collision model.
+- New geometry coverage proves the fixed 1, 2, 3–4, 5–7, and 8+ country cook bands; zero-count exclusion; deterministic count/name/key ordering; monotonic square-root peak height; and the 62-pixel cap.
+- Static UI checks prove the new labels, legend, year-scoped explanation, version-44 service-worker assets, and absence of the retired Photo Density and Needle Field controls.
+
+### Browser proof
+
+- In the real in-app Chromium browser, the fictional world map colored all 22 represented countries and exposed all 13 culinary regions in the photographic shelf. Cook Density named Japan, India, and Nigeria as the exact top three without horizontal overflow or console errors.
+- Switching to Culinary Peaks produced 22 peaks using the same country totals and correct `aria-pressed` state. Peak heights ranged from 25 to 44 pixels in the sample, and Japan's five-cook peak was visibly taller and warmer than one- and two-cook countries.
+- East Asia isolated Japan at five cooks and South Korea at two cooks in both modes. The country shelf exposed both exact totals, and opening Japan moved focus into a three-dish sheet reporting five cooks.
+- At a 565-pixel mobile panel, controls measured 44 pixels high, the document width matched the viewport, the five-band legend remained on one line, and the bottom navigation remained usable. A separate 1280-pixel pass preserved the same 22-country/13-region content and logged no console errors.
+- The demo legend reported “Cooks in 2025.” A maximum 62-pixel Canada peak in the world-map harness retained 22 pixels of clearance above its count at the 398-pixel phone-frame width, proving the reserved northern margin prevents clipping.
+
+## Dense map-mode correction — September 9, 2026
+
+### Automated proof
+
+- The full client, domain, and voice regression suite passes all 183 tests. New coverage proves deterministic frequency/recency/name ranking, Photo Density's three-image limit, Needle Field's five-column limit, repeat-band assignment, exact aggregate cook counts, and hidden-item counts for dense clusters.
+- Syntax checks pass for the updated browser and geometry modules. The existing collision tests continue to prove deterministic grouping, same-country versus mixed-country behavior, and the 44-pixel minimum separation boundary.
+
+### Browser proof
+
+- At 375×812, dense East Asia changed visibly between a three-photograph stack and a four-column Needle Field while keeping the same four dishes and seven cooks.
+- The segmented control exposed the correct `aria-pressed` state, the live status named the active mode, and the dense control's accessible name stated dish count, cook count, mode, location, and action.
+- The dense control measured 52×52 CSS pixels, the document width matched the 375-pixel viewport, and its sheet exposed all four underlying dishes with exact counts. The exercised flow produced no console errors or warnings.
+- Visual inspection confirmed both treatments remain readable over the map, retain the warm journal styling, and do not create overlapping hit areas.
+- Amplify production deployment job 18 succeeded on September 9, 2026. The live `?demo=1` archive loaded the version-43 assets; East Asia switched from three photographs to four needles, retained its four-dish/seven-cook label and 52×52 control, and opened all four underlying dishes.
+
+## Public sample archive — September 9, 2026
+
+### Automated proof
+
+- Focused tests validate exactly 36 occasions, 40 attempts, 28 canonical dishes, 22 countries, all 13 culinary regions, 40 photographs, eight Ideas, two Made links, deterministic IDs, previous-year derivation, references, country parity, local search/filtering, and a repository with no database or mutation methods.
+- Manifest media validation proves every asset exists, remains under 50 KB or 250 KB as appropriate, and totals about 4.1 MB. Packaging copies only the 52 referenced variants and preserves the 12 MB rejection boundary.
+- Static-boundary checks prove the signed-out actions, fictional/sample disclosures, `demo=1` addition/removal, OAuth precedence branch, explicit demo repository selection, write-control interception, and absence of demo JSON/photographs from the service-worker shell.
+
+### Browser proof
+
+- The local signed-out page displayed Explore first and sign-in second. Server requests showed no demo JSON or food photograph before Explore.
+- Explore preserved `release=boundary-test`, added `demo=1`, opened a 2025 sample with 28 dishes, 36 cooks, 22 countries, and 40 photos, and Browser Back returned to the signed-out URL while preserving the unrelated parameter.
+- The map exposed all 13 culinary regions and drilled into North America with country alternatives and both temporary map modes. Journal rendered all 36 occasions including four multi-dish entries. Ideas rendered eight cards with two Made states and complete recipe detail.
+- New cook opened the accessible invitation modal and Keep exploring restored focus to its originating control. The Backup card was absent. The exercised browser flow logged no console warnings or errors.
+- Visual inspection in the in-app browser confirmed the established dark culinary-journal treatment, persistent sample label, readable welcome hierarchy, fixed four-tab navigation, and no page-level horizontal overflow.
+
+### Production rollout
+
+- Amplify accepted the validated 5.2 MB static bundle and reported the `main` branch deployed on September 9, 2026.
+- A live smoke test at the production origin opened the direct `demo=1` route with the current sample counts, Lamingtons as the latest cook, and the versioned sample media.
+- Installed-iPhone checks remain for VoiceOver gestures, largest Dynamic Type, portrait/landscape safe areas, offline revisit after one online sample visit, and retained-account transition from sample sign-in.
+
+## Country autocomplete and global dish recognition
+
+### Automated proof
+
+- The complete browser, domain, infrastructure, and Transcribe suite passes all 182 tests. New coverage proves ambiguous `Korea` search, explicit country selection, preservation of untouched unresolved history, canonical `KOR` resolution, strict dish-match thresholds and margins, country-conflict suppression, all-13-region catalog coverage, Mul naengmyeon transcription variants, locally learned aliases, optional Transcribe-vocabulary fallback, and independent capture and Recipe Ideas model configuration.
+- Capture assistance passes 21 tests and Recipe Ideas passes 28 tests without regressions. Country codes in the recognition catalog and capture service remain in parity with the bundled geography catalog.
+- The deployment helper builds a bounded, versioned public culinary vocabulary and tests create/update/readiness behavior without reading any private archive. The PWA packager and service-worker asset checks include the new country and dish-recognition modules.
+
+### Browser proof
+
+Using the real in-app Chromium browser against an isolated local account:
+
+- `Mool nang myun` resolved to **Mul naengmyeon**, displayed a visible “Suggested from your note” explanation, populated rating and notes, and suggested **South Korea**. **Undo** restored the original words, cleared only the catalog-derived country, and returned focus to the dish field.
+- Typing `Korea` opened an accessible combobox with **North Korea** and **South Korea** and did not silently choose either. Arrow-key selection chose South Korea; `Atlantis` produced an inline error, blocked saving, and retained focus for correction.
+- Typing the full canonical name without choosing its option also remained invalid, preventing a shared or partial alias from being silently mapped. A spoken Japan association and a later explicit Japan selection both suppressed the Korean spelling correction and retained the original phrase.
+- Saving the confirmed correction stored the canonical dish and South Korea. Year reported one country and the Map exposed **East Asia, 1 dish across 1 country**.
+- The exercised 565-pixel browser surface had zero document-level horizontal overflow. Combobox/listbox roles, active focus, named Undo/Change controls, and the mapped-region label were exposed in the accessibility tree without console errors.
+
+### Remaining deployment and real-device evidence
+
+This workspace does not have the AWS CLI, so the shared vocabulary was not created in AWS. Run the documented vocabulary sync, wait for `READY`, deploy the configured name with the Transcribe signer, and then verify a live iPhone utterance, VoiceOver gestures, 375-pixel portrait, landscape, dark appearance, reduced motion, and unavailable-vocabulary fallback before calling the production rollout complete.
+
+## Invitation-only private archives
+
+### Automated proof
+
+- The client/domain suite passes 139 tests. Account tests prove deterministic opaque archive keys, separate database names, stale-open race rejection, account-scoped map preferences, retained sessions, PKCE state and nonce checks, refresh subject continuity, fail-closed cleanup across deletion errors and relaunch, sign-out versus refresh ordering, and the exact seven-day offline boundary. Static-boundary coverage also proves the owner-token controls and legacy service endpoint fallbacks are absent, missing invitation configuration locks the archive, and OAuth callback parameters are removed on both success and failure without entering Cache Storage.
+- Capture assistance passes 21 tests, Recipe Ideas passes 28, and the Transcribe signer passes 6. Every service requires trusted API Gateway access-token claims for the configured Cognito client and explicitly rejects the retired shared-token path. Missing durable-limit configuration fails closed. Atomic DynamoDB counter tests prove pseudonymous route/minute keys, TTL, and conditional rejection.
+- The invitation SAM template passes `cfn-lint` 1.46 with SAM translator 1.109. Every paid route declares JWT scope authorization, optional quota-safe reserved concurrency, a kill switch, and DynamoDB counter access. All three Lambda packages have audited dependency lockfiles, and the locked DynamoDB SDK loads locally. Legacy Function URLs were removed from PWA source configuration.
+- The deployment packager passes 2 tests. It copies only the explicit runtime allowlist, excludes tests/reports/source assets, injects the public Cognito domain, client ID, API origin, AWS region, and optional owner-only migration digest, emits a strict in-document CSP and Amplify `customHttp.yml` security headers, applies `no-referrer` before subresources load, rejects unsafe configuration, and never overwrites an existing output path.
+- Legacy migration unit tests prove owner-digest gating and inclusion of all seven local stores. In Chromium, `test-fixtures/private-migration.html`, kept outside the deployable PWA directory, copied its unique fixture-only source into an empty account namespace, verified the migrated record and draft, preserved the source record, left both database names present, and logged no errors.
+
+### Browser proof
+
+- In an isolated Chromium session, the unconfigured build rendered only the invitation screen, disabled sign-in with “Invitation sign-in is not configured,” created no IndexedDB databases, made no application API request, and logged no console errors. The fake invited-account harness then opened Alice’s empty private archive, showed no owner-token controls or copy, and rendered the Account/backup screen at 375×812 with a 375-pixel document width.
+- A generated runtime-only deployment directory loaded under its injected CSP with the invitation gate visible, no console warnings, and no non-static requests. An invalid OAuth callback displayed the expected accessible error and immediately removed `code` and `state` while retaining unrelated query/fragment state. A controlled-service-worker reproduction cached only canonical `index.html`; both its cache key and its reconstructed `Response.url` contained no callback value, and the reconstructed shell continued to reload offline when the source HTML was gzip-encoded. Browser inspection also confirmed that subresource requests carried an empty `Referer`, so callback values were not disclosed through asset requests.
+- In Chromium, a separate fake Alice account saved one cook with one photograph and exported a 500 KB schema-v2 JSON backup containing exactly one occasion, dish, attempt, and photo. Inspection found none of Alice’s email, Cognito identifiers, auth database names, or token fields. A separate fake Bob account began with zero records, previewed the file’s date, size, version, and counts, restored it only while empty, then reloaded into a one-cook Year view with the restored photograph and no console errors.
+- With that account and app shell still loaded, Chromium’s network transport was disconnected and the page reloaded successfully from the service-worker cache into the one-cook Year view with its photograph and no console errors. The browser harness does not emulate Cognito’s production offline session transition, which remains a deployed-runtime check.
+- In Chromium, Alice saved one Oyakodon cook. Bob then opened an empty archive at the same app origin. Returning to Alice restored exactly one dish, one cook, and one country. The Account screen showed only the active email and local-archive status; owner-token setup was absent.
+- The production Cognito managed login completed an owner email-code sign-in and restored its session after reload. The temporary owner rollout copied and verified a preview containing 1 cook, 1 dish, 0 Ideas, and 1 image; the clean replacement bundle retained that archive after reload, published an empty migration key, and no longer exposed the migration prompt.
+- The Cognito/API stack is deployed in `us-east-2`. All retired Function URL configurations and shared-token hashes were removed. An unsigned API request returned `401`; observed Lambda logging contained operational metadata only. The complete wrong-client, wrong-scope, expired-token, and CloudWatch invocation-delta matrix remains open.
+- Paid routes are enabled with reserved concurrency omitted. The authenticated Recipe Ideas request reached the service and failed closed with `503` because no Responses-API model is entitled for the AWS account. Capture assistance retains the tested local fallback. Model entitlement, complete authenticated service validation, canary isolation/revocation, and installed-iPhone suspend/resume and VoiceOver remain deployment evidence gaps.
 
 ## Smarter voice capture assistance
 
 ### Automated proof
 
 - The complete browser/domain/voice suite passes all 113 tests. New coverage proves strict bounded response validation, the text-only request contract, filler cleanup with meaningful “like” preservation, shared confidence thresholds, cleaned-segment isolation, useful-only alias learning, country-code rejection, unique exact canonical and alias matching, unselected fuzzy candidates, country-conflict exclusion, and deterministic ranking.
-- The capture-assistance service passes all 14 contract tests covering owner-token authentication, the kill switch, bounded and rate-limited requests, privacy-safe token-count metrics, non-stored deterministic Bedrock output through Mantle Responses and Bedrock InvokeModel, safe isolation of GPT OSS final JSON after private reasoning, new-segment-only cleanup, provider timeout and size failures, country-catalog parity, cleanup fixtures, and the supported structured-output schema subset.
+- Capture-assistance service coverage now uses only trusted Cognito access-token claims; the retired shared-token path is absent. Tests also cover the kill switch, bounded and rate-limited requests, privacy-safe token-count metrics, non-stored deterministic Bedrock output through Mantle Responses and Bedrock InvokeModel, safe isolation of GPT OSS final JSON after private reasoning, new-segment-only cleanup, provider timeout and size failures, country-catalog parity, cleanup fixtures, and the supported structured-output schema subset.
 - The unchanged Recipe Ideas service passes all 26 security and contract tests. JavaScript syntax checks pass for the updated browser and service modules.
 
 ### Browser proof
 
 Using headed Chromium with local voice and assistance fixtures:
 
-- Completing the sample voice note changed the finalized text to “I made Oyakodon, eight out of ten. Use less soy next time.” and populated Oyakodon, rating 8, notes, and Japan. The capture screen visibly disclosed that transcript text—not audio or photographs—is sent after Done.
+- Completing the sample voice note changed the finalized text to “I made Oyakodon, eight out of ten. Use less soy next time.” and populated Oyakodon, rating 8, notes, and Japan. The longer on-screen audio and device-storage disclosure paragraphs were removed as requested.
 - A controlled two-dish response rendered Chicken adobo and Garlic rice as separate review sections with their own ratings, ingredients, notes, and Philippines country values.
 - An existing Oyakodon archive produced one preselected exact match. Renaming the capture to Chicken Oyakodon surfaced Oyakodon only as an unselected possible match and kept **Make a new dish** selected.
 - A 0.72 inferred Philippines result did not fill Country; it exposed an explicit **Use Philippines** action. A manually entered dish name survived the response.
@@ -189,7 +318,7 @@ Installed-iPhone VoiceOver announcements, camera handoff from an Idea, largest D
 
 **Evidence:** The assisted confirmation exposed exactly one Country textbox populated with “Japan.” Browser role queries found zero Cuisine fields and zero Approximate map location fields. In the assistance-failure path, the single Country field remained available and blank for manual entry.
 
-**Gap:** Country entry remains freeform rather than a controlled country picker. Recognized country names and aliases now resolve against the bundled 177-country Natural Earth atlas; owner-adjustable label points remain a later enhancement.
+**Gap:** Country entry now requires a canonical autocomplete selection when non-empty. Existing unresolved historical values remain unchanged until edited; owner-adjustable label points remain a separate map capability.
 
 ### Criterion: A representative capture takes less than 20 seconds
 

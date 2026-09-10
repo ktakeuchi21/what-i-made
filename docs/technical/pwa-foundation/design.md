@@ -1,5 +1,7 @@
 # What I Made PWA Foundation
 
+> **Invitation-access addendum, September 8, 2026:** The original single-owner token and public Function URL boundary described below is superseded by [Invitation only private archives](../../product/invitation-only-access/design.md). The implemented branch uses Cognito managed login, account-scoped IndexedDB, API Gateway JWT and route-scope enforcement, and durable pseudonymous per-account rate windows. The original sections remain as the historical foundation decision; `ARCHITECTURE.md` describes current code.
+
 > **Status:** Proposed for review
 
 ## 1. Executive summary
@@ -143,7 +145,7 @@ The deployment must set AWS budget alerts at $5 and $8 per month. Pricing can ch
 - Voice input always has a visible typed alternative.
 - The parsing API accepts text only and rejects oversized or malformed input.
 - The app records no third-party product analytics.
-- The map can switch between Needle Field and Photo Density without changing stored dish or attempt data.
+- The map can switch between Cook Density and Culinary Peaks without changing stored dish or attempt data.
 - The owner can replace a dish's default map photo with any eligible photo from that dish's history.
 - A saved occasion exposes every photograph and supports adding more from Camera or Library, assignment to a dish or the whole occasion, main-photo promotion, and deletion of non-main photographs.
 - The main photograph cannot be deleted until another photograph is promoted, and an occasion cannot lose its final dish.
@@ -218,7 +220,7 @@ IndexedDB schema version 5 makes the `attempts.occasionId` index non-unique so o
 
 ```json
 POST /v1/parse-cook
-Authorization: Bearer <owner-token>
+Authorization: Bearer <Cognito-access-token>
 Content-Type: application/json
 
 {
@@ -233,6 +235,10 @@ The transcript is limited to 5,000 Unicode characters and the new voice segment 
 Conversational cleanup removes vocal fillers, non-semantic discourse fillers, immediate repetitions, and abandoned false starts while preserving names, meaningful uses of “like,” quantities, negation, comparisons, uncertainty, and cooking details. The client rewrites only the newly finalized voice segment, never pre-existing typed text. Service failure retains the verbatim segment and invokes the conservative local parser.
 
 Existing-dish matching runs only on-device over canonical names and aliases. A unique exact normalized name or alias may be preselected when its resolved country does not conflict. Fuzzy candidates use documented token, bigram, and containment thresholds and remain unselected. Confirming a candidate sends its stable UUID only to the local `saveOccasion()` transaction, which learns the proposed spelling as an alias; archive names are never included in the parsing request.
+
+Country entry is an accessible local combobox over canonical Natural Earth names and aliases. Blank is valid; a non-empty value must resolve to one selected country before save. Ambiguous “Korea” intentionally returns both South Korea and North Korea as choices and never becomes a stored map key by itself.
+
+A versioned bundled international-dish catalog supplies canonical spellings, transliteration variants, and optional reviewed ISO alpha-3 associations across all 13 culinary regions. The local resolver ranks this catalog together with saved dish aliases, filters known country conflicts, and applies a correction only when one candidate clears the strict threshold and margin. The raw phrase remains visible through an undoable **Suggested from your note** notice. Confirmed saves may add that phrase to the selected dish's local aliases; the private archive is never used to build the shared cloud vocabulary.
 
 ### Backup envelope
 
@@ -296,8 +302,8 @@ Operations use structured status logs, a $5 warning budget, an $8 urgent budget,
 - `AC-10`: AI output with missing, invalid, or extra fields is rejected and shown as an editable raw transcript rather than stored.
 - `AC-11`: Merging two dish records preserves every attempt and photo and leaves one stable canonical dish ID.
 - `AC-12`: The deployed AWS configuration has the parsing request caps, endpoint-specific concurrency caps, log redaction, transcription kill switch, and $5/$8 budget alerts described in this design.
-- `AC-13`: Repeating one dish updates only that dish's Needle Field column and Photo Density cell; country geometry, country fill, and neighboring dishes remain unchanged.
-- `AC-14`: Changing a dish's default map photo updates its Photo Density cell without modifying any occasion, attempt, rating, note, or photo record.
+- `AC-13`: Saving another mapped attempt updates only the selected-year aggregate for its confirmed country; both Cook Density and Culinary Peaks derive from that same total without modifying archive records.
+- `AC-14`: Changing a dish's default map photo updates its geographic drill-down without modifying any occasion, attempt, rating, note, photo record, country fill, or peak.
 - `AC-15`: Deleting a selected default photo chooses the most recent remaining eligible photo transactionally, or clears the reference when none remains.
 - `AC-15a`: Saving a default photo and in-country approximate point commits both preferences atomically; cancelling or submitting an invalid point writes neither.
 - `AC-16`: Saving two dishes creates one Journal occasion and one dashboard cook while preserving two independently editable dish attempts and two dish-history contributions.
@@ -328,7 +334,7 @@ A network inspection test blocks and records outbound requests while a photo is 
 ## 12. Open questions
 
 - The owner's actual iPhone model and iOS/Safari version must be recorded before the voice spike. This does not block general implementation, but it blocks declaring browser speech complete.
-- Needle Field and Photo Density are implemented as a remembered focused-region segmented control. Tap-driven country close-ups and nearby-dish sheets handle density; physical-iPhone gesture, VoiceOver, and safe-area validation remains.
+- Cook Density and Culinary Peaks are implemented as a remembered world/region segmented control. A visible scale, exact ranked summary, and photographic region/country shelves handle crowded geography; physical-iPhone VoiceOver, color legibility, and safe-area validation remains.
 - The final product name and app icon are undecided. They do not block task breakdown.
 - Multi-year segmented backup should be reconsidered after measuring the first 100 optimized photos. It does not block version one.
 

@@ -1,15 +1,16 @@
 # Transcription session signer
 
-This dependency-free Node.js Lambda verifies the private owner token and returns a 15-second Amazon Transcribe Streaming WebSocket URL. It never receives audio or transcript text.
+This Node.js Lambda runs behind the invitation API Gateway and returns a 15-second Amazon Transcribe Streaming WebSocket URL. It never receives audio or transcript text.
 
 Required environment variables:
 
 - `VOICE_ENABLED=true`
-- `OWNER_TOKEN_SHA256=<lowercase SHA-256 hex>`
+- `COGNITO_CLIENT_ID=<public web client ID>`
+- `RATE_LIMIT_TABLE=<DynamoDB table name>`
 - `PRESIGN_EXPIRES_SECONDS=15`
 
-Lambda supplies `AWS_REGION` and its temporary execution-role credentials. Configure the Function URL CORS layer, not the handler, to allow only the deployed Amplify origin, `POST`, and the `Authorization` and `Content-Type` headers. The included IAM policy must be resolved to the account-specific CloudWatch log-group ARN during deployment.
+API Gateway validates the access token and `what-i-made/capture` scope before invocation. The handler rechecks access-token claims and consumes an atomic per-account DynamoDB rate window. Lambda supplies `AWS_REGION` and temporary execution-role credentials. Deployment is owned by `infrastructure/invitation-access/template.yaml`; do not create a Function URL.
 
 Before enabling `VOICE_ENABLED`, verify an effective AWS Organizations service-improvement opt-out policy for Amazon Transcribe and create the documented budget alerts. If the opt-out cannot be verified, leave the feature disabled and send no real audio.
 
-The static page ships with `connect-src 'self'`. During deployment, replace that directive with `'self'`, the exact Function URL origin, and `wss://transcribestreaming.us-east-2.amazonaws.com:8443`; then set the same endpoint in `config.js`. Do not broaden the policy to all Lambda Function URLs.
+Allow only the exact protected API origin and `wss://transcribestreaming.<region>.amazonaws.com:8443` in the deployed `connect-src` policy. Never restore the retired Function URL as a parallel owner-token path.

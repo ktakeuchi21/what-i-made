@@ -15,13 +15,12 @@
 
 ## Map treatment
 
-- Use quiet bundled Natural Earth 1:110m country geometry in a Natural Earth projection with fixed-size photo cells. Do not use external tiles, conventional pins, persistent country fill, bubbles, or flags.
-- Place each dish near the dataset's representative country label point. Selection may temporarily tint the matching country, but repetition never changes country geometry or fill.
-- One cell represents one canonical dish. A numeric label always exposes the exact cook count.
-- Different dishes at the same country point receive deterministic neighboring positions.
-- Full-map cells are native buttons with a minimum 44 by 44 CSS-pixel target and visible selected state.
-- The geographic list duplicates every mapped dish, country, and exact count for keyboard and screen-reader access.
-- Unmapped dishes appear in “Needs a map location” and never receive invented coordinates.
+- Use quiet bundled Natural Earth 1:110m country geometry in a Natural Earth projection. Do not use external tiles, conventional pins, growing bubbles, or flags.
+- At world and focused-region levels, country color communicates selected-year cook density. Five fixed bands represent 1, 2, 3–4, 5–7, and 8+ cooks.
+- Culinary Peaks uses the same country totals and colors, adding restrained vertical height and an exact count. Peak height is capped so large histories remain legible on an iPhone.
+- Keep photographs in the world region shelf, focused-region country shelf, country sheet, and dish history rather than using them as density marks.
+- Provide a visible scale, an exact ranked text summary, and photographic shelves so color or precise polygon tapping is never the only route.
+- Unmapped dishes appear in “Needs a map location” and never receive invented coordinates or affect country totals.
 
 ## Drill-down hierarchy
 
@@ -34,10 +33,10 @@
 
 ## Advanced dish controls
 
-- Focused regions expose one labeled segmented control for Photo Density and Needle Field. Photo Density is the initial mode; the last owner choice is remembered on-device.
-- Both modes use five repeat bands: 1, 2, 3–4, 5–7, and 8+ selected-year cooks. Photo cells never grow; needles change height. Exact numeric counts remain visible.
-- Collision groups preserve 44-pixel targets with 8-pixel separation. Same-country groups open a fitted country close-up; mixed-country groups open a nearby-dishes sheet grouped by country.
-- Country close-ups remain tap-driven. Free pan, pinch zoom, and horizontal scrolling inside the map are not introduced.
+- World and focused regions expose one labeled segmented control for Cook Density and Culinary Peaks. Cook Density is the initial mode; the last owner choice is remembered on-device.
+- Both views use the same country-level cook totals, deterministic five-band scale, and selected year. Switching presentation never changes data or navigation.
+- Small and geographically dense countries remain discoverable through the corresponding region or country shelf, which provides 44-pixel targets and exact counts.
+- Region focus remains tap-driven. Free pan, pinch zoom, and horizontal scrolling inside the map are not introduced.
 - Dish history provides **Customize map**. Its sheet combines eligible-photo selection with approximate in-country placement, directional nudges, Reset, Save, and Cancel.
 - Location drag is never the only interaction. Invalid out-of-country placement is rejected without changing the draft.
 

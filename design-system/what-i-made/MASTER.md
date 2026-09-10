@@ -100,22 +100,19 @@ Suggested mobile scale:
 - Crop previews consistently but always offer a way to view the full optimized image.
 - Lead repeat-dish pages with the photo sequence and rating progression.
 - Reserve image dimensions before load to prevent layout movement.
-- Load below-the-fold images lazily and use dedicated optimized thumbnails in grids, selected map details, and photo-density cells.
+- Load below-the-fold images lazily and use dedicated optimized thumbnails in grids, map shelves, selected country details, and dish history.
 - Provide concise alt text generated from the confirmed dish name and date; allow later editing.
 
-## 7. Dish field
+## 7. Culinary activity map
 
 - The map behaves like a culinary data landscape, not a collection of conventional pins.
-- One cell or column represents one canonical dish, never an entire country.
-- Repeating a dish changes only that dish's cell. Country geometry and country fill remain unchanged.
-- Distinct dishes with the same approximate origin receive deterministic neighboring cells so each remains independently selectable. Zoom reveals dense clusters rather than merging their histories.
-- Needle Field uses one fine column per dish; repetition increases that column's height and sequential tone.
-- Photo Density uses one fixed-size, photo-filled cell per dish. The dish's owner-selected default photo fills the cell, and repetition increases its exposure and opacity without resizing it.
-- The owner can choose any eligible photo from that dish's cooking history as its default map photo. Changing the default does not change past cooking records.
-- Selecting a cell reveals the dish name, exact attempt count, most recent rating, default thumbnail, and a direct route to dish history.
-- Tiny visual cells use nearest-cell selection or a larger invisible hit region so the effective target remains at least 44 by 44 CSS pixels. A geographic summary list remains available to VoiceOver and keyboard users.
-- Needle Field pairs tone with height. Photo Density exposes the exact count in the selected detail and accessibility summary so brightness is never the only available reading.
-- Needle Field and Photo Density are the two accepted map views. Hex relief, pin, halo, growing-bubble, photo-pin, and milestone-ring treatments were rejected.
+- Country-level selected-year cook totals drive both accepted views: Cook Density and Culinary Peaks.
+- Cook Density fills countries with one of five sequential warm tones. Culinary Peaks adds a capped vertical height and exact count using the same bands.
+- Countries without selected-year cooks remain quiet; unresolved countries receive no invented geography.
+- A visible legend, ranked exact-count summary, and photographic region/country shelves ensure color and precise polygon tapping are never the only ways to understand or navigate the map.
+- Photographs lead the shelves, country sheets, and dish histories rather than acting as the density encoding.
+- The owner can still choose any eligible photo from a dish's cooking history as its default and adjust an approximate in-country location. These choices do not change country totals or past cooking records.
+- Free map pan, pinch zoom, flags, conventional pins, growing bubbles, and a freely rotatable 3D scene remain rejected.
 
 ## 8. Motion
 

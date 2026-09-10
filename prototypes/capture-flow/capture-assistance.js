@@ -109,7 +109,7 @@
         cache: "no-store",
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error(response.status === 401 ? "The private owner token was not accepted." : "Smart suggestions are temporarily unavailable.");
+      if (!response.ok) throw new Error(response.status === 401 ? "Your private service session was not accepted. Sign in again." : "Smart suggestions are temporarily unavailable.");
       const result = validateResponse(await response.json(), options.countryCodes || []);
       if ((!voiceSegment && result.cleanedVoiceText)
         || result.cleanedVoiceText.length > voiceSegment.length + 16

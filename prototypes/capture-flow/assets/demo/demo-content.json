@@ -1,0 +1,1119 @@
+{
+  "schemaVersion": 2,
+  "fictional": true,
+  "title": "A fictional year of cooking",
+  "media": {
+    "noodles": {
+      "thumbnail": "./assets/demo/thumb/noodles.webp",
+      "display": "./assets/demo/display/noodles.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Mul naengmyeon by Kuruman in Seoul.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Mul_naengmyeon_by_Kuruman_in_Seoul.jpg",
+      "creator": "Kuruman",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "adobo": {
+      "thumbnail": "./assets/demo/thumb/adobo.webp",
+      "display": "./assets/demo/display/adobo.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Chicken Adobo with Potatoes.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chicken_Adobo_with_Potatoes.jpg",
+      "creator": "Kabu Sawsaw",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "jollof": {
+      "thumbnail": "./assets/demo/thumb/jollof.webp",
+      "display": "./assets/demo/display/jollof.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Jollof rice with boiled egg and fried chicken.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Jollof_rice_with_boiled_egg_and_fried_chicken.jpg",
+      "creator": "daSupremo",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "shakshuka": {
+      "thumbnail": "./assets/demo/thumb/shakshuka.webp",
+      "display": "./assets/demo/display/shakshuka.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Shakshuka by Calliopejen1.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Shakshuka_by_Calliopejen1.jpg",
+      "creator": "Calliopejen1",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "dumplings": {
+      "thumbnail": "./assets/demo/thumb/dumplings.webp",
+      "display": "./assets/demo/display/dumplings.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Gyoza dumplings (53726549642).jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Gyoza_dumplings_(53726549642).jpg",
+      "creator": "pelican from Tokyo, Japan",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "chana": {
+      "thumbnail": "./assets/demo/thumb/chana.webp",
+      "display": "./assets/demo/display/chana.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Chana masala gravy.JPG",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chana_masala_gravy.JPG",
+      "creator": "Seena.ge",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "tacos": {
+      "thumbnail": "./assets/demo/thumb/tacos.webp",
+      "display": "./assets/demo/display/tacos.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Fish tacos from Pezcow - April 2023 - Sarah Stierch.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Fish_tacos_from_Pezcow_-_April_2023_-_Sarah_Stierch.jpg",
+      "creator": "Missvain",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "pasta": {
+      "thumbnail": "./assets/demo/thumb/pasta.webp",
+      "display": "./assets/demo/display/pasta.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Tagliatelle all'amatriciana a un restaurant de Xàbia.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Tagliatelle_all%27amatriciana_a_un_restaurant_de_X%C3%A0bia.jpg",
+      "creator": "Joanbanjo",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "poutine": {
+      "thumbnail": "./assets/demo/thumb/poutine.webp",
+      "display": "./assets/demo/display/poutine.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Poutine from Windsor, ON.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Poutine_from_Windsor,_ON.jpg",
+      "creator": "Antonydstevens",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "shepherds-pie": {
+      "thumbnail": "./assets/demo/thumb/shepherds-pie.webp",
+      "display": "./assets/demo/display/shepherds-pie.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Shepherds pie - The Kew Greenhouse Cafe 2025-05-14.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Shepherds_pie_-_The_Kew_Greenhouse_Cafe_2025-05-14.jpg",
+      "creator": "Andy Li",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "moqueca": {
+      "thumbnail": "./assets/demo/thumb/moqueca.webp",
+      "display": "./assets/demo/display/moqueca.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Moqueca vegana, farofa de cebola, e arroz.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Moqueca_vegana,_farofa_de_cebola,_e_arroz.jpg",
+      "creator": "Melsj",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "pavlova": {
+      "thumbnail": "./assets/demo/thumb/pavlova.webp",
+      "display": "./assets/demo/display/pavlova.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Pavlova dessert.JPG",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Pavlova_dessert.JPG",
+      "creator": "Hazel Fowler",
+      "license": "Public domain",
+      "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "lamington": {
+      "thumbnail": "./assets/demo/thumb/lamington.webp",
+      "display": "./assets/demo/display/lamington.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Lamingtons and a cup of tea.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Lamingtons_and_a_cup_of_tea.jpg",
+      "creator": "Coastal.culture.vulture",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "jerk-chicken": {
+      "thumbnail": "./assets/demo/thumb/jerk-chicken.webp",
+      "display": "./assets/demo/display/jerk-chicken.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Jamaican Jerk Chicken - Hyatt Hyderabad Gachibowli - Hyderabad 2023-04-29 8516.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Jamaican_Jerk_Chicken_-_Hyatt_Hyderabad_Gachibowli_-_Hyderabad_2023-04-29_8516.jpg",
+      "creator": "Biswarup Ganguly",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "plov": {
+      "thumbnail": "./assets/demo/thumb/plov.webp",
+      "display": "./assets/demo/display/plov.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "'PLOV' at National Food restaurant..jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:%27PLOV%27_at_National_Food_restaurant..jpg",
+      "creator": "Rudolph.A.Furtado",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "gumbo": {
+      "thumbnail": "./assets/demo/thumb/gumbo.webp",
+      "display": "./assets/demo/display/gumbo.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Chicken and Sausage Gumbo- Cooking with stock, meat, and spices.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chicken_and_Sausage_Gumbo-_Cooking_with_stock,_meat,_and_spices.jpg",
+      "creator": "Jens Ohlig",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "arepas": {
+      "thumbnail": "./assets/demo/thumb/arepas.webp",
+      "display": "./assets/demo/display/arepas.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Arepa de chocolo.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Arepa_de_chocolo.jpg",
+      "creator": "Nelson Fernando Sotelo Castro",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "ratatouille": {
+      "thumbnail": "./assets/demo/thumb/ratatouille.webp",
+      "display": "./assets/demo/display/ratatouille.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Ratatouille, Mazatlán, 21 de junio de 2023.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Ratatouille,_Mazatl%C3%A1n,_21_de_junio_de_2023.jpg",
+      "creator": "El Nuevo Doge",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "spanakopita": {
+      "thumbnail": "./assets/demo/thumb/spanakopita.webp",
+      "display": "./assets/demo/display/spanakopita.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Spanakopita (15878501828).jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Spanakopita_(15878501828).jpg",
+      "creator": "Jaume Escofet from London, UK",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "pierogi": {
+      "thumbnail": "./assets/demo/thumb/pierogi.webp",
+      "display": "./assets/demo/display/pierogi.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Polish pierogi in a dish.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Polish_pierogi_in_a_dish.jpg",
+      "creator": "Piotrus",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "tagine": {
+      "thumbnail": "./assets/demo/thumb/tagine.webp",
+      "display": "./assets/demo/display/tagine.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Moroccan food-Chicken tagine with preserved lemons and olives-01.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Moroccan_food-Chicken_tagine_with_preserved_lemons_and_olives-01.jpg",
+      "creator": "Foodista",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "mujadara": {
+      "thumbnail": "./assets/demo/thumb/mujadara.webp",
+      "display": "./assets/demo/display/mujadara.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Baba ghannouj, mujadara, hoummos, and tabbouleh - Cambridge, MA.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Baba_ghannouj,_mujadara,_hoummos,_and_tabbouleh_-_Cambridge,_MA.jpg",
+      "creator": "Daderot",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "egusi": {
+      "thumbnail": "./assets/demo/thumb/egusi.webp",
+      "display": "./assets/demo/display/egusi.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Egusi Soup. Egusi is the indegenious soup of Nigerians. This soup is named after the thickener -Egusi;Egusi is gotten from Fluted Pumpkin or Melon seeds..jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Egusi_Soup._Egusi_is_the_indegenious_soup_of_Nigerians._This_soup_is_named_after_the_thickener_-Egusi;Egusi_is_gotten_from_Fluted_Pumpkin_or_Melon_seeds..jpg",
+      "creator": "Okache Ruthie",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "dosa": {
+      "thumbnail": "./assets/demo/thumb/dosa.webp",
+      "display": "./assets/demo/display/dosa.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Masala dosa 01.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Masala_dosa_01.jpg",
+      "creator": "Marajozkee",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "oyakodon": {
+      "thumbnail": "./assets/demo/thumb/oyakodon.webp",
+      "display": "./assets/demo/display/oyakodon.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Nakau Oyakodon (TYPE-00 ver.) set.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Nakau_Oyakodon_(TYPE-00_ver.)_set.jpg",
+      "creator": "Tokumeigakarinoaoshima",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "curry-rice": {
+      "thumbnail": "./assets/demo/thumb/curry-rice.webp",
+      "display": "./assets/demo/display/curry-rice.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Japanese curry rice.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Japanese_curry_rice.jpg",
+      "creator": "김동헌, Donghun Kim",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "khao-soi": {
+      "thumbnail": "./assets/demo/thumb/khao-soi.webp",
+      "display": "./assets/demo/display/khao-soi.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "OK Chicken and Khao Soi, Portland, Oregon - 9.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:OK_Chicken_and_Khao_Soi,_Portland,_Oregon_-_9.jpg",
+      "creator": "Another Believer",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "pad-kra-pao": {
+      "thumbnail": "./assets/demo/thumb/pad-kra-pao.webp",
+      "display": "./assets/demo/display/pad-kra-pao.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Kao Rad Pad Kra-pao with chicken and fried egg - Unithai 2025-07-30.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Kao_Rad_Pad_Kra-pao_with_chicken_and_fried_egg_-_Unithai_2025-07-30.jpg",
+      "creator": "Andy Li",
+      "license": "CC0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    },
+    "pantry-soup": {
+      "thumbnail": "./assets/demo/thumb/pantry-soup.webp",
+      "display": "./assets/demo/display/pantry-soup.webp",
+      "sourceType": "licensed-photograph",
+      "sourceTitle": "Simple vegetable soup 2009.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Simple_vegetable_soup_2009.jpg",
+      "creator": "Scott Teresi",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
+      "modifications": "Cropped, resized, and converted to WebP; metadata removed."
+    }
+  },
+  "dishes": [
+    {
+      "key": "gumbo",
+      "name": "Chicken and sausage gumbo",
+      "country": "United States",
+      "countryCode": "USA",
+      "media": "gumbo"
+    },
+    {
+      "key": "poutine",
+      "name": "Poutine",
+      "country": "Canada",
+      "countryCode": "CAN",
+      "media": "poutine"
+    },
+    {
+      "key": "fish-tacos",
+      "name": "Fish tacos",
+      "country": "Mexico",
+      "countryCode": "MEX",
+      "media": "tacos"
+    },
+    {
+      "key": "jerk-chicken",
+      "name": "Jerk chicken",
+      "country": "Jamaica",
+      "countryCode": "JAM",
+      "media": "jerk-chicken"
+    },
+    {
+      "key": "moqueca",
+      "name": "Moqueca",
+      "country": "Brazil",
+      "countryCode": "BRA",
+      "media": "moqueca"
+    },
+    {
+      "key": "arepas",
+      "name": "Arepas",
+      "country": "Venezuela",
+      "countryCode": "VEN",
+      "media": "arepas"
+    },
+    {
+      "key": "ratatouille",
+      "name": "Ratatouille",
+      "country": "France",
+      "countryCode": "FRA",
+      "media": "ratatouille"
+    },
+    {
+      "key": "shepherds-pie",
+      "name": "Shepherd's pie",
+      "country": "United Kingdom",
+      "countryCode": "GBR",
+      "media": "shepherds-pie"
+    },
+    {
+      "key": "tagliatelle",
+      "name": "Tagliatelle al pomodoro",
+      "country": "Italy",
+      "countryCode": "ITA",
+      "media": "pasta"
+    },
+    {
+      "key": "spanakopita",
+      "name": "Spanakopita",
+      "country": "Greece",
+      "countryCode": "GRC",
+      "media": "spanakopita"
+    },
+    {
+      "key": "pierogi",
+      "name": "Potato and onion pierogi",
+      "country": "Poland",
+      "countryCode": "POL",
+      "media": "pierogi"
+    },
+    {
+      "key": "tagine",
+      "name": "Preserved lemon tagine",
+      "country": "Morocco",
+      "countryCode": "MAR",
+      "media": "tagine"
+    },
+    {
+      "key": "mujadara",
+      "name": "Mujadara",
+      "country": "Lebanon",
+      "countryCode": "LBN",
+      "media": "mujadara"
+    },
+    {
+      "key": "jollof",
+      "name": "Jollof rice",
+      "country": "Nigeria",
+      "countryCode": "NGA",
+      "media": "jollof"
+    },
+    {
+      "key": "egusi",
+      "name": "Egusi soup",
+      "country": "Nigeria",
+      "countryCode": "NGA",
+      "media": "egusi"
+    },
+    {
+      "key": "plov",
+      "name": "Plov",
+      "country": "Uzbekistan",
+      "countryCode": "UZB",
+      "media": "plov"
+    },
+    {
+      "key": "chana",
+      "name": "Chana masala",
+      "country": "India",
+      "countryCode": "IND",
+      "media": "chana"
+    },
+    {
+      "key": "dosa",
+      "name": "Masala dosa",
+      "country": "India",
+      "countryCode": "IND",
+      "media": "dosa"
+    },
+    {
+      "key": "naengmyeon",
+      "name": "Mul naengmyeon",
+      "country": "South Korea",
+      "countryCode": "KOR",
+      "media": "noodles"
+    },
+    {
+      "key": "oyakodon",
+      "name": "Oyakodon",
+      "country": "Japan",
+      "countryCode": "JPN",
+      "media": "oyakodon"
+    },
+    {
+      "key": "curry-rice",
+      "name": "Japanese curry rice",
+      "country": "Japan",
+      "countryCode": "JPN",
+      "media": "curry-rice"
+    },
+    {
+      "key": "adobo",
+      "name": "Chicken adobo",
+      "country": "Philippines",
+      "countryCode": "PHL",
+      "media": "adobo"
+    },
+    {
+      "key": "khao-soi",
+      "name": "Khao soi",
+      "country": "Thailand",
+      "countryCode": "THA",
+      "media": "khao-soi"
+    },
+    {
+      "key": "pad-kra-pao",
+      "name": "Pad kra pao",
+      "country": "Thailand",
+      "countryCode": "THA",
+      "media": "pad-kra-pao"
+    },
+    {
+      "key": "pavlova",
+      "name": "Pavlova",
+      "country": "New Zealand",
+      "countryCode": "NZL",
+      "media": "pavlova"
+    },
+    {
+      "key": "lamington",
+      "name": "Lamingtons",
+      "country": "Australia",
+      "countryCode": "AUS",
+      "media": "lamington"
+    },
+    {
+      "key": "dumplings",
+      "name": "Pork and chive gyoza",
+      "country": "Japan",
+      "countryCode": "JPN",
+      "media": "dumplings"
+    },
+    {
+      "key": "pantry-soup",
+      "name": "Sunday pantry soup",
+      "country": null,
+      "countryCode": null,
+      "media": "pantry-soup"
+    }
+  ],
+  "occasions": [
+    {
+      "id": "demo-occasion-001",
+      "month": 1,
+      "day": 7,
+      "dishes": [
+        "gumbo"
+      ],
+      "ratings": [
+        7
+      ],
+      "note": "The roux finally tasted deep enough; start it a shade darker next time."
+    },
+    {
+      "id": "demo-occasion-002",
+      "month": 1,
+      "day": 18,
+      "dishes": [
+        "chana"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Brightened the pot with lemon at the table."
+    },
+    {
+      "id": "demo-occasion-003",
+      "month": 1,
+      "day": 29,
+      "dishes": [
+        "oyakodon",
+        "pantry-soup"
+      ],
+      "ratings": [
+        7,
+        6
+      ],
+      "note": "A quiet clean-out-the-fridge dinner."
+    },
+    {
+      "id": "demo-occasion-004",
+      "month": 2,
+      "day": 5,
+      "dishes": [
+        "pierogi"
+      ],
+      "ratings": [
+        6
+      ],
+      "note": "Wrappers were too thick, but the onion filling was right."
+    },
+    {
+      "id": "demo-occasion-005",
+      "month": 2,
+      "day": 14,
+      "dishes": [
+        "tagliatelle"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Hand-cut noodles held the sauce beautifully."
+    },
+    {
+      "id": "demo-occasion-006",
+      "month": 2,
+      "day": 27,
+      "dishes": [
+        "fish-tacos"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Use more lime in the slaw."
+    },
+    {
+      "id": "demo-occasion-007",
+      "month": 3,
+      "day": 4,
+      "dishes": [
+        "jollof"
+      ],
+      "ratings": [
+        7
+      ],
+      "note": "Good smoky base; rice needed five more minutes."
+    },
+    {
+      "id": "demo-occasion-008",
+      "month": 3,
+      "day": 16,
+      "dishes": [
+        "ratatouille"
+      ],
+      "ratings": [
+        7
+      ],
+      "note": "Better on the second day."
+    },
+    {
+      "id": "demo-occasion-009",
+      "month": 3,
+      "day": 28,
+      "dishes": [
+        "adobo",
+        "dumplings"
+      ],
+      "ratings": [
+        8,
+        7
+      ],
+      "note": "Friends folded dumplings while the adobo simmered."
+    },
+    {
+      "id": "demo-occasion-010",
+      "month": 4,
+      "day": 3,
+      "dishes": [
+        "poutine"
+      ],
+      "ratings": [
+        6
+      ],
+      "note": "The gravy was good; find fresher curds."
+    },
+    {
+      "id": "demo-occasion-011",
+      "month": 4,
+      "day": 12,
+      "dishes": [
+        "tagine"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Preserved lemon carried the whole dish."
+    },
+    {
+      "id": "demo-occasion-012",
+      "month": 4,
+      "day": 24,
+      "dishes": [
+        "naengmyeon"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Cold, bright, and exactly right for the first warm day."
+    },
+    {
+      "id": "demo-occasion-013",
+      "month": 5,
+      "day": 2,
+      "dishes": [
+        "arepas"
+      ],
+      "ratings": [
+        7
+      ],
+      "note": "Crisp edges; split the dough thinner next time."
+    },
+    {
+      "id": "demo-occasion-014",
+      "month": 5,
+      "day": 13,
+      "dishes": [
+        "mujadara"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "More onions than seemed reasonable was the correct amount."
+    },
+    {
+      "id": "demo-occasion-015",
+      "month": 5,
+      "day": 27,
+      "dishes": [
+        "oyakodon"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Softer eggs and less soy than January."
+    },
+    {
+      "id": "demo-occasion-016",
+      "month": 6,
+      "day": 6,
+      "dishes": [
+        "dosa"
+      ],
+      "ratings": [
+        7
+      ],
+      "note": "The third dosa finally released cleanly."
+    },
+    {
+      "id": "demo-occasion-017",
+      "month": 6,
+      "day": 17,
+      "dishes": [
+        "jerk-chicken",
+        "pavlova"
+      ],
+      "ratings": [
+        8,
+        7
+      ],
+      "note": "A long summer dinner with something cool for dessert."
+    },
+    {
+      "id": "demo-occasion-018",
+      "month": 6,
+      "day": 29,
+      "dishes": [
+        "khao-soi"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Crunchy noodles and pickled mustard greens made it."
+    },
+    {
+      "id": "demo-occasion-019",
+      "month": 7,
+      "day": 5,
+      "dishes": [
+        "moqueca"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Gentle heat and plenty of cilantro."
+    },
+    {
+      "id": "demo-occasion-020",
+      "month": 7,
+      "day": 14,
+      "dishes": [
+        "spanakopita"
+      ],
+      "ratings": [
+        7
+      ],
+      "note": "Messy layers, excellent corners."
+    },
+    {
+      "id": "demo-occasion-021",
+      "month": 7,
+      "day": 26,
+      "dishes": [
+        "fish-tacos"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Charred the tortillas and doubled the lime."
+    },
+    {
+      "id": "demo-occasion-022",
+      "month": 8,
+      "day": 4,
+      "dishes": [
+        "plov"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "The carrots stayed distinct and sweet."
+    },
+    {
+      "id": "demo-occasion-023",
+      "month": 8,
+      "day": 15,
+      "dishes": [
+        "adobo"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Reduced the sauce separately for a glossy finish."
+    },
+    {
+      "id": "demo-occasion-024",
+      "month": 8,
+      "day": 30,
+      "dishes": [
+        "adobo"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "A quicker weeknight version with plenty of garlic."
+    },
+    {
+      "id": "demo-occasion-025",
+      "month": 9,
+      "day": 6,
+      "dishes": [
+        "naengmyeon"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "A little more mustard than the spring version."
+    },
+    {
+      "id": "demo-occasion-026",
+      "month": 9,
+      "day": 18,
+      "dishes": [
+        "egusi"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Thick, savory, and even better with greens."
+    },
+    {
+      "id": "demo-occasion-027",
+      "month": 9,
+      "day": 27,
+      "dishes": [
+        "tagliatelle",
+        "ratatouille"
+      ],
+      "ratings": [
+        9,
+        8
+      ],
+      "note": "A late-summer table built around tomatoes."
+    },
+    {
+      "id": "demo-occasion-028",
+      "month": 10,
+      "day": 5,
+      "dishes": [
+        "shepherds-pie"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Crisp potato ridges are worth the extra step."
+    },
+    {
+      "id": "demo-occasion-029",
+      "month": 10,
+      "day": 14,
+      "dishes": [
+        "pad-kra-pao"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Hot pan, lots of basil, runny egg."
+    },
+    {
+      "id": "demo-occasion-030",
+      "month": 10,
+      "day": 29,
+      "dishes": [
+        "jollof"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "The rice steamed perfectly this time."
+    },
+    {
+      "id": "demo-occasion-031",
+      "month": 11,
+      "day": 6,
+      "dishes": [
+        "curry-rice"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Grated apple rounded out the curry."
+    },
+    {
+      "id": "demo-occasion-032",
+      "month": 11,
+      "day": 17,
+      "dishes": [
+        "pierogi"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Thinner dough and deeply browned onions."
+    },
+    {
+      "id": "demo-occasion-033",
+      "month": 11,
+      "day": 28,
+      "dishes": [
+        "gumbo"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "The dark roux was patient and worth it."
+    },
+    {
+      "id": "demo-occasion-034",
+      "month": 12,
+      "day": 4,
+      "dishes": [
+        "chana"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Toasted the spices before adding tomato."
+    },
+    {
+      "id": "demo-occasion-035",
+      "month": 12,
+      "day": 16,
+      "dishes": [
+        "dumplings"
+      ],
+      "ratings": [
+        8
+      ],
+      "note": "Pleats got faster by the last tray."
+    },
+    {
+      "id": "demo-occasion-036",
+      "month": 12,
+      "day": 29,
+      "dishes": [
+        "lamington"
+      ],
+      "ratings": [
+        9
+      ],
+      "note": "Freeze the cake before dipping; a generous final bake for the year."
+    }
+  ],
+  "ideas": [
+    {
+      "id": "demo-idea-001",
+      "title": "Sunday red sauce",
+      "description": "A slow tomato sauce for pasta and baked dishes.",
+      "media": "pasta",
+      "sourceName": "Fictional sample recipe",
+      "madeDish": "tagliatelle",
+      "ingredients": [
+        "Whole tomatoes",
+        "Onion",
+        "Garlic",
+        "Olive oil",
+        "Basil"
+      ],
+      "instructions": [
+        "Soften the onion slowly.",
+        "Add tomatoes and simmer until glossy.",
+        "Finish with basil and olive oil."
+      ]
+    },
+    {
+      "id": "demo-idea-002",
+      "title": "Cold buckwheat noodles",
+      "description": "A bright chilled broth with crisp garnishes.",
+      "media": "noodles",
+      "sourceName": "Fictional sample recipe",
+      "madeDish": "naengmyeon",
+      "ingredients": [
+        "Buckwheat noodles",
+        "Chilled broth",
+        "Cucumber",
+        "Pear",
+        "Egg"
+      ],
+      "instructions": [
+        "Chill the broth completely.",
+        "Cook and rinse the noodles.",
+        "Arrange the garnishes and serve cold."
+      ]
+    },
+    {
+      "id": "demo-idea-003",
+      "title": "Coconut fish stew",
+      "description": "A gentle seafood stew for a weekend dinner.",
+      "media": "moqueca",
+      "sourceName": "Fictional sample recipe",
+      "ingredients": [
+        "White fish",
+        "Coconut milk",
+        "Tomatoes",
+        "Peppers",
+        "Cilantro"
+      ],
+      "instructions": [
+        "Build the tomato and pepper base.",
+        "Add coconut milk.",
+        "Poach the fish until just tender."
+      ]
+    },
+    {
+      "id": "demo-idea-004",
+      "title": "Scallion pancake supper",
+      "description": "Crisp pancakes with a simple dipping sauce.",
+      "media": "dumplings",
+      "sourceName": "Fictional sample recipe",
+      "ingredients": [
+        "Flour",
+        "Scallions",
+        "Sesame oil",
+        "Soy sauce"
+      ],
+      "instructions": [
+        "Make and rest the dough.",
+        "Roll with scallions.",
+        "Pan-fry until crisp."
+      ]
+    },
+    {
+      "id": "demo-idea-005",
+      "title": "Roasted cauliflower tacos",
+      "description": "Smoky vegetable tacos with avocado crema.",
+      "media": "tacos",
+      "sourceName": "Fictional sample recipe",
+      "ingredients": [
+        "Cauliflower",
+        "Corn tortillas",
+        "Avocado",
+        "Lime",
+        "Chile"
+      ],
+      "instructions": [
+        "Roast the cauliflower deeply.",
+        "Blend the crema.",
+        "Warm tortillas and assemble."
+      ]
+    },
+    {
+      "id": "demo-idea-006",
+      "title": "Black lime lentils",
+      "description": "A tangy pot of lentils with caramelized onions.",
+      "media": "chana",
+      "sourceName": "Fictional sample recipe",
+      "ingredients": [
+        "Brown lentils",
+        "Black lime",
+        "Onions",
+        "Cumin"
+      ],
+      "instructions": [
+        "Brown the onions.",
+        "Simmer lentils with black lime.",
+        "Fold the onions through before serving."
+      ]
+    },
+    {
+      "id": "demo-idea-007",
+      "title": "Plantain breakfast bowls",
+      "description": "Crisp plantains, rice, greens, and a soft egg.",
+      "media": "jollof",
+      "sourceName": "Fictional sample recipe",
+      "ingredients": [
+        "Plantains",
+        "Rice",
+        "Greens",
+        "Eggs"
+      ],
+      "instructions": [
+        "Cook the rice.",
+        "Fry the plantains.",
+        "Build bowls with greens and eggs."
+      ]
+    },
+    {
+      "id": "demo-idea-008",
+      "title": "Vinegar-braised mushrooms",
+      "description": "A meatless braise inspired by adobo's sweet-sour balance.",
+      "media": "adobo",
+      "sourceName": "Fictional sample recipe",
+      "ingredients": [
+        "Mushrooms",
+        "Vinegar",
+        "Soy sauce",
+        "Garlic",
+        "Bay leaf"
+      ],
+      "instructions": [
+        "Brown the mushrooms.",
+        "Add the braising liquid.",
+        "Reduce until glossy."
+      ]
+    }
+  ]
+}

@@ -2,6 +2,8 @@
 
 > **Status:** Validated on the owner’s iPhone and integrated into the capture prototype
 
+> **Invitation-access addendum, September 8, 2026:** The owner-token and Lambda Function URL boundary below is historical and superseded by [Invitation only private archives](../../product/invitation-only-access/design.md). The current signer accepts only API Gateway-validated Cognito access-token claims through the unified service API; there is no shared-token fallback. The audio-streaming, privacy, and device-feasibility findings remain applicable.
+
 ## 1. Executive summary
 
 Safari's browser speech-recognition route accepted microphone access on the owner's iPhone but did not return words. Keyboard Dictation works, but it hides the action behind the keyboard and does not provide the preferred one-tap capture experience. This spike will add a dedicated **Speak your cook** button to the iPhone feasibility lab. The browser will convert microphone samples to short PCM audio chunks and stream them directly to Amazon Transcribe over an encrypted WebSocket. A small protected Lambda function will issue a short-lived connection URL, but it will never receive audio. The main downside is a small AWS backend and a one-time owner-token setup.
@@ -145,7 +147,9 @@ If the app is backgrounded, `visibilitychange` stops capture immediately; return
 
 ## 8. Security, privacy, and operations
 
-The browser origin and the owner token establish access to the session endpoint. Function URL configuration permits only the deployed Amplify origin, `POST`, and the required request headers; it owns preflight responses so Lambda does not add duplicate CORS headers. CORS limits browser origins but is not authentication. Lambda hashes the presented UTF-8 token and uses constant-time comparison against the fixed 32-byte configured digest. Authorization is checked before input-dependent AWS work. Error messages do not distinguish missing from wrong tokens.
+The deployed Amplify origin and a scoped Cognito access token establish access to the session endpoint. API Gateway validates token audience and capture scope before Lambda invocation; the retired shared owner-token and Function URL path are no longer accepted. CORS limits browser origins but is not authentication. Authorization is checked before input-dependent AWS work, and errors do not reveal token details.
+
+The signer may add the configured, READY `en-US` public culinary vocabulary. If a vocabulary-enhanced socket cannot open, the client requests one new signed session with `useVocabulary: false` and continues without blocking manual capture. Private archive dish names are never uploaded into this vocabulary.
 
 The URL signer uses Lambda's temporary execution-role credentials. The role grants `transcribe:StartStreamTranscriptionWebSocket` on `*`, because that streaming action does not support a narrower resource ARN, plus log-stream creation and writes scoped to this function's CloudWatch log group. The signed URL uses a unique session ID, fixed region, locale, encoding, and sample rate, and a 15-second expiry. Content Security Policy permits connections only to the Lambda origin and `wss://transcribestreaming.us-east-2.amazonaws.com:8443`.
 

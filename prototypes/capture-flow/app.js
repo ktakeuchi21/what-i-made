@@ -12,15 +12,19 @@
     country: "Japan",
   };
 
+  const authConfig = window.WIM_AUTH_CONFIG || { enabled: false };
   const voiceConfig = window.WIM_VOICE_CONFIG || { enabled: false, sessionEndpoint: "", maxCaptureSeconds: 45, fake: false };
   const assistanceConfig = window.WIM_CAPTURE_ASSISTANCE_CONFIG || { enabled: false, endpoint: "", fake: false, timeoutMs: 10000 };
   const parser = window.WhatIMadeCaptureParser;
   const captureAssistance = window.WhatIMadeCaptureAssistance;
   const dishMatcher = window.WhatIMadeDishMatcher;
+  const dishRecognizer = window.WhatIMadeDishRecognizer;
+  const countryCombobox = window.WhatIMadeCountryCombobox;
   const captureDraft = window.WhatIMadeCaptureDraft;
   const photoUrls = window.WhatIMadePhotoUrls;
   const archive = window.WhatIMadeArchive;
   const backup = window.WhatIMadeBackup;
+  const legacyMigration = window.WhatIMadeLegacyMigration;
   const ideas = window.WhatIMadeIdeas;
   const recipeClient = window.WhatIMadeRecipeClient;
   const dashboard = window.WhatIMadeDashboard;
@@ -29,25 +33,30 @@
   const mapGeometry = window.WhatIMadeMapGeometry;
   const culinaryRegions = window.WhatIMadeCulinaryRegions;
   const journalModel = window.WhatIMadeJournal;
+  const demoArchive = window.WhatIMadeDemoArchive;
   const recapRenderGate = journalModel.createLatestRequestGate();
-  const TOKEN_DB_NAME = "what-i-made-feasibility-owner";
-  const TOKEN_DB_VERSION = 1;
-  const TOKEN_STORE_NAME = "diagnostics";
-  const TOKEN_RECORD_ID = "voice-owner-token";
-
+  const accountContext = window.WhatIMadeAccountContext;
+  const authApi = window.WhatIMadeAuth;
+  const authClient = authApi?.createAuthClient ? authApi.createAuthClient(authConfig) : null;
   const state = {
+    mode: "signedOut",
+    demoRepository: null,
+    demoReturnFocusElement: null,
+    demoActivationId: 0,
+    demoActivationController: null,
     photoReady: false,
     photoSrc: "",
     photoBlob: null,
     objectUrl: "",
     archiveObjectUrls: [],
-    mapMarkerObjectUrls: [],
+    mapShelfObjectUrls: [],
     currentCookId: "",
     dashboardModel: null,
     mapNavigation: { level: "world", regionId: "", countryKey: "" },
-    mapMode: readMapMode(),
+    mapMode: "density",
+    archiveKey: "",
+    mapWorldShelfScroll: 0,
     mapRegionShelfScroll: 0,
-    mapDetailDishIds: [],
     mapReturnFocusElement: null,
     mapSheetReturnState: null,
     dishReturnCountryKey: "",
@@ -80,11 +89,16 @@
     assistanceFailed: false,
     primaryMatchedDishId: "",
     primaryForceNewDish: true,
+    primaryDishRecognition: null,
     matchingCooks: [],
     countrySuggestion: null,
     countryProvenance: "",
     confirmationBaseline: null,
-    ownerToken: "",
+    accessToken: "",
+    authSession: null,
+    signOutCleanupPending: false,
+    accountReturnFocusElement: null,
+    legacyMigrationInspection: null,
     suggestedCountry: "",
     touchedFields: new Set(),
     recordingTimer: null,
@@ -102,6 +116,7 @@
     pendingIdeaId: "",
     yearScrollTop: 0,
     backupReturnFocusElement: null,
+    backupOriginScreen: "year",
     backupArchiveSummary: null,
     backupInspection: null,
     eraseCompleted: false,
@@ -149,10 +164,10 @@
   const recordingStatus = $("#recording-status");
   const liveTranscriptShell = $("#live-transcript-shell");
   const liveTranscript = $("#live-transcript");
-  const voiceSetup = $("#voice-setup");
-  const ownerTokenInput = $("#owner-token");
-  const tokenMessage = $("#token-message");
   const captureError = $("#capture-error");
+  const authMessage = $("#auth-message");
+  const authError = $("#auth-error");
+  const signInButton = $("#sign-in-button");
   const assistProgress = $("#assist-progress");
   const assistRecovery = $("#assist-recovery");
   const dishError = $("#dish-error");
@@ -202,27 +217,90 @@
   const eraseDialog = $("#erase-dialog");
   const eraseConfirmation = $("#erase-confirmation");
   const mapCustomizeDialog = $("#map-customize-dialog");
+  const demoInvitationDialog = $("#demo-invitation-dialog");
+  const accountDialog = $("#account-dialog");
   const mapLocationStage = $("#map-location-stage");
   const mapEditorMarker = $("#map-editor-marker");
+  const countryPickers = new Map();
   let journalSearchTimer = null;
 
-  function readMapMode() {
-    try { return localStorage.getItem("what-i-made-map-mode") === "needle" ? "needle" : "photo"; }
-    catch { return "photo"; }
+  function activeArchiveRepository() {
+    if (demoArchive?.repositoryForMode) return demoArchive.repositoryForMode(state.mode, state.demoRepository, archive);
+    if (state.mode === "demo") throw new Error("The sample archive is unavailable.");
+    return archive;
+  }
+
+  function activeIdeasRepository() {
+    if (demoArchive?.repositoryForMode) return demoArchive.repositoryForMode(state.mode, state.demoRepository, ideas);
+    if (state.mode === "demo") throw new Error("The sample archive is unavailable.");
+    return ideas;
+  }
+
+  function isDemoMode() {
+    return state.mode === "demo";
+  }
+
+  function setAccountEntryPoints(visible) {
+    $$('[data-open-account]').forEach((button) => { button.hidden = !visible; });
+    if (!visible) return;
+    const mapAtWorld = state.mapNavigation.level === "world";
+    $("#map-account").hidden = !mapAtWorld;
+    $("#map-header-spacer").hidden = mapAtWorld;
+  }
+
+  function dashboardOptions() {
+    if (!isDemoMode()) return {};
+    const year = state.demoRepository.year;
+    return { year, now: new Date(year, 11, 31, 12, 0, 0) };
+  }
+
+  function setupCountryPicker(input, options = {}) {
+    if (!input || !countryCombobox?.create || !worldMap) return null;
+    const picker = countryCombobox.create(input, worldMap, options);
+    countryPickers.set(input, picker);
+    return picker;
+  }
+
+  function setCountryValue(input, value) {
+    const picker = countryPickers.get(input) || setupCountryPicker(input);
+    if (picker) picker.setValue(value || "");
+    else input.value = value || "";
+  }
+
+  function validateCountryInput(input) {
+    const picker = countryPickers.get(input) || setupCountryPicker(input);
+    return picker ? picker.validate() : !input.value.trim() || Boolean(worldMap?.findCountry?.(input.value));
+  }
+
+  function countryNameForCode(code) {
+    return worldMap?.countries?.find((country) => country.key === code)?.name || "";
+  }
+
+  function mapModeStorageKey(archiveKey = state.archiveKey) {
+    return archiveKey ? `what-i-made-map-mode:${archiveKey}` : "what-i-made-map-mode";
+  }
+
+  function readMapMode(archiveKey = state.archiveKey) {
+    try {
+      const stored = localStorage.getItem(mapModeStorageKey(archiveKey));
+      return stored === "peaks" || stored === "needle" ? "peaks" : "density";
+    } catch { return "density"; }
   }
 
   function setMapMode(mode, options = {}) {
-    state.mapMode = mode === "needle" ? "needle" : "photo";
-    try { localStorage.setItem("what-i-made-map-mode", state.mapMode); } catch {}
-    $("#map-mode-photo").setAttribute("aria-pressed", String(state.mapMode === "photo"));
-    $("#map-mode-needle").setAttribute("aria-pressed", String(state.mapMode === "needle"));
+    state.mapMode = mode === "peaks" || mode === "needle" ? "peaks" : "density";
+    if (!isDemoMode()) {
+      try { localStorage.setItem(mapModeStorageKey(), state.mapMode); } catch {}
+    }
+    $("#map-mode-density").setAttribute("aria-pressed", String(state.mapMode === "density"));
+    $("#map-mode-peaks").setAttribute("aria-pressed", String(state.mapMode === "peaks"));
+    $("#full-map").dataset.mapMode = state.mapMode;
     if (options.render !== false) {
-      if (state.mapNavigation.level === "region") {
+      if (state.mapNavigation.level === "world") {
+        renderMapActivity(state.dashboardModel?.countries || []);
+      } else if (state.mapNavigation.level === "region") {
         const region = state.dashboardModel?.regions.find((candidate) => candidate.id === state.mapNavigation.regionId);
-        if (region) renderRegionDishes(region);
-      } else if (state.mapNavigation.level === "country-detail") {
-        const country = countryForKey(state.mapNavigation.countryKey);
-        if (country) renderCountryDetailMarkers(country);
+        if (region) renderRegionActivity(region);
       }
     }
   }
@@ -237,6 +315,528 @@
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 10);
+  }
+
+  function cancelDemoActivation() {
+    state.demoActivationId += 1;
+    state.demoActivationController?.abort();
+    state.demoActivationController = null;
+    const button = $("#explore-demo");
+    if (button) {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Explore a sample archive";
+    }
+  }
+
+  function resetDemoTransientState() {
+    cancelDemoActivation();
+    clearArchiveObjectUrls();
+    clearIdeaObjectUrls();
+    state.demoRepository = null;
+    state.dashboardModel = null;
+    state.currentCookId = "";
+    state.mapNavigation = { level: "world", regionId: "", countryKey: "" };
+    state.mapWorldShelfScroll = 0;
+    state.mapRegionShelfScroll = 0;
+    state.mapSheetReturnState = null;
+    state.currentDishHistoryId = "";
+    state.dishReturnCountryKey = "";
+    state.dishReturnMapState = null;
+    state.journalQuery = "";
+    state.journalFilters = { country: "all", year: "", month: "", rating: "any" };
+    state.journalCooks = [];
+    state.journalOptions = { countries: [], years: [], hasMissingCountry: false };
+    state.journalScrollTop = 0;
+    state.yearScrollTop = 0;
+    state.ideasScrollTop = 0;
+    state.ideaQuery = "";
+    state.ideaFilter = "all";
+    state.currentIdeaId = "";
+    state.ideaSearchDescription = "";
+    state.pendingIdeaId = "";
+    state.recapScrollTop = 0;
+    state.recapYear = new Date().getFullYear();
+    state.recapOrigin = "year";
+    state.entryReturnScreen = "journal";
+    state.entryReturnCookId = "";
+    state.entryReturnPhotoId = "";
+    state.currentOccasionId = "";
+    state.currentAttemptId = "";
+    state.selectedEntryPhotoId = "";
+    ["#journal-scroll", "#ideas-scroll", "#recap-scroll", "#map-main"].forEach((selector) => {
+      const surface = $(selector);
+      if (surface) surface.scrollTop = 0;
+    });
+    if (yearScroll) yearScroll.scrollTop = 0;
+    const journalSearch = $("#journal-search");
+    if (journalSearch) journalSearch.value = "";
+    const ideasSearch = $("#ideas-search");
+    if (ideasSearch) ideasSearch.value = "";
+    $$('[data-idea-filter]').forEach((control) => control.setAttribute("aria-pressed", String(control.dataset.ideaFilter === "all")));
+    $("#app-main").classList.remove("is-demo");
+    $("#demo-banner").hidden = true;
+    $("#demo-welcome").hidden = true;
+    $("#archive-safety-card").hidden = false;
+    if (demoInvitationDialog?.open) demoInvitationDialog.close();
+    if (!countrySheetLayer.hidden) closeCountrySheet({ restoreFocus: false });
+  }
+
+  function showSignedOut(reason = "") {
+    if (isDemoMode()) resetDemoTransientState();
+    state.mode = "signedOut";
+    state.authSession = null;
+    state.accessToken = "";
+    setAccountEntryPoints(false);
+    authError.hidden = true;
+    signInButton.hidden = false;
+    signInButton.textContent = state.signOutCleanupPending ? "Retry secure sign out" : "Sign in with email";
+    $("#auth-helper").hidden = false;
+    authMessage.textContent = reason === "offlineExpired"
+      ? "Connect to the internet and sign in again to open this archive. Nothing was deleted."
+      : reason === "expired"
+        ? "Your session ended. Sign in again to reopen your private archive."
+        : reason === "signedOut"
+          ? "You’re signed out. Sign in with an invited email to reopen its private archive."
+        : reason === "serviceUnavailable"
+          ? "Sign-in is temporarily unavailable. Your archive is still on this device. Try again when connected."
+          : reason === "cleanup"
+            ? "Your archive is locked. Finish secure sign-out before another account can open."
+        : "See how the journal works, or sign in with an invited email. Every account starts with its own separate archive.";
+    showScreen("auth");
+    window.requestAnimationFrame(() => $("#explore-demo").focus({ preventScroll: true }));
+  }
+
+  async function activateDemo() {
+    cancelDemoActivation();
+    const activationId = state.demoActivationId;
+    const controller = new AbortController();
+    state.demoActivationController = controller;
+    authError.hidden = true;
+    const button = $("#explore-demo");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "Opening sample archive…";
+    try {
+      const repository = await demoArchive.load({ signal: controller.signal });
+      const stillRequested = new URLSearchParams(window.location.search).get("demo") === "1";
+      if (activationId !== state.demoActivationId || !stillRequested) return;
+      state.mode = "demo";
+      state.demoRepository = repository;
+      state.archiveKey = "";
+      state.authSession = null;
+      state.accessToken = "";
+      state.mapMode = "density";
+      state.recapYear = repository.year;
+      $("#app-main").classList.add("is-demo");
+      $("#demo-banner").hidden = false;
+      $("#demo-welcome").hidden = false;
+      $("#archive-safety-card").hidden = true;
+      setAccountEntryPoints(false);
+      await initializeApp();
+    } catch (error) {
+      if (error?.name === "AbortError" || activationId !== state.demoActivationId) return;
+      showSignedOut();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("demo");
+      window.history.replaceState({ wimMode: "signedOut" }, "", url);
+      authError.textContent = navigator.onLine === false
+        ? "The sample archive has not been cached on this device. Connect once to explore it."
+        : error.message || "The sample archive could not be opened.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+    } finally {
+      if (activationId !== state.demoActivationId) return;
+      state.demoActivationController = null;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Explore a sample archive";
+    }
+  }
+
+  async function enterDemoFromSignedOut() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("demo", "1");
+    window.history.pushState({ wimMode: "demo" }, "", url);
+    await activateDemo();
+  }
+
+  function openDemoInvitation(trigger) {
+    if (!isDemoMode()) return false;
+    state.demoReturnFocusElement = trigger || document.activeElement;
+    demoInvitationDialog.showModal();
+    window.requestAnimationFrame(() => $("#invitation-sign-in").focus({ preventScroll: true }));
+    return true;
+  }
+
+  function closeDemoInvitation() {
+    if (demoInvitationDialog.open) demoInvitationDialog.close();
+  }
+
+  function trapModalFocus(event, dialog) {
+    if (event.key !== "Tab") return;
+    const controls = $$('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', dialog)
+      .filter((control) => !control.hidden && control.getClientRects().length);
+    if (!controls.length) return;
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+
+  function openAccountDialog(trigger) {
+    if (state.mode !== "account" || !state.authSession) return;
+    state.accountReturnFocusElement = trigger || document.activeElement;
+    $("#sign-out-status").hidden = true;
+    accountDialog.showModal();
+    window.requestAnimationFrame(() => $("#close-account-dialog").focus({ preventScroll: true }));
+  }
+
+  function closeAccountDialog(options = {}) {
+    if (!accountDialog.open) return;
+    if (options.restoreFocus === false) state.accountReturnFocusElement = null;
+    accountDialog.close();
+  }
+
+  function clearPrivateArchiveView() {
+    resetDemoTransientState();
+    clearMapCustomizeObjectUrls();
+    if (state.editObjectUrl) URL.revokeObjectURL(state.editObjectUrl);
+    if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+    state.editObjectUrl = "";
+    state.editOriginal = null;
+    state.editPhotoBlob = null;
+    state.objectUrl = "";
+    state.photoBlob = null;
+    state.photoSrc = "";
+    state.photoReady = false;
+    state.ideaDraft = null;
+    state.ideaDraftImage = null;
+    state.mapCustomize = null;
+    state.confirmationBaseline = null;
+    state.assistedDishes = [];
+    state.matchingCooks = [];
+    state.primaryDishRecognition = null;
+    state.countrySuggestion = null;
+    state.touchedFields = new Set();
+    state.archiveKey = "";
+    captureForm.reset();
+    confirmForm.reset();
+    editForm.reset();
+    $("#idea-link-panel")?.reset();
+    $("#idea-describe-panel")?.reset();
+    $("#idea-review-form")?.reset();
+    clearConfirmationDishes();
+    photoPreview.hidden = true;
+    photoPreview.removeAttribute("src");
+    setAccountEntryPoints(false);
+    $("#account-email").textContent = "";
+    $("#account-access-status").textContent = "";
+    closeAccountDialog({ restoreFocus: false });
+    if (!countrySheetLayer.hidden) closeCountrySheet({ restoreFocus: false });
+    ["#year-hero-photo", "#entry-photo", "#success-photo", "#edit-photo-preview"].forEach((selector) => $(selector)?.removeAttribute("src"));
+  }
+
+  async function activateAccount(session) {
+    if (!session?.subject || !accountContext?.archiveKeyForSubject || !archive?.setArchiveContext) {
+      throw new Error("Private archive storage could not be initialized.");
+    }
+    cancelDemoActivation();
+    const archiveKey = await accountContext.archiveKeyForSubject(session.subject);
+    archive.setArchiveContext(archiveKey);
+    if (isDemoMode()) resetDemoTransientState();
+    state.mode = "account";
+    state.archiveKey = archiveKey;
+    state.mapMode = readMapMode(archiveKey);
+    state.authSession = session;
+    state.accessToken = session.accessToken || "";
+    setAccountEntryPoints(true);
+    $("#account-email").textContent = session.email || "Invited account";
+    $("#account-access-status").textContent = session.kind === "offlineGrace"
+      ? "Offline access. Connect before using voice or recipe search."
+      : "This device opens only this account’s local archive.";
+    await initializeApp();
+    await offerLegacyMigration();
+  }
+
+  function migrationMarkerKey() {
+    return `what-i-made-legacy-migrated:${state.archiveKey}`;
+  }
+
+  async function offerLegacyMigration() {
+    if (!legacyMigration?.inspect || !authConfig.legacyOwnerArchiveKey) return;
+    try {
+      if (sessionStorage.getItem(migrationMarkerKey()) === "dismissed" || localStorage.getItem(migrationMarkerKey()) === "complete") return;
+    } catch {}
+    try {
+      const inspection = await legacyMigration.inspect({
+        activeArchiveKey: state.archiveKey,
+        ownerArchiveKey: authConfig.legacyOwnerArchiveKey,
+        backup,
+      });
+      if (!inspection.available) return;
+      state.legacyMigrationInspection = inspection;
+      const counts = inspection.counts;
+      $("#legacy-migration-counts").textContent = `${pluralize(counts.attempts, "cook", "cooks")}, ${pluralize(counts.dishes, "dish", "dishes")}, ${pluralize(counts.ideas, "Idea", "Ideas")}, and ${pluralize(counts.photos + counts.ideaImages, "image", "images")} are ready to move.`;
+      $("#legacy-migration-dialog").showModal();
+      window.requestAnimationFrame(() => $("#backup-legacy-archive").focus({ preventScroll: true }));
+    } catch (error) {
+      console.warn("Legacy archive inspection was unavailable.", error?.message || error);
+    }
+  }
+
+  async function backupLegacyArchive() {
+    const inspection = state.legacyMigrationInspection;
+    if (!inspection?.payload) return;
+    const button = $("#backup-legacy-archive");
+    const status = $("#legacy-migration-status");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    status.hidden = false;
+    status.textContent = "Preparing the previous archive…";
+    try {
+      const blob = new Blob([JSON.stringify(inspection.payload)], { type: "application/json" });
+      const fileName = backup.createBackupFileName();
+      const file = typeof File === "function" ? new File([blob], fileName, { type: blob.type }) : null;
+      if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ title: "What I Made backup", text: "Keep this file somewhere safe, such as Files.", files: [file] });
+        } catch (error) {
+          if (error?.name === "AbortError") throw error;
+          downloadBackupBlob(blob, fileName);
+        }
+      } else {
+        downloadBackupBlob(blob, fileName);
+      }
+      status.textContent = "Backup prepared. You can now move the archive.";
+    } catch (error) {
+      status.textContent = error?.name === "AbortError" ? "Backup sharing was canceled. Nothing was changed." : "The backup could not be prepared. Nothing was changed.";
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  }
+
+  async function moveLegacyArchive() {
+    const button = $("#move-legacy-archive");
+    const error = $("#legacy-migration-error");
+    const status = $("#legacy-migration-status");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    error.hidden = true;
+    status.hidden = false;
+    status.textContent = "Moving and checking every record…";
+    try {
+      const destination = await archive.openDatabase();
+      await legacyMigration.migrate(state.legacyMigrationInspection, destination);
+      try { localStorage.setItem(migrationMarkerKey(), "complete"); } catch {}
+      status.textContent = "Archive moved and verified.";
+      window.setTimeout(() => window.location.reload(), 500);
+    } catch (migrationError) {
+      error.textContent = migrationError.message || "The archive could not be moved. The previous archive is still untouched.";
+      error.hidden = false;
+      error.focus({ preventScroll: true });
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  }
+
+  async function startInvitationSignIn() {
+    cancelDemoActivation();
+    if (state.signOutCleanupPending) {
+      await finishSignOutCleanup();
+      return;
+    }
+    if (!authConfig.enabled || !authClient) {
+      const unavailableUrl = new URL(window.location.href);
+      unavailableUrl.searchParams.delete("demo");
+      window.history.replaceState({ wimMode: "signedOut" }, "", unavailableUrl);
+      if (isDemoMode()) resetDemoTransientState();
+      showSignedOut();
+      signInButton.disabled = true;
+      authError.textContent = "Invitation sign-in is not configured. You can keep exploring the public sample.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete("demo");
+    window.history.replaceState({ wimMode: "signedOut" }, "", url);
+    if (isDemoMode()) resetDemoTransientState();
+    state.mode = "signedOut";
+    authError.hidden = true;
+    signInButton.disabled = true;
+    signInButton.setAttribute("aria-busy", "true");
+    try {
+      const retained = await authClient.restore();
+      if (["signedIn", "offlineGrace"].includes(retained.kind)) {
+        await activateAccount(retained);
+        return;
+      }
+      const destination = await authClient.startSignIn();
+      if (typeof destination === "string") window.location.assign(destination);
+      else await activateAccount(destination);
+    } catch (error) {
+      showSignedOut();
+      authError.textContent = error.message || "Sign-in could not be started. Try again.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+    } finally {
+      signInButton.disabled = false;
+      signInButton.removeAttribute("aria-busy");
+    }
+  }
+
+  async function signOutAccount() {
+    const button = $("#sign-out-button");
+    const status = $("#sign-out-status");
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "Signing out…";
+    status.textContent = "Locking this archive on this device…";
+    status.hidden = false;
+    state.accessToken = "";
+    state.authSession = null;
+    state.signOutCleanupPending = true;
+    try {
+      await cancelRecording("Session ended");
+      await archive.closeDatabase();
+      clearPrivateArchiveView();
+      showSignedOut("cleanup");
+      await finishSignOutCleanup();
+    } catch (error) {
+      clearPrivateArchiveView();
+      showSignedOut("cleanup");
+      showCleanupError(error);
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Sign out on this device";
+    }
+  }
+
+  function showCleanupError(error) {
+    authError.textContent = error?.message || "Secure sign-out could not finish. The archive is locked; retry before signing in again.";
+    authError.hidden = false;
+    authError.focus({ preventScroll: true });
+    signInButton.textContent = "Retry secure sign out";
+  }
+
+  async function finishSignOutCleanup() {
+    signInButton.disabled = true;
+    signInButton.setAttribute("aria-busy", "true");
+    try {
+      const logoutUrl = await authClient.signOut();
+      state.signOutCleanupPending = false;
+      showSignedOut("signedOut");
+      if (logoutUrl && navigator.onLine !== false) window.location.replace(logoutUrl);
+      else window.location.reload();
+    } catch (error) {
+      state.signOutCleanupPending = true;
+      showSignedOut("cleanup");
+      showCleanupError(error);
+    } finally {
+      signInButton.disabled = false;
+      signInButton.removeAttribute("aria-busy");
+    }
+  }
+
+  async function bootApplication() {
+    const parameters = new URLSearchParams(window.location.search);
+    const hasOAuthCallback = ["code", "state", "error", "error_description"].some((key) => parameters.has(key));
+    if (!hasOAuthCallback && parameters.get("demo") === "1") {
+      await activateDemo();
+      return;
+    }
+    if (!authConfig.enabled) {
+      showSignedOut();
+      signInButton.disabled = true;
+      authError.textContent = "Invitation sign-in is not configured here. The public sample is still available.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+      return;
+    }
+    try {
+      const session = await authClient.restore();
+      if (["signedIn", "offlineGrace"].includes(session.kind)) await activateAccount(session);
+      else {
+        state.signOutCleanupPending = session.reason === "cleanup";
+        showSignedOut(session.reason);
+      }
+    } catch (error) {
+      showSignedOut();
+      authError.textContent = error.message || "Your private archive could not be opened.";
+      authError.hidden = false;
+      authError.focus({ preventScroll: true });
+    }
+  }
+
+  async function serviceAccessToken() {
+    if (!authConfig.enabled) throw new Error("Invitation sign-in is not configured.");
+    if (navigator.onLine === false) {
+      throw new Error("Connect to the internet to use this feature.");
+    }
+    try {
+      const session = await authClient.getSessionForNetwork();
+      if (!state.authSession?.subject || session.subject !== state.authSession.subject) {
+        throw Object.assign(new Error("Your account changed. Sign in again before using this feature."), { code: "reauth_required" });
+      }
+      state.authSession = session;
+      state.accessToken = session.accessToken;
+      $("#account-access-status").textContent = "This device opens only this account’s local archive.";
+      return session.accessToken;
+    } catch (error) {
+      state.accessToken = "";
+      if (error?.code === "reauth_required") {
+        state.authSession = null;
+        await cancelRecording("Session ended");
+        await archive.closeDatabase();
+        showSignedOut("expired");
+        window.location.reload();
+      } else if (error?.code === "temporarily_unavailable" && state.authSession) {
+        if (authClient.localAccessState(state.authSession).allowed) {
+          state.authSession = { ...state.authSession, kind: "offlineGrace", accessToken: "", accessTokenExpiresAt: null };
+          $("#account-access-status").textContent = "Local-only access. Connect before using voice or recipe search.";
+        } else {
+          await lockPrivateArchive("serviceUnavailable", false);
+        }
+      }
+      throw error;
+    }
+  }
+
+  async function lockPrivateArchive(reason, clearSession = true) {
+    state.accessToken = "";
+    state.authSession = null;
+    await cancelRecording("Session ended");
+    await archive.closeDatabase();
+    showSignedOut(reason);
+    if (!clearSession) {
+      window.location.reload();
+      return;
+    }
+    try {
+      await authClient.clearSession();
+      window.location.reload();
+    } catch (error) {
+      state.signOutCleanupPending = true;
+      showSignedOut("cleanup");
+      showCleanupError(error);
+    }
+  }
+
+  async function validateVisibleAccount() {
+    if (!authConfig.enabled || !state.authSession || document.visibilityState === "hidden") return;
+    if (!authClient.localAccessState(state.authSession).allowed) {
+      await lockPrivateArchive("offlineExpired", navigator.onLine === false);
+      return;
+    }
+    if (navigator.onLine !== false) {
+      try { await serviceAccessToken(); }
+      catch {
+        // serviceAccessToken owns the local-only or signed-out transition.
+      }
+    }
   }
 
   function showScreen(name) {
@@ -348,6 +948,8 @@
     ingredients.value = sample.ingredients;
     state.suggestedCountry = sample.country;
     state.countryProvenance = "suggested";
+    state.primaryDishRecognition = null;
+    renderPrimaryDishRecognition();
     revealOptionalFields();
     beginTiming();
     updateReadyState();
@@ -356,6 +958,15 @@
   function applyTranscriptSuggestions(value) {
     if (!parser?.parseCaptureTranscript) return;
     const parsed = parser.parseCaptureTranscript(value);
+    const parsedCountry = parsed.country ? worldMap?.findCountry?.(parsed.country) : null;
+    const recognition = dishRecognizer?.resolve?.({ dishName: parsed.dishName, countryCode: parsedCountry?.key || "", cooks: state.matchingCooks, resolveCountry: worldMap?.findCountry });
+    if (recognition) {
+      parsed.dishName = recognition.canonicalName;
+      state.primaryDishRecognition = { ...recognition, applied: true, addedCountry: !parsed.country && Boolean(recognition.countryCode) };
+      if (!parsed.country && recognition.countryCode) parsed.country = countryNameForCode(recognition.countryCode);
+    } else {
+      state.primaryDishRecognition = null;
+    }
     const fields = { dishName, rating, notes, ingredients };
     Object.entries(fields).forEach(([name, element]) => {
       const suggestion = parsed[name];
@@ -363,6 +974,7 @@
     });
     state.suggestedCountry = parsed.country || "";
     state.countryProvenance = parsed.country ? "suggested" : "";
+    renderPrimaryDishRecognition();
     if (parsed.rating || parsed.notes || parsed.ingredients) revealOptionalFields();
     updateReadyState();
   }
@@ -392,12 +1004,91 @@
       : { auto: "", optional: { name: country.name, source: dish.countrySource }, provenance: "suggested" };
   }
 
+  function recognitionForParsedDish(dish) {
+    if (!dishRecognizer?.applyToParsedDish) return { ...dish };
+    const originalCountryCode = dish.countryCode || "";
+    const result = dishRecognizer.applyToParsedDish(dish, { cooks: state.matchingCooks, resolveCountry: worldMap?.findCountry });
+    if (!result.recognition) return { ...dish };
+    return {
+      ...result.dish,
+      _recognition: {
+        ...result.recognition,
+        applied: true,
+        addedCountry: !originalCountryCode && Boolean(result.dish.countryCode),
+      },
+    };
+  }
+
+  function renderPrimaryDishRecognition() {
+    const recognition = state.primaryDishRecognition;
+    const visible = Boolean(recognition?.applied);
+    [["capture", dishName], ["confirm", $("#confirm-dish")]].forEach(([prefix, control]) => {
+      const container = $(`#${prefix}-dish-recognition`);
+      container.hidden = !visible || control.value.trim() !== recognition?.canonicalName;
+      if (!container.hidden) {
+        $(`#${prefix}-dish-recognition-copy`).textContent = `Suggested from your note: “${recognition.originalDishName}” was changed to ${recognition.canonicalName}.`;
+      }
+    });
+  }
+
+  function renderConfirmDishPresentation() {
+    const name = $("#confirm-dish").value.trim();
+    $("#confirm-photo").alt = `${name || "Meal"} being reviewed`;
+    $("#confirm-photo-caption").textContent = `${name || "Today’s cook"} · Today`;
+  }
+
+  function undoPrimaryDishRecognition() {
+    const recognition = state.primaryDishRecognition;
+    if (!recognition?.applied) return;
+    recognition.applied = false;
+    dishName.value = recognition.originalDishName;
+    $("#confirm-dish").value = recognition.originalDishName;
+    state.touchedFields.add("dishName");
+    if (recognition.addedCountry) {
+      const recognizedCountry = countryNameForCode(recognition.countryCode);
+      if (state.suggestedCountry === recognizedCountry) state.suggestedCountry = "";
+      if ($("#confirm-country").value === recognizedCountry) setCountryValue($("#confirm-country"), "");
+    }
+    renderPrimaryDishRecognition();
+    renderConfirmDishPresentation();
+    updateReadyState();
+    const confirmVisible = !$("[data-screen='confirm']").hidden;
+    (confirmVisible ? $("#confirm-dish") : dishName).focus();
+  }
+
+  function changePrimaryDishRecognition(control) {
+    state.touchedFields.add("dishName");
+    control.focus();
+    control.select();
+  }
+
+  function primarySpeechAlias() {
+    const recognition = state.primaryDishRecognition;
+    return recognition?.applied && $("#confirm-dish").value.trim() === recognition.canonicalName
+      ? recognition.originalDishName
+      : "";
+  }
+
+  function suppressPrimaryRecognitionForCountry(countryValue) {
+    const recognition = state.primaryDishRecognition;
+    const country = worldMap?.findCountry?.(countryValue);
+    if (!recognition?.applied || !recognition.countryCode || !country || recognition.countryCode === country.key) return;
+    recognition.applied = false;
+    if (dishName.value.trim() === recognition.canonicalName) dishName.value = recognition.originalDishName;
+    if ($("#confirm-dish").value.trim() === recognition.canonicalName) $("#confirm-dish").value = recognition.originalDishName;
+    state.touchedFields.add("dishName");
+    renderPrimaryDishRecognition();
+    renderConfirmDishPresentation();
+    updateReadyState();
+  }
+
   function applyAssistedDishes(dishes, warnings = []) {
-    const proposed = (dishes || []).filter((dish) => dish?.dishName).slice(0, 6);
+    const proposed = (dishes || []).filter((dish) => dish?.dishName).slice(0, 6).map(recognitionForParsedDish);
     state.assistedDishes = proposed.filter((dish) => captureAssistance?.acceptedDishFields?.(dish)?.dishName);
     state.assistanceWarnings = [...warnings, ...(state.assistedDishes.length < proposed.length ? ["A possible dish name was too uncertain to assign."] : [])].slice(0, 6);
     const primary = state.assistedDishes[0];
-    if (!primary) return;
+    state.primaryDishRecognition = primary?._recognition || null;
+    if (!primary) { renderPrimaryDishRecognition(); return; }
     const accepted = captureAssistance?.acceptedDishFields?.(primary) || primary;
     const fields = [
       ["dishName", dishName, accepted.dishName],
@@ -419,6 +1110,7 @@
     }
     state.countrySuggestion = country.optional;
     if (primary.rating || primary.notes || primary.ingredientsText) revealOptionalFields();
+    renderPrimaryDishRecognition();
     updateReadyState();
   }
 
@@ -435,14 +1127,17 @@
     assistRecovery.hidden = true;
     setAssistanceBusy(true, retry ? "Trying smart suggestions again…" : "Organizing your note…");
     recordingStatus.textContent = "Organizing your note…";
+    try { state.matchingCooks = archive?.listCooks ? await archive.listCooks() : []; } catch { state.matchingCooks = []; }
+    if (requestId !== state.assistanceRequestId || controller.signal.aborted) return false;
     try {
       let result;
       if (!assistanceConfig.enabled || !captureAssistance) throw new Error("Smart assistance is not configured.");
       if (assistanceConfig.fake) {
         result = await captureAssistance.fakeParseCook({ transcript: combined, voiceSegment: rawSegment, parseFallback: parser?.parseCaptureTranscript, countryLookup: worldMap?.findCountry });
       } else {
+        const accessToken = await serviceAccessToken();
         result = await captureAssistance.parseCook({
-          endpoint: assistanceConfig.endpoint, token: state.ownerToken, transcript: combined, voiceSegment: rawSegment,
+          endpoint: assistanceConfig.endpoint, token: accessToken, transcript: combined, voiceSegment: rawSegment,
           locale: "en-US", timeoutMs: assistanceConfig.timeoutMs, signal: controller.signal,
           countryCodes: (worldMap?.countries || []).map((country) => country.key),
         });
@@ -475,84 +1170,6 @@
         state.assistanceController = null;
         setAssistanceBusy(false);
       }
-    }
-  }
-
-  function openTokenDatabase() {
-    if (!("indexedDB" in window)) return Promise.reject(new Error("Private setup storage is unavailable."));
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(TOKEN_DB_NAME, TOKEN_DB_VERSION);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(TOKEN_STORE_NAME)) {
-          request.result.createObjectStore(TOKEN_STORE_NAME, { keyPath: "id" });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error("Private setup could not be opened."));
-    });
-  }
-
-  async function tokenRecord(action, value) {
-    const database = await openTokenDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = database.transaction(TOKEN_STORE_NAME, action === "get" ? "readonly" : "readwrite");
-      const store = transaction.objectStore(TOKEN_STORE_NAME);
-      const request = action === "get"
-        ? store.get(TOKEN_RECORD_ID)
-        : action === "put"
-          ? store.put({ id: TOKEN_RECORD_ID, token: value, savedAt: new Date().toISOString() })
-          : store.delete(TOKEN_RECORD_ID);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error || new Error("Private setup could not be updated."));
-      transaction.oncomplete = () => database.close();
-    });
-  }
-
-  async function restoreOwnerToken() {
-    if (voiceConfig.fake) {
-      state.ownerToken = "local-fake-token-for-browser-tests";
-      tokenMessage.textContent = "Local voice simulation is ready.";
-      return;
-    }
-    try {
-      const record = await tokenRecord("get");
-      state.ownerToken = typeof record?.token === "string" ? record.token : "";
-      tokenMessage.textContent = state.ownerToken ? "Owner token already saved on this device." : "No owner token is saved on this device.";
-      if (!state.ownerToken) voiceSetup.open = true;
-    } catch (error) {
-      tokenMessage.textContent = error.message;
-      voiceSetup.open = true;
-    }
-  }
-
-  async function saveOwnerToken() {
-    const value = ownerTokenInput.value.trim();
-    if (!/^[A-Za-z0-9_-]{32,128}$/.test(value)) {
-      tokenMessage.textContent = "Enter the private token from AWS setup (at least 32 characters).";
-      ownerTokenInput.focus();
-      return;
-    }
-    try {
-      await tokenRecord("put", value);
-      state.ownerToken = value;
-      ownerTokenInput.value = "";
-      tokenMessage.textContent = "Owner token saved on this device.";
-      voiceSetup.open = false;
-    } catch (error) {
-      tokenMessage.textContent = error.message;
-    }
-  }
-
-  async function removeOwnerToken() {
-    try {
-      await cancelRecording("Voice stopped");
-      await tokenRecord("delete");
-      state.ownerToken = "";
-      ownerTokenInput.value = "";
-      tokenMessage.textContent = "Owner token removed from this device.";
-      voiceSetup.open = true;
-    } catch (error) {
-      tokenMessage.textContent = error.message;
     }
   }
 
@@ -638,10 +1255,13 @@
       transcript.focus();
       return;
     }
-    if (!state.ownerToken) {
-      voiceSetup.open = true;
-      tokenMessage.textContent = "Save the private owner token before using one-tap voice.";
-      ownerTokenInput.focus();
+    let accessToken;
+    try {
+      accessToken = await serviceAccessToken();
+    } catch (error) {
+      captureError.textContent = `${error.message} Type here or use keyboard Dictation.`;
+      captureError.hidden = false;
+      transcript.focus();
       return;
     }
     const Adapter = voiceConfig.fake
@@ -662,7 +1282,7 @@
     state.activeAdapter = adapter;
     state.activeTranscript = { adapter, text: "", committed: false };
     try {
-      await adapter.start(state.ownerToken);
+      await adapter.start(accessToken);
     } catch (error) {
       if (state.activeAdapter === adapter) handleVoiceState(adapter, "failed", error.message);
     }
@@ -735,7 +1355,8 @@
     $("#confirm-notes").value = notes.value || (failed ? transcript.value : "");
     $("#confirm-ingredients").value = ingredients.value;
     const inferredCountry = state.assistedDishes.length ? "" : parser?.inferCountry?.(name) || "";
-    $("#confirm-country").value = failed ? "" : state.suggestedCountry || inferredCountry;
+    setCountryValue($("#confirm-country"), failed ? "" : state.suggestedCountry || inferredCountry);
+    renderPrimaryDishRecognition();
 
     $("#assist-warning").hidden = !failed && !state.assistanceFailed && !state.assistanceWarnings.length;
     $("#retry-assistance-confirm").hidden = !state.assistanceFailed || !assistanceConfig.enabled;
@@ -773,36 +1394,40 @@
   function clearArchiveObjectUrls() {
     state.archiveObjectUrls.forEach((url) => URL.revokeObjectURL(url));
     state.archiveObjectUrls = [];
-    clearMapMarkerObjectUrls();
+    clearMapShelfObjectUrls();
+  }
+
+  function trustedPhotoUrl(value, ownedUrls) {
+    if (typeof value === "string") {
+      const resolved = new URL(value, window.location.href);
+      if (resolved.origin === window.location.origin && resolved.pathname.includes("/assets/demo/")) return resolved.href;
+      return "";
+    }
+    if (!(value instanceof Blob)) return "";
+    const url = URL.createObjectURL(value);
+    ownedUrls.push(url);
+    return url;
   }
 
   function photoUrlForCook(cook) {
-    const url = URL.createObjectURL(cook.photoBlob);
-    state.archiveObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(cook.photoBlob, state.archiveObjectUrls);
   }
 
   function photoUrlForBlob(blob) {
-    const url = URL.createObjectURL(blob);
-    state.archiveObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(blob, state.archiveObjectUrls);
   }
 
   function mapPhotoUrlForDish(dish) {
-    const url = URL.createObjectURL(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob);
-    state.archiveObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.archiveObjectUrls);
   }
 
-  function clearMapMarkerObjectUrls() {
-    state.mapMarkerObjectUrls.forEach((url) => URL.revokeObjectURL(url));
-    state.mapMarkerObjectUrls = [];
+  function clearMapShelfObjectUrls() {
+    state.mapShelfObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    state.mapShelfObjectUrls = [];
   }
 
-  function mapMarkerPhotoUrl(dish) {
-    const url = URL.createObjectURL(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob);
-    state.mapMarkerObjectUrls.push(url);
-    return url;
+  function mapShelfPhotoUrlForDish(dish) {
+    return trustedPhotoUrl(dish.latestCook.mapPhotoBlob || dish.latestCook.photoBlob, state.mapShelfObjectUrls);
   }
 
   function pluralize(count, singular, plural = `${singular}s`) {
@@ -829,10 +1454,21 @@
     });
   }
 
-  function updateMapCountryStyles(regionId = "", countryKey = "") {
+  function updateMapCountryStyles(regionId = "", countryKey = "", countries = []) {
+    const activity = new Map(mapGeometry.countryActivityModel(countries)
+      .map((entry) => [entry.country.countryKey, entry]));
     $$("#full-map .world-country").forEach((country) => {
+      const entry = activity.get(country.dataset.countryKey);
       country.classList.toggle("is-selected", country.dataset.countryKey === countryKey);
       country.classList.toggle("is-in-region", Boolean(regionId) && country.dataset.regionId === regionId);
+      country.classList.toggle("has-density", Boolean(entry));
+      if (entry) {
+        country.dataset.densityBand = String(entry.band);
+        country.dataset.cookCount = String(entry.cookCount);
+      } else {
+        delete country.dataset.densityBand;
+        delete country.dataset.cookCount;
+      }
     });
   }
 
@@ -886,10 +1522,12 @@
 
   function renderYearFromCooks(cooks, occasions = []) {
     clearArchiveObjectUrls();
-    const model = dashboard.buildYearDashboard(cooks);
+    const model = dashboard.buildYearDashboard(cooks, dashboardOptions());
     state.dashboardModel = model;
     $("#year-eyebrow").textContent = String(model.year);
-    $("#year-summary").textContent = `${pluralize(model.dishCount, "dish", "dishes")} across ${pluralize(model.countryCount, "country", "countries")}, all saved on this device.`;
+    $("#year-summary").textContent = isDemoMode()
+      ? `${pluralize(model.dishCount, "dish", "dishes")} across ${pluralize(model.countryCount, "country", "countries")} in this fictional sample.`
+      : `${pluralize(model.dishCount, "dish", "dishes")} across ${pluralize(model.countryCount, "country", "countries")}, all saved on this device.`;
     $("#year-dish-count").textContent = String(model.dishCount);
     $("#year-cook-count").textContent = String(model.cookCount);
     $("#year-country-count").textContent = String(model.countryCount);
@@ -945,7 +1583,8 @@
 
   async function openYear(options = {}) {
     try {
-      const [cooks, occasions] = await Promise.all([archive.listDishAttempts(), archive.listOccasions()]);
+      const repository = activeArchiveRepository();
+      const [cooks, occasions] = await Promise.all([repository.listDishAttempts(), repository.listOccasions()]);
       renderYearFromCooks(cooks, occasions);
       showScreen("year");
       if (options.restoreScroll !== false) {
@@ -1071,17 +1710,19 @@
     await renderStorageStatus();
   }
 
-  async function openBackupStorage(trigger = null) {
-    state.yearScrollTop = yearScroll?.scrollTop || 0;
+  async function openBackupStorage(trigger = null, originScreen = "year") {
+    state.backupOriginScreen = originScreen === "capture" ? "capture" : "year";
+    if (state.backupOriginScreen === "year") state.yearScrollTop = yearScroll?.scrollTop || 0;
     state.backupReturnFocusElement = trigger || $("#open-backup-storage");
+    $("#backup-back-label").textContent = state.backupOriginScreen === "capture" ? "New cook" : "Year";
     showScreen("backup");
     await refreshBackupScreen();
   }
 
   function closeBackupStorage() {
-    showScreen("year");
+    showScreen(state.backupOriginScreen);
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-      if (yearScroll) yearScroll.scrollTop = state.yearScrollTop;
+      if (state.backupOriginScreen === "year" && yearScroll) yearScroll.scrollTop = state.yearScrollTop;
       if (state.backupReturnFocusElement?.isConnected) state.backupReturnFocusElement.focus({ preventScroll: true });
     }));
   }
@@ -1275,174 +1916,55 @@
     }
   }
 
-  function makeMapCluster(className, x, y, label, dishes, overflowCount, onClick) {
-    const button = document.createElement("button");
-    const photos = document.createElement("span");
-    const visibleLabel = document.createElement("span");
-    button.type = "button";
-    button.className = className;
-    button.style.setProperty("--map-x", `${x}%`);
-    button.style.setProperty("--map-y", `${y}%`);
-    button.setAttribute("aria-label", label);
-    photos.className = "cluster-photos";
-    dishes.forEach((dish) => {
-      const image = document.createElement("img");
-      image.src = mapPhotoUrlForDish(dish);
-      image.alt = "";
-      photos.append(image);
-    });
-    visibleLabel.className = "cluster-label";
-    visibleLabel.textContent = label.split(",")[0];
-    button.append(photos, visibleLabel);
-    if (overflowCount > 0) {
-      const overflow = document.createElement("span");
-      overflow.className = className === "country-map-cluster" ? "country-cluster-count" : "cluster-overflow";
-      overflow.textContent = className === "country-map-cluster" ? String(overflowCount) : `+${overflowCount}`;
-      button.append(overflow);
-    }
-    button.addEventListener("click", onClick);
-    return button;
+  function mapModeLabel() {
+    return state.mapMode === "peaks" ? "Culinary Peaks" : "Cook Density";
   }
 
-  function makeDishMapMarker(dish) {
-    const button = document.createElement("button");
+  function mapActivitySummary(countries) {
+    const activity = mapGeometry.countryActivityModel(countries);
+    if (!activity.length) return "Add a confirmed country to a cook to begin your map.";
+    const leaders = activity.slice(0, 3)
+      .map(({ country, cookCount }) => `${country.countryName}, ${pluralize(cookCount, "cook")}`)
+      .join("; ");
+    const explanation = state.mapMode === "peaks"
+      ? "Peak height and warmer color show where you cooked more."
+      : "Warmer, stronger country color shows where you cooked more.";
+    return `${mapModeLabel()} is active. ${explanation} Most cooked: ${leaders}.`;
+  }
+
+  function makeCulinaryPeak(entry) {
+    const geometry = mapGeometry.countryGeometry(entry.country.countryKey);
+    const point = geometry?.anchor || { x: entry.country.point[0], y: entry.country.point[1] };
+    const peak = document.createElement("span");
+    const column = document.createElement("span");
     const count = document.createElement("span");
-    button.type = "button";
-    button.className = `dish-map-marker is-${state.mapMode}`;
-    button.dataset.dishId = dish.dishId;
-    button.style.setProperty("--map-x", `${dish.position.x}%`);
-    button.style.setProperty("--map-y", `${dish.position.y}%`);
-    button.dataset.band = String(mapGeometry.repeatBand(dish.attemptCount));
-    button.setAttribute("aria-label", `${dish.dishName}, ${dish.countryName}, ${pluralize(dish.attemptCount, "cook")}, ${state.mapMode === "photo" ? "Photo Density" : "Needle Field"}`);
-    count.className = "dish-map-marker-count";
-    count.textContent = String(dish.attemptCount);
-    if (state.mapMode === "photo") {
-      const image = document.createElement("img");
-      image.src = mapMarkerPhotoUrl(dish);
-      image.alt = "";
-      button.append(image, count);
-    } else {
-      const needle = document.createElement("span");
-      needle.className = "needle-visual";
-      button.append(needle, count);
-    }
-    button.addEventListener("click", () => void openDishHistory(dish.dishId, button));
-    return button;
+    peak.className = "culinary-peak";
+    peak.dataset.countryKey = entry.country.countryKey;
+    peak.dataset.densityBand = String(entry.band);
+    peak.style.setProperty("--map-x", `${point.x}%`);
+    peak.style.setProperty("--map-y", `${point.y}%`);
+    peak.style.setProperty("--peak-height", `${entry.peakHeight}px`);
+    peak.setAttribute("aria-hidden", "true");
+    column.className = "culinary-peak-column";
+    count.className = "culinary-peak-count";
+    count.textContent = String(entry.cookCount);
+    peak.append(column, count);
+    return peak;
   }
 
-  function makeCollisionControl(group, region) {
-    const countries = [...new Set(group.members.map((dish) => dish.countryName))];
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "dense-map-cluster";
-    button.style.setProperty("--map-x", `${group.x}%`);
-    button.style.setProperty("--map-y", `${group.y}%`);
-    button.textContent = `+${group.members.length}`;
-    if (group.kind === "country") {
-      button.setAttribute("aria-label", `${group.members.length} dishes in ${countries[0]}, open close-up`);
-      button.addEventListener("click", () => openCountryDetail(group.members[0].countryKey, button));
-    } else {
-      button.setAttribute("aria-label", `${group.members.length} nearby dishes across ${countries.join(" and ")}`);
-      button.addEventListener("click", () => openNearbySheet(group.members, region, button));
-    }
-    return button;
-  }
-
-  function renderRegionDishes(region) {
-    clearMapMarkerObjectUrls();
+  function renderMapActivity(countries, options = {}) {
     fullMapCells.replaceChildren();
-    const bounds = { width: fullMapCells.clientWidth, height: fullMapCells.clientHeight };
-    const groups = mapGeometry.collisionGroups(region.countries.flatMap((country) => country.dishes), {
-      width: bounds.width || 390,
-      height: bounds.height || 252,
-      scale: region.scale,
-    });
-    groups.forEach((group) => {
-      fullMapCells.append(group.kind === "dish" ? makeDishMapMarker(group.members[0]) : makeCollisionControl(group, region));
-    });
-    $("#map-status").textContent = groups.some((group) => group.kind !== "dish")
-      ? "Nearby dishes are grouped where full-size controls would overlap. Tap a group for a closer view."
-      : `${pluralize(region.countryCount, "country", "countries")} represented in your cooking this year.`;
+    const activity = mapGeometry.countryActivityModel(countries);
+    updateMapCountryStyles(options.regionId || "", options.countryKey || "", countries);
+    if (state.mapMode === "peaks") activity.forEach((entry) => fullMapCells.append(makeCulinaryPeak(entry)));
+    $("#full-map").dataset.mapMode = state.mapMode;
+    $("#full-map").setAttribute("aria-label", `${mapModeLabel()} map of ${state.dashboardModel?.year || "the selected year"} cooking`);
+    $("#map-density-legend-title").textContent = `Cooks in ${state.dashboardModel?.year || "the selected year"}`;
+    $("#map-status").textContent = mapActivitySummary(countries);
   }
 
-  function setCountryViewport(countryKey) {
-    const geometry = mapGeometry.countryGeometry(countryKey);
-    if (!geometry) return 1;
-    const width = Math.max(2, (geometry.bounds.maxX - geometry.bounds.minX) / 10);
-    const height = Math.max(2, (geometry.bounds.maxY - geometry.bounds.minY) / 5);
-    const scale = Math.min(9, Math.max(3.2, Math.min(70 / width, 62 / height)));
-    const point = [(geometry.bounds.minX + geometry.bounds.maxX) / 20, (geometry.bounds.minY + geometry.bounds.maxY) / 10];
-    setMapViewport({ point, scale });
-    return scale;
-  }
-
-  function renderCountryDishShelf(country) {
-    countryShelf.replaceChildren();
-    country.dishes.forEach((dish) => {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      const image = document.createElement("img");
-      const copy = document.createElement("span");
-      button.type = "button";
-      button.className = "country-card";
-      button.dataset.dishId = dish.dishId;
-      button.setAttribute("aria-label", `${dish.dishName}, ${pluralize(dish.attemptCount, "cook")}, open all-time history`);
-      image.src = mapPhotoUrlForDish(dish); image.alt = ""; image.loading = "lazy";
-      copy.className = "country-card-copy";
-      copy.innerHTML = `<strong></strong><span></span>`;
-      copy.querySelector("strong").textContent = dish.dishName;
-      copy.querySelector("span").textContent = pluralize(dish.attemptCount, "cook");
-      button.append(image, copy);
-      button.addEventListener("click", () => void openDishHistory(dish.dishId, button));
-      item.append(button); countryShelf.append(item);
-    });
-  }
-
-  function renderCountryDetailMarkers(country) {
-    clearMapMarkerObjectUrls();
-    fullMapCells.replaceChildren();
-    const scale = setCountryViewport(country.countryKey);
-    const bounds = { width: fullMapCells.clientWidth, height: fullMapCells.clientHeight };
-    const groups = mapGeometry.collisionGroups(country.dishes, {
-      width: bounds.width || 390,
-      height: bounds.height || 252,
-      scale,
-    });
-    groups.forEach((group) => {
-      if (group.kind === "dish") {
-        fullMapCells.append(makeDishMapMarker(group.members[0]));
-        return;
-      }
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "dense-map-cluster";
-      button.style.setProperty("--map-x", `${group.x}%`);
-      button.style.setProperty("--map-y", `${group.y}%`);
-      button.textContent = `+${group.members.length}`;
-      button.setAttribute("aria-label", `${group.members.length} overlapping dishes in ${country.countryName}, browse the complete list`);
-      button.addEventListener("click", () => openCountrySheet(country.countryKey, button));
-      fullMapCells.append(button);
-    });
-  }
-
-  function openCountryDetail(countryKey, trigger = null) {
-    const country = countryForKey(countryKey);
-    const region = country && state.dashboardModel?.regions.find((candidate) => candidate.id === country.regionId);
-    if (!country || !region) return;
-    state.mapRegionShelfScroll = countryShelf.scrollLeft;
-    state.mapNavigation = { level: "country-detail", regionId: region.id, countryKey };
-    state.mapReturnFocusElement = trigger;
-    renderCountryDishShelf(country);
-    $("#full-map").dataset.level = "region";
-    $("#map-eyebrow").textContent = `${region.name} · ${pluralize(country.dishCount, "dish", "dishes")}`;
-    $("#map-title").textContent = country.countryName;
-    $("#map-summary").textContent = "Choose a dish on the close-up map or from the shelf below.";
-    $("#map-status").textContent = "The close-up uses approximate culinary locations. Every dish remains available below.";
-    $("#country-shelf-title").textContent = `Dishes from ${country.countryName}`;
-    $("#map-back-label").textContent = region.name;
-    renderCountryDetailMarkers(country);
-    updateMapCountryStyles(region.id, countryKey);
-    window.requestAnimationFrame(() => $("#map-title").focus({ preventScroll: true }));
+  function renderRegionActivity(region) {
+    renderMapActivity(region.countries, { regionId: region.id });
   }
 
   function setMapViewport(region = null) {
@@ -1458,37 +1980,55 @@
   function renderWorldMapLevel() {
     const model = state.dashboardModel;
     state.mapNavigation = { level: "world", regionId: "", countryKey: "" };
-    clearMapMarkerObjectUrls();
-    fullMapCells.replaceChildren();
-    model.regions.filter((region) => region.dishCount > 0).forEach((region) => {
-      const label = `${region.name}, ${pluralize(region.dishCount, "dish", "dishes")} across ${pluralize(region.countryCount, "country", "countries")}`;
-      fullMapCells.append(makeMapCluster(
-        "region-map-cluster",
-        region.point[0],
-        region.point[1],
-        label,
-        region.featuredDishes,
-        region.hiddenDishCount,
-        () => openMapRegion(region.id),
-      ));
-    });
     $("#full-map").dataset.level = "world";
     $("#map-eyebrow").textContent = `${model.year} · ${pluralize(model.mappedDishes.length, "mapped dish", "mapped dishes")}`;
     $("#map-title").textContent = "Your culinary atlas";
-    $("#map-summary").textContent = "Choose a culinary region to explore the dishes you made there.";
-    $("#map-status").textContent = model.regions.some((region) => region.dishCount)
-      ? "Photo stacks show up to three frequently cooked dishes while mixing countries."
-      : "Add a confirmed country to a cook to begin your map.";
-    $("#country-shelf-section").hidden = true;
-    $("#map-mode-control").hidden = true;
+    $("#map-summary").textContent = "Compare where you cooked most, then choose a region to explore.";
+    $("#map-mode-control").hidden = false;
+    setMapMode(state.mapMode, { render: false });
     $("#map-back").hidden = true;
     $("#map-back-label").textContent = "World";
-    $("#map-header-spacer").hidden = false;
+    $("#map-account").hidden = state.mode !== "account";
+    $("#map-header-spacer").hidden = state.mode === "account";
     setMapViewport();
-    updateMapCountryStyles();
+    renderMapActivity(model.countries);
+    renderWorldRegionShelf(model.regions);
+    countryShelf.scrollLeft = state.mapWorldShelfScroll || 0;
+  }
+
+  function renderWorldRegionShelf(regions) {
+    clearMapShelfObjectUrls();
+    countryShelf.replaceChildren();
+    regions.filter((region) => region.dishCount > 0).forEach((region) => {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      const image = document.createElement("img");
+      const copy = document.createElement("span");
+      const name = document.createElement("strong");
+      const meta = document.createElement("span");
+      button.type = "button";
+      button.className = "country-card";
+      button.dataset.regionId = region.id;
+      button.setAttribute("aria-label", `${region.name}, ${pluralize(region.dishCount, "dish", "dishes")} across ${pluralize(region.countryCount, "country", "countries")}, ${pluralize(region.cookCount, "cook")}`);
+      image.src = mapShelfPhotoUrlForDish(region.featuredDishes[0]);
+      image.alt = "";
+      image.loading = "lazy";
+      copy.className = "country-card-copy";
+      name.textContent = region.name;
+      meta.textContent = `${pluralize(region.countryCount, "country", "countries")} · ${pluralize(region.cookCount, "cook")}`;
+      copy.append(name, meta);
+      button.append(image, copy);
+      button.addEventListener("click", () => openMapRegion(region.id));
+      item.append(button);
+      countryShelf.append(item);
+    });
+    $("#country-shelf-title").textContent = "Culinary regions";
+    $("#country-shelf-section").hidden = false;
+    $("#region-empty").hidden = countryShelf.children.length > 0;
   }
 
   function renderCountryShelf(region) {
+    clearMapShelfObjectUrls();
     countryShelf.replaceChildren();
     region.countries.forEach((country) => {
       const item = document.createElement("li");
@@ -1501,7 +2041,7 @@
       button.className = "country-card";
       button.dataset.countryKey = country.countryKey;
       button.setAttribute("aria-label", `${country.countryName}, ${pluralize(country.dishCount, "dish", "dishes")}, ${pluralize(country.cookCount, "cook")}`);
-      image.src = mapPhotoUrlForDish(country.topDish);
+      image.src = mapShelfPhotoUrlForDish(country.topDish);
       image.alt = "";
       image.loading = "lazy";
       copy.className = "country-card-copy";
@@ -1519,6 +2059,7 @@
   function openMapRegion(regionId) {
     const region = state.dashboardModel?.regions.find((candidate) => candidate.id === regionId);
     if (!region) return;
+    if (state.mapNavigation.level === "world") state.mapWorldShelfScroll = countryShelf.scrollLeft;
     state.mapNavigation = { level: "region", regionId, countryKey: "" };
     renderCountryShelf(region);
     countryShelf.scrollLeft = state.mapRegionShelfScroll || 0;
@@ -1532,11 +2073,11 @@
     $("#country-shelf-section").hidden = false;
     $("#map-back").hidden = false;
     $("#map-back-label").textContent = "World";
+    $("#map-account").hidden = true;
     $("#map-header-spacer").hidden = true;
     setMapViewport(region);
-    updateMapCountryStyles(region.id);
     window.requestAnimationFrame(() => {
-      renderRegionDishes(region);
+      renderRegionActivity(region);
       $("#map-title").focus({ preventScroll: true });
     });
   }
@@ -1598,38 +2139,10 @@
       item.append(button);
       countryDishGrid.append(item);
     });
-    updateMapCountryStyles(region.id, countryKey);
-    setMapBackgroundInert(true);
-    countrySheetLayer.hidden = false;
-    window.requestAnimationFrame(() => $("#close-country-sheet").focus({ preventScroll: true }));
-  }
-
-  function openNearbySheet(dishes, region, trigger = null) {
-    if (!dishes.length || !region) return;
-    state.mapSheetReturnState = { ...state.mapNavigation };
-    state.mapNavigation = { level: "nearby", regionId: region.id, countryKey: "" };
-    state.mapDetailDishIds = dishes.map((dish) => dish.dishId);
-    state.mapReturnFocusElement = trigger instanceof HTMLElement ? trigger : null;
-    $("#country-sheet-region").textContent = region.name;
-    $("#country-sheet-title").textContent = "Nearby dishes";
-    $("#country-sheet-summary").textContent = `${pluralize(dishes.length, "dish", "dishes")} share this part of the map.`;
-    countryDishGrid.replaceChildren();
-    dishes.slice().sort((left, right) => left.countryName.localeCompare(right.countryName) || left.dishName.localeCompare(right.dishName)).forEach((dish) => {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      const image = document.createElement("img");
-      const copy = document.createElement("span");
-      const name = document.createElement("strong");
-      const meta = document.createElement("small");
-      button.type = "button"; button.className = "country-dish-card";
-      button.dataset.dishId = dish.dishId;
-      button.setAttribute("aria-label", `${dish.dishName}, ${dish.countryName}, ${pluralize(dish.attemptCount, "cook")}`);
-      image.src = mapPhotoUrlForDish(dish); image.alt = ""; image.loading = "lazy";
-      name.textContent = dish.dishName; meta.textContent = `${dish.countryName} · ${pluralize(dish.attemptCount, "cook")}`;
-      copy.append(name, meta); button.append(image, copy);
-      button.addEventListener("click", () => void openDishHistory(dish.dishId, button));
-      item.append(button); countryDishGrid.append(item);
-    });
+    const visibleCountries = state.mapSheetReturnState?.level === "world"
+      ? state.dashboardModel.countries
+      : region.countries;
+    updateMapCountryStyles(region.id, countryKey, visibleCountries);
     setMapBackgroundInert(true);
     countrySheetLayer.hidden = false;
     window.requestAnimationFrame(() => $("#close-country-sheet").focus({ preventScroll: true }));
@@ -1646,7 +2159,11 @@
     state.mapNavigation = returnState;
     state.mapSheetReturnState = null;
     state.mapReturnFocusElement = null;
-    updateMapCountryStyles(regionId, returnState.level === "country-detail" ? returnState.countryKey : "");
+    const returnRegion = state.dashboardModel?.regions.find((candidate) => candidate.id === returnState.regionId);
+    const returnCountries = returnState.level === "world"
+      ? state.dashboardModel?.countries || []
+      : returnRegion?.countries || [];
+    updateMapCountryStyles(regionId, "", returnCountries);
     if (options.restoreFocus !== false && returnFocus?.isConnected) {
       window.requestAnimationFrame(() => returnFocus.focus({ preventScroll: true }));
     }
@@ -1682,20 +2199,18 @@
     returnState.focusSurface = trigger?.closest("#country-dish-grid")
       ? "sheet"
       : trigger?.closest("#country-shelf") ? "shelf" : "map";
-    if (returnState.level === "country" || returnState.level === "nearby") {
+    if (returnState.level === "country") {
       returnState.sheetReturnState = state.mapSheetReturnState ? { ...state.mapSheetReturnState } : null;
     }
-    const visibleLevel = returnState.level === "country" || returnState.level === "nearby"
+    const visibleLevel = returnState.level === "country"
       ? returnState.sheetReturnState?.level
       : returnState.level;
-    if (visibleLevel === "country-detail") returnState.detailShelfScroll = countryShelf.scrollLeft;
-    else if (visibleLevel === "region") returnState.regionShelfScroll = countryShelf.scrollLeft;
-    if (returnState.level === "nearby") returnState.dishIds = state.mapDetailDishIds.slice();
+    if (visibleLevel === "region") returnState.regionShelfScroll = countryShelf.scrollLeft;
     state.dishHistoryRequestId = requestId;
     trigger?.setAttribute("aria-disabled", "true");
     trigger?.setAttribute("aria-busy", "true");
     try {
-      const cooks = (await archive.listDishAttempts()).filter((cook) => cook.dishId === dishId);
+      const cooks = (await activeArchiveRepository().listDishAttempts()).filter((cook) => cook.dishId === dishId);
       if (requestId !== state.dishHistoryRequestId) return;
       if (!cooks.length) throw new Error("That dish is no longer available.");
       state.currentDishHistoryId = dishId;
@@ -1911,7 +2426,7 @@
     button.disabled = true; button.setAttribute("aria-busy", "true");
     try {
       await archive.updateDishMapPreferences(draft.dishId, { defaultMapPhotoId: draft.defaultPhotoId, mapLocation: draft.mapLocation });
-      state.dashboardModel = dashboard.buildYearDashboard(await archive.listDishAttempts());
+      state.dashboardModel = dashboard.buildYearDashboard(await activeArchiveRepository().listDishAttempts(), dashboardOptions());
       draft.dirty = false;
       closeMapCustomize({ force: true });
       $("#dish-history-summary").textContent += " Map appearance updated.";
@@ -1926,7 +2441,7 @@
 
   function renderMapFromCooks(cooks) {
     clearArchiveObjectUrls();
-    const model = dashboard.buildYearDashboard(cooks);
+    const model = dashboard.buildYearDashboard(cooks, dashboardOptions());
     state.dashboardModel = model;
     $("#map-error").hidden = true;
     needsLocationList.replaceChildren();
@@ -1941,7 +2456,7 @@
 
   async function openMap() {
     try {
-      const cooks = await archive.listDishAttempts();
+      const cooks = await activeArchiveRepository().listDishAttempts();
       if (!cooks.length) {
         resetCapture({ scenario: "blank" });
         return;
@@ -1962,10 +2477,7 @@
   }
 
   function ideaImageUrl(blob) {
-    if (!(blob instanceof Blob)) return "";
-    const url = URL.createObjectURL(blob);
-    state.ideaObjectUrls.push(url);
-    return url;
+    return trustedPhotoUrl(blob, state.ideaObjectUrls);
   }
 
   function appendIdeaPhoto(container, idea, alt = "", preferThumbnail = false) {
@@ -1986,6 +2498,32 @@
     }
   }
 
+  function renderPhotoCredit(container, attribution) {
+    container.replaceChildren();
+    container.hidden = !attribution;
+    if (!attribution) return;
+    const sourceGroup = document.createElement("span");
+    const licenseGroup = document.createElement("span");
+    const source = document.createElement("a");
+    const license = document.createElement("a");
+    sourceGroup.className = "photo-credit-group";
+    licenseGroup.className = "photo-credit-group";
+    sourceGroup.append("Photo: ");
+    source.textContent = attribution.sourceTitle;
+    source.href = attribution.sourcePage;
+    source.target = "_blank";
+    source.rel = "noopener noreferrer";
+    source.setAttribute("aria-label", `${attribution.sourceTitle}, photograph source on Wikimedia Commons`);
+    license.textContent = attribution.license;
+    license.href = attribution.licenseUrl;
+    license.target = "_blank";
+    license.rel = "noopener noreferrer";
+    license.setAttribute("aria-label", `${attribution.license} license`);
+    sourceGroup.append("“", source, `” by ${attribution.creator}`);
+    licenseGroup.append(license, " · cropped");
+    container.append(sourceGroup, licenseGroup);
+  }
+
   async function renderIdeas() {
     const grid = $("#ideas-grid");
     const empty = $("#ideas-empty");
@@ -1994,7 +2532,7 @@
     grid.replaceChildren();
     error.hidden = true;
     try {
-      const allIdeas = await ideas.listIdeas({ query: state.ideaQuery, filter: state.ideaFilter });
+      const allIdeas = await activeIdeasRepository().listIdeas({ query: state.ideaQuery, filter: state.ideaFilter });
       empty.hidden = allIdeas.length > 0;
       empty.querySelector("h3").textContent = state.ideaQuery || state.ideaFilter !== "all" ? "No ideas match this view." : "No ideas saved yet.";
       allIdeas.forEach((idea) => {
@@ -2080,7 +2618,7 @@
     const imageReference = recipe.imageToken || recipe.imageUrl;
     if (!imageReference || !recipeClient?.fetchImage) return null;
     try {
-      const source = await recipeClient.fetchImage(imageReference, state.ownerToken);
+      const source = await recipeClient.fetchImage(imageReference, await serviceAccessToken());
       if (!(source instanceof Blob)) return null;
       return photoProcessor?.processPhoto ? await photoProcessor.processPhoto(source) : { blob: source };
     } catch {
@@ -2094,10 +2632,10 @@
       await openIdeaDetail(existing.id, { message: "You already saved this source." });
       return;
     }
-    const payload = await recipeClient.importRecipe(url, state.ownerToken);
+    const payload = await recipeClient.importRecipe(url, await serviceAccessToken());
     const recipe = { ...payload.recipe, imageToken: payload.imageToken || payload.recipe.imageToken, sourceKind: options.refreshId ? existing?.sourceKind || "url" : (payload.recipe.sourceKind || "url") };
     if (options.refreshId) {
-      const current = await ideas.getIdea(options.refreshId);
+      const current = await activeIdeasRepository().getIdea(options.refreshId);
       const fields = ["title", "description", "servings", "prepTime", "cookTime", "ingredients", "instructions"];
       const changed = fields.filter((field) => JSON.stringify(current?.[field] || null) !== JSON.stringify(recipe[field] || null)).length;
       Object.assign(recipe, { id: current.id, createdAt: current.createdAt, imageId: current.imageId, personalNotes: current.personalNotes, refreshChangeCount: changed });
@@ -2151,7 +2689,7 @@
       } else {
         appendIdeaPhoto(photo, candidate);
         if (candidate.imageToken) {
-          void recipeClient.fetchImage(candidate.imageToken, state.ownerToken).then((blob) => {
+          void serviceAccessToken().then((accessToken) => recipeClient.fetchImage(candidate.imageToken, accessToken)).then((blob) => {
             if (!(blob instanceof Blob) || !photo.isConnected) return;
             photo.replaceChildren();
             const image = document.createElement("img");
@@ -2202,7 +2740,7 @@
     state.ideaSearchDescription = description;
     setIdeaBusy(form, true, "Searching…");
     try {
-      const payload = await recipeClient.search(description, state.ownerToken);
+      const payload = await recipeClient.search(description, await serviceAccessToken());
       renderIdeaResults((payload.candidates || []).slice(0, 3));
       showScreen("idea-results");
     } catch (caught) {
@@ -2322,11 +2860,12 @@
   }
 
   async function openIdeaDetail(id, options = {}) {
-    const idea = await ideas.getIdea(id);
+    const idea = await activeIdeasRepository().getIdea(id);
     if (!idea) { await openIdeas(); return; }
     clearIdeaObjectUrls();
     state.currentIdeaId = id;
     appendIdeaPhoto($("#idea-detail-photo"), idea, `${idea.title} recipe preview`);
+    renderPhotoCredit($("#idea-photo-credit"), idea.image?.attribution);
     $("#idea-detail-status").textContent = idea.made ? "Made from this idea" : "Not cooked yet";
     $("#idea-detail-title").textContent = idea.title;
     $("#idea-detail-summary").textContent = idea.description || "Your saved recipe snapshot.";
@@ -2385,7 +2924,7 @@
     button.setAttribute("aria-busy", "true");
     error.hidden = true;
     try {
-      const payload = await recipeClient.generate(state.ideaSearchDescription, state.ownerToken);
+      const payload = await recipeClient.generate(state.ideaSearchDescription, await serviceAccessToken());
       await openIdeaReview({ ...payload.recipe, sourceKind: "generated", sourceUrl: null, imageUrl: null }, { mode: "new" });
     } catch (caught) {
       error.textContent = caught.message || "An AI draft could not be created. You can still add the recipe manually.";
@@ -2403,7 +2942,7 @@
   }
 
   async function startCookFromIdea() {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (!idea) return;
     resetCapture({ scenario: "blank", sourceIdeaId: idea.id });
     dishName.value = idea.title;
@@ -2486,7 +3025,7 @@
   async function renderJournal(options = {}) {
     const requestId = ++state.journalRenderRequestId;
     try {
-      const cooks = await archive.listOccasions();
+      const cooks = await activeArchiveRepository().listOccasions();
       if (requestId !== state.journalRenderRequestId) return [];
       clearArchiveObjectUrls();
       journalList.replaceChildren();
@@ -2560,7 +3099,7 @@
   async function renderRecap(options = {}) {
     const requestId = recapRenderGate.begin();
     const requestedYear = Number(state.recapYear);
-    const cooks = await archive.listOccasions();
+    const cooks = await activeArchiveRepository().listOccasions();
     if (!recapRenderGate.isCurrent(requestId)) return false;
     clearArchiveObjectUrls();
     recapGroups.replaceChildren();
@@ -2707,14 +3246,15 @@
   }
 
   async function openCook(id, options = {}) {
-    const cook = await archive.getCook(id);
+    const repository = activeArchiveRepository();
+    const cook = await repository.getCook(id);
     if (!cook) {
       journalError.textContent = "That cook is no longer available.";
       journalError.hidden = false;
       showScreen("journal");
       return;
     }
-    const occasion = await archive.getOccasion(cook.occasionId);
+    const occasion = await repository.getOccasion(cook.occasionId);
     if (!occasion) throw new Error("That cooking occasion is no longer available.");
     clearArchiveObjectUrls();
     const activeScreen = $(".app-screen.is-active")?.dataset.screen;
@@ -2732,6 +3272,7 @@
     const photoUrl = photoUrlForBlob(selectedPhoto.blob);
     $("#entry-photo").src = photoUrl;
     $("#entry-photo").alt = `${occasion.dishNames.join(" and ")}${selectedPhoto.id === occasion.mainPhotoId ? ", main photograph" : ", photograph"}`;
+    renderPhotoCredit($("#entry-photo-credit"), selectedPhoto.attribution);
     $("#entry-title").textContent = occasion.dishNames.join(" and ");
     $("#entry-date").textContent = formatCookedDate(occasion.cookedAt);
     entryPhotoGrid.replaceChildren();
@@ -2787,13 +3328,14 @@
   }
 
   async function openPhotoActions(photoId, trigger) {
-    const occasion = await archive.getOccasion(state.currentOccasionId);
+    const occasion = await activeArchiveRepository().getOccasion(state.currentOccasionId);
     const photo = occasion?.photos.find((candidate) => candidate.id === photoId);
     if (!photo) return;
     state.selectedEntryPhotoId = photoId;
     state.photoActionReturnFocus = trigger;
     $("#photo-actions-preview").src = trigger.querySelector("img").src;
     $("#photo-actions-preview").alt = `${occasion.dishNames.join(" and ")} photograph`;
+    renderPhotoCredit($("#photo-dialog-credit"), photo.attribution);
     const assignment = $("#photo-dish-assignment");
     assignment.replaceChildren(new Option("The whole occasion", ""), ...occasion.attempts.map((attempt) => new Option(attempt.dishName, attempt.id)));
     assignment.value = photo.dishAttemptId || "";
@@ -2841,6 +3383,7 @@
 
   function openAddDish() {
     $("#add-dish-form").reset();
+    setCountryValue($("#add-dish-country"), "");
     $("#add-dish-error").hidden = true;
     showScreen("add-dish");
   }
@@ -2850,6 +3393,8 @@
     const button = $("#save-added-dish");
     const input = { dishName: $("#add-dish-name").value.trim(), country: $("#add-dish-country").value.trim(), rating: $("#add-dish-rating").value, notes: $("#add-dish-notes").value.trim(), ingredients: $("#add-dish-ingredients").value.trim(), forceNewDish: $("#add-dish-force-new").checked };
     if (!input.dishName) { $("#add-dish-error").textContent = "Enter a dish name."; $("#add-dish-error").hidden = false; $("#add-dish-name").focus(); return; }
+    if (!validateCountryInput($("#add-dish-country"))) { $("#add-dish-country").focus(); return; }
+    input.country = $("#add-dish-country").value.trim();
     button.disabled = true; button.setAttribute("aria-busy", "true");
     try {
       const photoFile = $("#add-dish-photo").files?.[0];
@@ -2910,7 +3455,7 @@
   }
 
   async function openEditCook() {
-    const cook = await archive.getCook(state.currentCookId);
+    const cook = await activeArchiveRepository().getCook(state.currentCookId);
     if (!cook) {
       await openJournal();
       journalError.textContent = "That cook is no longer available.";
@@ -2930,7 +3475,7 @@
     };
     editDish.value = state.editOriginal.dishName;
     editDate.value = state.editOriginal.cookedAt;
-    editCountry.value = state.editOriginal.country;
+    setCountryValue(editCountry, state.editOriginal.country);
     editRating.value = state.editOriginal.rating;
     editNotes.value = state.editOriginal.notes;
     editIngredients.value = state.editOriginal.ingredients;
@@ -3010,6 +3555,11 @@
       editDish.focus();
       return;
     }
+    if (!validateCountryInput(editCountry)) {
+      editCountry.focus();
+      return;
+    }
+    values.country = editCountry.value.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(values.cookedAt)) {
       editError.textContent = "Choose a valid cooked date.";
       editError.hidden = false;
@@ -3111,6 +3661,7 @@
       matchedDishId: options.matchedDishId || "",
       forceNewDish: options.forceNewDish ?? !options.matchedDishId,
       fromAssistance: Boolean(options.fromAssistance),
+      recognition: initial._recognition ? { ...initial._recognition } : null,
     };
     const card = document.createElement("fieldset");
     const legend = document.createElement("legend");
@@ -3145,6 +3696,34 @@
       if (required) control.required = true;
       group.append(label, control); card.append(group);
     });
+    const countryControl = card.querySelector('[data-field="country"]');
+    setupCountryPicker(countryControl);
+    if (record.recognition?.applied) {
+      const recognition = document.createElement("div");
+      const copy = document.createElement("p");
+      const actions = document.createElement("div");
+      const undo = document.createElement("button");
+      const change = document.createElement("button");
+      recognition.className = "dish-recognition";
+      recognition.setAttribute("role", "status");
+      copy.textContent = `Suggested from your note: “${record.recognition.originalDishName}” was changed to ${record.recognition.canonicalName}.`;
+      undo.type = "button"; undo.className = "inline-button"; undo.textContent = "Undo";
+      change.type = "button"; change.className = "inline-button"; change.textContent = "Change";
+      undo.addEventListener("click", () => {
+        record.recognition.applied = false;
+        const nameControl = card.querySelector('[data-field="name"]');
+        nameControl.value = record.recognition.originalDishName;
+        if (record.recognition.addedCountry && countryControl.value === countryNameForCode(record.recognition.countryCode)) setCountryValue(countryControl, "");
+        recognition.hidden = true;
+        refreshMatch();
+        nameControl.focus();
+      });
+      change.addEventListener("click", () => {
+        const nameControl = card.querySelector('[data-field="name"]');
+        nameControl.focus(); nameControl.select();
+      });
+      actions.append(undo, change); recognition.append(copy, actions); card.append(recognition);
+    }
     const countryAction = document.createElement("button");
     countryAction.type = "button"; countryAction.className = "inline-button country-suggestion-action";
     countryAction.hidden = !initialCountry.optional;
@@ -3177,7 +3756,7 @@
     state.confirmationDishes.push(record);
     $("#additional-dishes").append(card);
     record.element.querySelector('[data-field="name"]').value = confident("dishName") ? initial.dishName || "" : "";
-    record.element.querySelector('[data-field="country"]').value = initialCountry.auto || "";
+    setCountryValue(record.element.querySelector('[data-field="country"]'), initialCountry.auto || "");
     record.element.querySelector('[data-field="rating"]').value = confident("rating") ? initial.rating || "" : "";
     record.element.querySelector('[data-field="notes"]').value = confident("notes") ? initial.notes || "" : "";
     record.element.querySelector('[data-field="ingredients"]').value = confident("ingredientsText") ? initial.ingredientsText || initial.ingredients || "" : "";
@@ -3192,10 +3771,18 @@
       const selected = [...matchGroup.querySelectorAll('input[type="radio"]')].find((input) => input.value === "new");
       if (selected) { selected.checked = true; record.matchedDishId = ""; record.forceNewDish = true; }
     }
+    const suppressRecognitionForCountry = (country) => {
+      if (!record.recognition?.applied || !record.recognition.countryCode || !country || country.key === record.recognition.countryCode) return;
+      record.recognition.applied = false;
+      const nameControl = record.element.querySelector('[data-field="name"]');
+      if (nameControl.value.trim() === record.recognition.canonicalName) nameControl.value = record.recognition.originalDishName;
+      card.querySelector(".dish-recognition").hidden = true;
+    };
     countryAction.addEventListener("click", () => {
       const control = record.element.querySelector('[data-field="country"]');
-      control.value = initialCountry.optional?.name || "";
+      setCountryValue(control, initialCountry.optional?.name || "");
       countryAction.hidden = true;
+      suppressRecognitionForCountry(worldMap?.findCountry?.(control.value));
       refreshMatch();
       control.focus();
     });
@@ -3206,6 +3793,10 @@
     });
     record.element.querySelector('[data-field="name"]').addEventListener("change", refreshMatch);
     record.element.querySelector('[data-field="country"]').addEventListener("change", refreshMatch);
+    record.element.querySelector('[data-field="country"]').addEventListener("countrycommit", (event) => {
+      suppressRecognitionForCountry(event.detail?.country);
+      refreshMatch();
+    });
     if (record.processed) photoStatus.textContent = "Dish photo ready.";
     record.initialValues = confirmationDishValuesForRecord(record);
     if (options.focus !== false) card.querySelector("input")?.focus();
@@ -3219,6 +3810,8 @@
       rating: record.element.querySelector('[data-field="rating"]').value,
       notes: record.element.querySelector('[data-field="notes"]').value.trim(),
       ingredients: record.element.querySelector('[data-field="ingredients"]').value.trim(),
+      speechAlias: record.recognition?.applied && record.element.querySelector('[data-field="name"]').value.trim() === record.recognition.canonicalName
+        ? record.recognition.originalDishName : "",
       matchedDishId: record.matchedDishId || null,
       forceNewDish: record.forceNewDish,
       processed: record.processed,
@@ -3241,6 +3834,7 @@
         ingredients: $("#confirm-ingredients").value,
         matchedDishId: state.primaryMatchedDishId,
         forceNewDish: state.primaryForceNewDish,
+        recognition: state.primaryDishRecognition ? { ...state.primaryDishRecognition } : null,
       },
       extras: state.confirmationDishes.map((record) => ({ ...confirmationDishValuesForRecord(record), fromAssistance: record.fromAssistance })),
     };
@@ -3252,8 +3846,13 @@
       rating: $("#confirm-rating"), notes: $("#confirm-notes"), ingredients: $("#confirm-ingredients"),
     };
     Object.entries(controls).forEach(([key, control]) => {
-      if (snapshot.primary[key] !== snapshot.baseline[key]) control.value = snapshot.primary[key];
+      if (snapshot.primary[key] !== snapshot.baseline[key]) {
+        if (key === "country") setCountryValue(control, snapshot.primary[key]);
+        else control.value = snapshot.primary[key];
+      }
     });
+    if (snapshot.primary.dishName !== snapshot.baseline.dishName) state.primaryDishRecognition = snapshot.primary.recognition;
+    renderPrimaryDishRecognition();
     if (snapshot.extras.length) {
       clearConfirmationDishes();
       snapshot.extras.forEach((dish) => addConfirmationDish(dish, {
@@ -3281,6 +3880,15 @@
       $("#confirm-dish").focus();
       return;
     }
+    if (!validateCountryInput($("#confirm-country"))) {
+      $("#confirm-country").focus();
+      return;
+    }
+    const invalidExtraCountry = state.confirmationDishes.find((record) => !validateCountryInput(record.element.querySelector('[data-field="country"]')));
+    if (invalidExtraCountry) {
+      invalidExtraCountry.element.querySelector('[data-field="country"]').focus();
+      return;
+    }
 
     const saveButton = $("#save-button");
     saveButton.disabled = true;
@@ -3293,7 +3901,7 @@
       const extraDishes = confirmationDishValues();
       const missing = extraDishes.find((dish) => !dish.dishName);
       if (missing) throw new Error("Enter a name for every additional dish or remove its section.");
-      const dishes = [{ dishName: confirmedName, rating: $("#confirm-rating").value, notes: $("#confirm-notes").value, ingredients: $("#confirm-ingredients").value, country: $("#confirm-country").value, transcript: transcript.value, sourceIdeaId: state.pendingIdeaId, matchedDishId: state.primaryMatchedDishId || null, forceNewDish: state.primaryForceNewDish }, ...extraDishes];
+      const dishes = [{ dishName: confirmedName, rating: $("#confirm-rating").value, notes: $("#confirm-notes").value, ingredients: $("#confirm-ingredients").value, country: $("#confirm-country").value, transcript: transcript.value, sourceIdeaId: state.pendingIdeaId, matchedDishId: state.primaryMatchedDishId || null, forceNewDish: state.primaryForceNewDish, speechAlias: primarySpeechAlias() }, ...extraDishes];
       const photos = [{ blob: photoBlob, dishIndex: 0 }, ...extraDishes.flatMap((dish, index) => dish.processed ? [{ ...dish.processed, dishIndex: index + 1 }] : [])];
       state.currentOccasionId = await archive.saveOccasion({ cookedAt: $("#confirm-date").value, dishes, photos });
       state.currentCookId = state.currentOccasionId;
@@ -3353,6 +3961,7 @@
     state.lastAssistanceInput = null;
     state.primaryMatchedDishId = "";
     state.primaryForceNewDish = true;
+    state.primaryDishRecognition = null;
     state.matchingCooks = [];
     state.touchedFields = new Set();
     state.simulateFailure = Boolean(options.failure);
@@ -3362,6 +3971,10 @@
 
     captureForm.reset();
     confirmForm.reset();
+    setCountryValue($("#confirm-country"), "");
+    setCountryValue($("#add-dish-country"), "");
+    setCountryValue(editCountry, "");
+    renderPrimaryDishRecognition();
     liveTranscript.textContent = "";
     liveTranscriptShell.hidden = true;
     recordingStatus.textContent = "Ready";
@@ -3414,11 +4027,15 @@
   }
 
   async function initializeApp() {
+    setupCountryPicker($("#confirm-country"));
+    setupCountryPicker($("#add-dish-country"));
+    setupCountryPicker(editCountry, { allowPristineUnresolved: true });
     renderWorldMaps();
     resetCapture({ scenario: "blank" });
-    if (!archive?.listCooks) return;
+    const repository = activeArchiveRepository();
+    if (!repository?.listDishAttempts) return;
     try {
-      const [cooks, occasions] = await Promise.all([archive.listDishAttempts(), archive.listOccasions()]);
+      const [cooks, occasions] = await Promise.all([repository.listDishAttempts(), repository.listOccasions()]);
       if (cooks.length > 0) {
         renderYearFromCooks(cooks, occasions);
         showScreen("year");
@@ -3428,6 +4045,22 @@
     }
   }
 
+  const demoMutationSelector = [
+    "#year-new-cook", "#map-new-cook", "#new-cook", "#empty-new-cook", "#restart-prototype",
+    "#add-idea", "#empty-add-idea", "#start-idea-cook", "#edit-idea", "#refresh-idea", "#delete-idea",
+    "#edit-cook", "#add-entry-dish", "#add-entry-photos", "#take-entry-photo", "#customize-map",
+    ".occasion-dish-actions button", ".occasion-photo-tile",
+  ].join(",");
+
+  document.addEventListener("click", (event) => {
+    if (!isDemoMode()) return;
+    const trigger = event.target.closest(demoMutationSelector);
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openDemoInvitation(trigger);
+  }, true);
+
   cameraInput.addEventListener("change", handleFile);
   libraryInput.addEventListener("change", handleFile);
   $("#edit-camera-input").addEventListener("change", handleEditPhoto);
@@ -3435,12 +4068,40 @@
   $("#sample-photo").addEventListener("click", () => setPhoto(sample.photo, "Sample bowl of Oyakodon"));
   $("#sample-voice").addEventListener("click", applyParsedSample);
   micButton.addEventListener("click", toggleRecording);
-  $("#save-owner-token").addEventListener("click", saveOwnerToken);
-  $("#remove-owner-token").addEventListener("click", removeOwnerToken);
+  $("#explore-demo").addEventListener("click", () => void enterDemoFromSignedOut());
+  signInButton.addEventListener("click", () => void startInvitationSignIn());
+  $("#demo-sign-in").addEventListener("click", (event) => openDemoInvitation(event.currentTarget));
+  $("#keep-exploring").addEventListener("click", closeDemoInvitation);
+  $("#invitation-sign-in").addEventListener("click", () => void startInvitationSignIn());
+  demoInvitationDialog.addEventListener("keydown", (event) => trapModalFocus(event, demoInvitationDialog));
+  demoInvitationDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeDemoInvitation(); });
+  demoInvitationDialog.addEventListener("close", () => {
+    const target = state.demoReturnFocusElement;
+    state.demoReturnFocusElement = null;
+    if (target?.isConnected && isDemoMode()) window.requestAnimationFrame(() => target.focus({ preventScroll: true }));
+  });
+  $$('[data-open-account]').forEach((button) => button.addEventListener("click", (event) => openAccountDialog(event.currentTarget)));
+  $("#close-account-dialog").addEventListener("click", () => closeAccountDialog());
+  accountDialog.addEventListener("keydown", (event) => trapModalFocus(event, accountDialog));
+  accountDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeAccountDialog(); });
+  accountDialog.addEventListener("close", () => {
+    const target = state.accountReturnFocusElement;
+    state.accountReturnFocusElement = null;
+    if (target?.isConnected && state.mode === "account") window.requestAnimationFrame(() => target.focus({ preventScroll: true }));
+  });
+  $("#sign-out-button").addEventListener("click", () => void signOutAccount());
+  $("#backup-legacy-archive").addEventListener("click", () => void backupLegacyArchive());
+  $("#move-legacy-archive").addEventListener("click", () => void moveLegacyArchive());
+  $("#defer-legacy-migration").addEventListener("click", () => {
+    try { sessionStorage.setItem(migrationMarkerKey(), "dismissed"); } catch {}
+    $("#legacy-migration-dialog").close();
+  });
   optionalToggle.addEventListener("click", toggleOptionalFields);
   dishName.addEventListener("input", () => {
     beginTiming();
     state.touchedFields.add("dishName");
+    if (state.primaryDishRecognition && dishName.value.trim() !== state.primaryDishRecognition.canonicalName) state.primaryDishRecognition.applied = false;
+    renderPrimaryDishRecognition();
     updateReadyState();
   });
   transcript.addEventListener("input", () => {
@@ -3528,22 +4189,35 @@
   });
   $("#country-suggestion-action").addEventListener("click", () => {
     if (!state.countrySuggestion?.name) return;
-    $("#confirm-country").value = state.countrySuggestion.name;
+    setCountryValue($("#confirm-country"), state.countrySuggestion.name);
     state.suggestedCountry = state.countrySuggestion.name;
     state.countryProvenance = "suggested";
     state.countrySuggestion = null;
+    suppressPrimaryRecognitionForCountry($("#confirm-country").value);
     renderCountrySuggestion();
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
   });
   [$("#confirm-dish"), $("#confirm-country")].forEach((field) => field.addEventListener("change", () => {
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
   }));
+  $("#confirm-country").addEventListener("countrycommit", () => {
+    suppressPrimaryRecognitionForCountry($("#confirm-country").value);
+    renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
+  });
+  $("#confirm-dish").addEventListener("input", () => {
+    if (state.primaryDishRecognition && $("#confirm-dish").value.trim() !== state.primaryDishRecognition.canonicalName) state.primaryDishRecognition.applied = false;
+    renderPrimaryDishRecognition();
+    renderConfirmDishPresentation();
+  });
   $("#confirm-country").addEventListener("input", () => {
     state.countryProvenance = "";
     state.countrySuggestion = null;
     $("#country-suggestion").hidden = true;
     renderCountrySuggestion();
   });
+  [["#capture-dish-undo", undoPrimaryDishRecognition], ["#confirm-dish-undo", undoPrimaryDishRecognition]].forEach(([selector, handler]) => $(selector).addEventListener("click", handler));
+  $("#capture-dish-change").addEventListener("click", () => changePrimaryDishRecognition(dishName));
+  $("#confirm-dish-change").addEventListener("click", () => changePrimaryDishRecognition($("#confirm-dish")));
   $("#add-entry-dish").addEventListener("click", openAddDish);
   $("#cancel-add-dish").addEventListener("click", () => showScreen("entry"));
   $("#add-dish-form").addEventListener("submit", submitAddedDish);
@@ -3606,11 +4280,8 @@
     void renderJournal({ restoreScroll: false }).then(() => journalSearch.focus({ preventScroll: true }));
   });
   $("#map-back").addEventListener("click", () => {
-    if (state.mapNavigation.level === "country" || state.mapNavigation.level === "nearby") closeCountrySheet();
-    else if (state.mapNavigation.level === "country-detail") {
-      openMapRegion(state.mapNavigation.regionId);
-      window.requestAnimationFrame(() => { countryShelf.scrollLeft = state.mapRegionShelfScroll; });
-    } else {
+    if (state.mapNavigation.level === "country") closeCountrySheet();
+    else {
       renderWorldMapLevel();
       window.requestAnimationFrame(() => $("#map-title").focus({ preventScroll: true }));
     }
@@ -3625,21 +4296,8 @@
     else if (returnState.regionId) {
       state.mapRegionShelfScroll = returnState.regionShelfScroll ?? 0;
       openMapRegion(returnState.regionId);
-      if (returnState.level === "country-detail") {
-        openCountryDetail(returnState.countryKey);
-        countryShelf.scrollLeft = returnState.detailShelfScroll ?? 0;
-      }
-      else if (returnState.level === "country") {
-        if (returnState.sheetReturnState?.level === "country-detail") {
-          openCountryDetail(returnState.sheetReturnState.countryKey);
-          countryShelf.scrollLeft = returnState.detailShelfScroll ?? 0;
-        }
+      if (returnState.level === "country") {
         openCountrySheet(returnState.countryKey, countryShelf.querySelector(`[data-country-key="${returnState.countryKey}"]`));
-      }
-      else if (returnState.level === "nearby") {
-        const dishes = state.dashboardModel.mappedDishes.filter((dish) => returnState.dishIds?.includes(dish.dishId));
-        const region = state.dashboardModel.regions.find((candidate) => candidate.id === returnState.regionId);
-        openNearbySheet(dishes, region);
       }
       window.requestAnimationFrame(() => {
         const focusRoot = returnState.focusSurface === "sheet"
@@ -3651,8 +4309,8 @@
     state.dishReturnFocusElement = null;
     state.dishReturnMapState = null;
   });
-  $("#map-mode-photo").addEventListener("click", () => setMapMode("photo"));
-  $("#map-mode-needle").addEventListener("click", () => setMapMode("needle"));
+  $("#map-mode-density").addEventListener("click", () => setMapMode("density"));
+  $("#map-mode-peaks").addEventListener("click", () => setMapMode("peaks"));
   $("#customize-map").addEventListener("click", (event) => void openMapCustomize(event.currentTarget));
   $("#close-map-customize").addEventListener("click", () => closeMapCustomize());
   $("#cancel-map-customize").addEventListener("click", () => closeMapCustomize());
@@ -3697,12 +4355,11 @@
   window.addEventListener("resize", () => {
     window.clearTimeout(mapResizeTimer);
     mapResizeTimer = window.setTimeout(() => {
-      if (state.mapNavigation.level === "region") {
+      if (state.mapNavigation.level === "world") {
+        renderMapActivity(state.dashboardModel?.countries || []);
+      } else if (state.mapNavigation.level === "region") {
         const region = state.dashboardModel?.regions.find((candidate) => candidate.id === state.mapNavigation.regionId);
-        if (region) renderRegionDishes(region);
-      } else if (state.mapNavigation.level === "country-detail") {
-        const country = countryForKey(state.mapNavigation.countryKey);
-        if (country) renderCountryDetailMarkers(country);
+        if (region) renderRegionActivity(region);
       }
     }, 120);
   });
@@ -3731,11 +4388,11 @@
   $("#cancel-idea-review").addEventListener("click", () => void cancelIdeaReview());
   $("#idea-detail-back").addEventListener("click", () => void openIdeas());
   $("#edit-idea").addEventListener("click", async () => {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (idea) await openIdeaReview(idea, { mode: "edit" });
   });
   $("#refresh-idea").addEventListener("click", async () => {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     const message = $("#idea-detail-message");
     if (!idea?.sourceUrl) return;
     message.textContent = "Checking the source…";
@@ -3744,7 +4401,7 @@
     catch (caught) { message.textContent = caught.message || "The source could not be refreshed. Your saved copy is unchanged."; }
   });
   $("#delete-idea").addEventListener("click", async () => {
-    const idea = await ideas.getIdea(state.currentIdeaId);
+    const idea = await activeIdeasRepository().getIdea(state.currentIdeaId);
     if (!idea || !window.confirm(`Delete ${idea.title}? Your cooked history will stay intact.`)) return;
     await ideas.deleteIdea(idea.id);
     state.currentIdeaId = "";
@@ -3776,19 +4433,27 @@
   $("#restart-prototype").addEventListener("click", () => resetCapture({ scenario: state.scenario }));
   $$("[data-scenario]").forEach((button) => button.addEventListener("click", switchScenario));
   window.addEventListener("pagehide", () => {
+    cancelDemoActivation();
     state.assistanceController?.abort();
     state.assistanceRequestId += 1;
     const adapter = state.activeAdapter;
     state.activeAdapter = null;
     if (adapter) void adapter.cancel("Page closed");
   });
+  window.addEventListener("pageshow", () => void validateVisibleAccount());
+  document.addEventListener("visibilitychange", () => void validateVisibleAccount());
+  window.addEventListener("popstate", () => {
+    const wantsDemo = new URLSearchParams(window.location.search).get("demo") === "1";
+    if (!wantsDemo) cancelDemoActivation();
+    if (isDemoMode() && !wantsDemo) showSignedOut();
+    else if (state.mode === "signedOut" && wantsDemo) void activateDemo();
+  });
 
-  void initializeApp();
-  void restoreOwnerToken();
+  void bootApplication();
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=30").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=49").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

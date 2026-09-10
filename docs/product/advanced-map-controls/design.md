@@ -1,42 +1,45 @@
-# Advanced culinary map controls
+# Cook Density and Culinary Peaks
 
 ## Summary
 
-The Map keeps its photographic world-level region clusters and adds dish-level Photo Density and Needle Field views after a region is selected. Dense controls never overlap: same-country groups open a fitted country close-up, while mixed-country groups open an accessible nearby-dishes chooser. Free pan and pinch zoom remain out of scope.
+The Map compares selected-year cooking activity by country. **Cook Density** is the default choropleth: progressively warmer, stronger country fills mean more cooking occasions. **Culinary Peaks** uses the same scale while adding restrained vertical peaks whose height also increases with cook count. Both views present the same country totals and preserve the tap-driven World → culinary region → country → dish-history flow.
 
-Canonical dishes may store an owner-selected default map photograph and one versioned approximate point inside their confirmed country. Both remain local, editable presentation preferences. They do not change attempts, photographs, country totals, or all-time history.
+Photographs remain primary in the region and country shelves, country dish sheets, and dish history. They no longer encode density on the map itself. This separation makes geographic comparison immediate while retaining the personal archive character in drill-down surfaces.
+
+Canonical dishes may still store an owner-selected default map photograph and one versioned approximate in-country point. These presentation preferences remain useful in dish history and future map detail work but do not alter country-level density totals.
 
 ## Interaction
 
-- Photo Density is the initial mode. The last chosen mode is remembered locally across launches.
-- Repeat strength uses five bands: 1, 2, 3–4, 5–7, and 8+ selected-year cooks. Every marker also exposes the exact count.
-- World remains `world → region`. Region markers open dish history directly unless collision-safe targets require a country close-up or nearby chooser.
-- Country polygons and country shelf cards retain the existing country dish sheet.
-- Back restores region, detail, sheet, selected mode, shelf position, and focus.
-- Dish history exposes **Customize map**, containing the eligible photograph picker and country-clipped location editor. Drag, tap, directional nudges, and Reset are equivalent inputs. Save is atomic; Cancel changes nothing.
+- Cook Density is the initial mode. A legacy Photo Density preference resolves to Cook Density, and a legacy Needle Field preference resolves to Culinary Peaks.
+- Five fixed selected-year cook bands drive both modes: 1, 2, 3–4, 5–7, and 8+ cooks. A persistent visible legend explains every band.
+- World colors every represented country and provides a photographic shelf of active culinary regions. Tapping a country enters its culinary region; the shelf provides an equivalent large-target route.
+- A focused region retains the country shelf. Tapping an active country polygon or its card opens the existing country sheet with every dish and exact totals.
+- Cook Density uses fill color plus the exact ranked text summary and shelves. Culinary Peaks adds height as a second visual channel, with a numeric count on each peak.
+- Countries without selected-year cooks stay visually quiet. Unknown-country dishes remain in Needs a map location and never affect a country fill or peak.
+- Free pan, pinch zoom, and horizontal scrolling inside the map remain out of scope.
 
 ## Data and rules
 
-`Dish.defaultMapPhotoId` remains a reference. A photograph is eligible only when it is assigned to one of the dish's attempts or is the current main photo for an occasion containing the dish.
+The dashboard's existing year-scoped country aggregates are the sole source for map intensity. A country's `cookCount` is the sum of its canonical dishes' selected-year attempts. The map never uses all-time dish history for its visual scale.
 
-`Dish.mapLocation` is optional and contains projected `x` and `y` percentages, the resolved ISO alpha-3 `countryKey`, and `mapDataVersion`. A shared country change clears an incompatible custom location atomically. Older or absent locations fall back to a deterministic interior point derived from the bundled polygon geometry.
+Both modes use one deterministic activity model. It removes zero-count countries, assigns the five fixed bands, sorts by cook count and stable country identity, and derives a capped peak height from the square root of cook count so large histories remain legible without overwhelming smaller totals.
 
-The map reads every dish attempt, including every dish in a multi-dish occasion. Selected-year cook counts drive the map; selecting a dish opens all-time history.
-
-Backup schema v2 accepts the optional field. A well-formed point from an older geography version restores the rest of the archive and resets only that point with a preview warning. Malformed, unknown-country, or current-version out-of-country points reject without writes.
+The map uses country associations rather than claiming continuous or street-level geographic density. Approximate dish points do not change a country's count or peak.
 
 ## Accessibility and failure behavior
 
-Every marker, cluster, nudge, mode, photo, and sheet control has at least a 44 by 44 CSS-pixel target. Dense controls use at least 8 pixels of separation. Geographic shelves and sheets expose every dish without requiring precise map operation. Dialogs contain focus, provide visible Close and Cancel actions, and restore the originating control.
+Color is never the only explanation: Culinary Peaks adds height, the live summary names the three most-cooked countries with exact counts, and region/country shelves expose all destinations with 44×44-pixel or larger controls. Country boundaries remain visible in every band.
 
-Reduced motion removes viewport animation. Deleted photos, stale dish identities, invalid geometry, or failed transactions leave the saved archive unchanged and show a recoverable error. All map work remains local and offline.
+The segmented control uses `aria-pressed`, the map's accessible name reflects the active view and year, and a polite status announces the view explanation and ranked leaders. Reduced motion removes map viewport animation. Dense geographic areas remain operable through shelves rather than requiring precise map taps.
+
+Deleted photos, invalid geometry, or missing country totals leave the map usable and do not alter archive data. All aggregation and rendering remain local and offline.
 
 ## Acceptance criteria
 
-- World clusters remain readable and a focused region can switch between both dish-level modes.
-- The same canonical dishes and exact selected-year counts appear in both modes.
-- Every dish in a multi-dish occasion reaches Year, Map, and all-time dish history.
-- Dense same-country and mixed-country areas have operable, deterministic drill-down without overlapping targets.
-- An eligible photo and valid in-country point save together; Cancel, invalid placement, and transaction failure write nothing.
-- Mode choice survives reload; custom locations survive schema-v2 backup and restore under the documented geography-version rule.
-- The complete flow works offline, with keyboard input, reduced motion, dark mode, large text, portrait, and landscape.
+- World and focused-region maps visibly distinguish countries with different selected-year cook totals.
+- Cook Density and Culinary Peaks use the same five bands, country set, totals, and deterministic order.
+- Culinary Peaks increase monotonically with cook count and remain capped at a legible mobile height.
+- The visible legend and live ranked summary explain the encoding without requiring color perception or precise map interaction.
+- World and region shelves preserve photographic browsing and provide large-target alternatives to country geometry.
+- Country drill-down, dish history, custom location/default photograph editing, Back restoration, and year scoping remain unchanged.
+- Both modes work offline, with keyboard input, reduced motion, dark mode, large text, portrait, and landscape.

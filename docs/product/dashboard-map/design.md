@@ -2,15 +2,15 @@
 
 > **Status:** Implemented prototype; pending deployed iPhone validation
 
-> **Follow-on:** Owner-editable locations, default-photo curation, Needle Field, Photo Density, and dense-area drill-down are implemented under `docs/product/advanced-map-controls/design.md`.
+> **Follow-on:** Owner-editable locations, default-photo curation, Cook Density, Culinary Peaks, and dense-area shelf navigation are implemented under `docs/product/advanced-map-controls/design.md`.
 
 ## 1. Executive summary
 
-What I Made currently opens to capture or the journal, so saved cooks remain a list rather than becoming the reflective experience described in the product brief. The next product surface should be a current-year dashboard with a photographic map preview, recent new dishes, and meaningful revisits. Selecting the preview opens a dedicated Map destination that can later support the accepted Needle Field and Photo Density treatments. The main cost is that reliable repeat counts require canonical dish grouping before the map can represent repeated cooking honestly.
+What I Made currently opens to capture or the journal, so saved cooks remain a list rather than becoming the reflective experience described in the product brief. The next product surface should be a current-year dashboard with a photographic map preview, recent new dishes, and meaningful revisits. Selecting the preview opens a dedicated Map destination that supports the accepted Cook Density and Culinary Peaks treatments. Reliable country totals depend on canonical dish grouping and confirmed map-safe countries.
 
 ## 2. Context and scope
 
-The feature inventory defines two related release slices. Visible Progression includes a current-year dashboard, recent new dishes, repeated-dish progress, filters, and a year recap. Culinary Atlas includes editable dish locations, Needle Field, Photo Density, exact attempt counts, and default map photographs.
+The feature inventory defines two related release slices. Visible Progression includes a current-year dashboard, recent new dishes, repeated-dish progress, filters, and a year recap. Culinary Atlas includes editable dish locations, Cook Density, Culinary Peaks, exact country totals, geographic shelves, and default dish photographs.
 
 This design combines their entry experience without collapsing them into one overloaded screen. Year becomes the reflective home destination and includes a map preview. Map remains a full destination for geographic exploration. Capture stays the primary creation action and Journal stays the chronological record.
 
@@ -35,7 +35,7 @@ The current archive stores occasions, dishes, attempts, and photo blobs. It alre
 
 ### How it works
 
-When at least one cook exists, the app opens to Year. The top of the page shows the current year, the most recent food photograph, and a calm summary such as “4 dishes across 3 countries.” A Photo Density preview places one fixed-size photo cell for each recently active canonical dish around its confirmed country's default point. The preview is labeled as recent activity, not complete history. Selecting it opens Map, where all mapped dishes are independently selectable and an accessible list exposes the same names, countries, and exact attempt counts.
+When at least one cook exists, the app opens to Year. The top of the page shows the current year, the most recent food photograph, and a calm summary such as “4 dishes across 3 countries.” A photographic preview represents recent geography without claiming to be the complete density view. Selecting it opens Map, where country fills compare selected-year cooking and photographic shelves expose the same regions, countries, dishes, and exact counts.
 
 Below the preview, “New this month” shows dishes first recorded in the last 30 days. “Worth revisiting” shows repeated dishes with a changed rating or a new note. Journal remains one tap away, and the capture action remains visually primary.
 
@@ -59,7 +59,7 @@ An empty archive opens capture and offers a short explanation that the dashboard
 
 Year and Map remain separate bottom destinations. Putting the preview on Year gives the requested dashboard a map presence without forcing summary content and dense map controls into one screen. The downside is one extra tap for full exploration.
 
-The dashboard preview begins with Photo Density because photographs are the product's strongest visual material and existing records already include usable blobs. The full Map adds Needle Field after canonical repeat counts are trustworthy. Shipping both treatments at once would delay the first useful dashboard and make iPhone validation harder.
+The dashboard preview remains photographic because photographs are the product's strongest personal material. The full Map separates comparison from memory: Cook Density and Culinary Peaks show country totals, while shelves and drill-downs carry the photographs.
 
 Map assets stay local. Bundled Natural Earth 1:110m country vectors and label points avoid a map-service account, network dependency, location telemetry, and recurring cost. The downside is world-scale rather than street-level detail and deliberate asset updates when borders change.
 
@@ -146,7 +146,7 @@ Repository tests prove migration atomicity and identity stability for `INV-1`, `
 
 - Should the dashboard preview show the 12 most recently active dishes or all mapped dishes? Recommended default: 12 recent dishes for performance and honesty about preview scope. This does not block the data foundation.
 - Should Year replace Journal as the reopen destination as soon as one cook exists? Recommended default: yes, with Journal remaining a bottom destination. This does not block the prototype.
-- Which visual treatment should be implemented second after Photo Density proves the navigation and density model? Recommended default: Needle Field, as already selected in the product brief. This does not block the first dashboard increment.
+- Which visual treatment should be the default? Resolved: Cook Density for immediate mobile comparison; Culinary Peaks is the expressive alternate using the same totals.
 
 ## 13. Out of scope
 

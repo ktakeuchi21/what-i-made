@@ -2,7 +2,7 @@
 
 ## Current constraints
 
-- One primary user: the owner of the app.
+- A small owner-invited group, with one separate private archive per account and device.
 - Must be comfortable to use on an iPhone.
 - The first-release platform is an installable web app optimized for iPhone.
 - Maintenance effort, privacy, and low operating cost matter more than broad-market scale.
@@ -35,7 +35,7 @@ The design system is recorded in `design-system/what-i-made/MASTER.md`, with cap
 
 ### 5. Technical design
 
-Define the data model, local-versus-cloud storage, sync/backup approach, privacy boundaries, error/offline behavior, and testing strategy. Avoid accounts, servers, and subscriptions unless the PRD proves they are needed.
+Define the data model, local-versus-cloud storage, sync/backup approach, privacy boundaries, error/offline behavior, and testing strategy. The invitation requirement now justifies Cognito accounts and a small protected service boundary; archive content remains device-local and is not synchronized.
 
 ### 6. Incremental delivery
 
@@ -65,4 +65,6 @@ The owner’s iPhone has now validated Home Screen installation, camera and libr
 
 The integrated capture flow now saves atomic multi-dish cooking occasions, supports later dishes and photographs, provides Journal discovery and photo recap, and exposes local backup and restore. Smarter capture assistance is implemented as a separate protected Lambda: after Done it cleans only the finalized voice segment, proposes up to six editable dishes, validates countries against the bundled catalog, and leaves matching against canonical names and aliases entirely on-device.
 
-The capture-assistance Lambda and HTTPS endpoint are deployed with model logging disabled. The account currently cannot reserve two executions without violating AWS's minimum unreserved-concurrency pool, so the service uses its rate guard, kill switch, and budget controls until that quota is raised. Next, run the installed-iPhone acceptance pass to measure correction effort, country acceptance, exact and fuzzy match choices, ten-second timeout recovery, VoiceOver announcements, and confirmation that network inspection contains transcript text only—never photographs or archive records.
+The earlier owner-token Lambda and Function URL boundary has been retired. The invitation-only stack, Cognito-managed email-code login, account-scoped archives, protected API routes, owner migration, and clean non-migration PWA are deployed. The owner's migrated archive survives production reloads and the old public service paths are removed.
+
+Next, complete the remaining [owner-first rollout checklist](invitation-only-access/ROLLOUT_CHECKLIST.md) gates: obtain entitlement to a supported Bedrock Responses-API model and rerun authenticated service checks, invite one owner-approved canary, prove account isolation and revocation, and finish the installed-iPhone offline, accessibility, camera, voice, and backup acceptance pass.

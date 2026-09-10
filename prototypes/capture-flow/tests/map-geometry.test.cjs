@@ -29,31 +29,24 @@ test("uses custom positions only for their current country and geography version
   assert.notDeepEqual(geometry.resolvedPosition("Japan", { ...custom, mapDataVersion: 99 }), custom);
 });
 
-test("builds deterministic dish, country, and nearby collision groups", () => {
-  const base = { position: { x: 50, y: 50 } };
-  const groups = geometry.collisionGroups([
-    { ...base, dishId: "a", countryKey: "JPN" },
-    { ...base, dishId: "b", countryKey: "JPN", position: { x: 50.1, y: 50 } },
-    { ...base, dishId: "c", countryKey: "KOR", position: { x: 80, y: 50 } },
-  ], { width: 390, height: 252, scale: 2 });
-  assert.equal(groups[0].kind, "country");
-  assert.equal(groups[1].kind, "dish");
-  const nearby = geometry.collisionGroups([
-    { ...base, dishId: "a", countryKey: "JPN" },
-    { ...base, dishId: "b", countryKey: "KOR", position: { x: 50.1, y: 50 } },
-  ], { width: 390, height: 252, scale: 2 });
-  assert.equal(nearby[0].kind, "nearby");
+test("maps country cook counts into the five density bands", () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 7, 8, 100].map(geometry.densityBand), [1, 2, 3, 3, 4, 4, 5, 5]);
 });
 
-test("detects vertical overlap using the letterboxed map layer height", () => {
-  const groups = geometry.collisionGroups([
-    { dishId: "a", countryKey: "JPN", position: { x: 50, y: 48.8 } },
-    { dishId: "b", countryKey: "JPN", position: { x: 50, y: 51.2 } },
-  ], { width: 390, height: 195, scale: 9 });
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0].kind, "country");
-});
-
-test("maps repeat counts into the five calm visual bands", () => {
-  assert.deepEqual([1, 2, 3, 4, 5, 7, 8, 100].map(geometry.repeatBand), [1, 2, 3, 3, 4, 4, 5, 5]);
+test("builds deterministic country activity with monotonic capped peaks", () => {
+  const countries = [
+    { countryKey: "KOR", countryName: "South Korea", cookCount: 2 },
+    { countryKey: "USA", countryName: "United States", cookCount: 8 },
+    { countryKey: "JPN", countryName: "Japan", cookCount: 8 },
+    { countryKey: "FRA", countryName: "France", cookCount: 0 },
+  ];
+  const activity = geometry.countryActivityModel(countries);
+  assert.deepEqual(activity.map(({ country, cookCount, band }) => [country.countryKey, cookCount, band]), [
+    ["JPN", 8, 5],
+    ["USA", 8, 5],
+    ["KOR", 2, 2],
+  ]);
+  assert.ok(activity[0].peakHeight > activity[2].peakHeight);
+  assert.equal(geometry.peakHeight(0), 0);
+  assert.equal(geometry.peakHeight(10_000), 62);
 });

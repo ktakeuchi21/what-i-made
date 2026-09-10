@@ -4,15 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
     <meta name="theme-color" content="#F7F1E7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#171814" media="(prefers-color-scheme: dark)" />
-    <meta name="wim-recipe-endpoint" content="https://tke4vvqhszhgtnlv5nbnu32wlq0xegwc.lambda-url.us-east-2.on.aws" />
-    <meta name="wim-capture-assistance-endpoint" content="https://muhxwobjcyckoelkmjhctyedg40qabnv.lambda-url.us-east-2.on.aws" />
+    <meta name="wim-auth-domain" content="" />
+    <meta name="wim-auth-client-id" content="" />
+    <meta name="wim-service-api-endpoint" content="" />
+    <meta name="wim-aws-region" content="us-east-2" />
+    <meta name="wim-legacy-owner-archive-key" content="" />
     <title>What I Made — Capture prototype</title>
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=29" />
+    <link rel="stylesheet" href="./styles.css?v=49" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -102,14 +106,31 @@
       </aside>
 
       <main class="phone-frame" id="app-main" tabindex="-1">
-        <section class="app-screen is-active" data-screen="capture" aria-labelledby="capture-title">
+        <aside class="demo-banner" id="demo-banner" aria-label="Sample archive" hidden>
+          <span><strong>Sample archive</strong><small>Fictional</small></span>
+          <button class="text-button" type="button" id="demo-sign-in">Sign in</button>
+        </aside>
+        <section class="app-screen auth-screen is-active" data-screen="auth" aria-labelledby="auth-title">
+          <div class="auth-content">
+            <img class="auth-mark" src="./assets/app-icon-192.png" alt="" width="88" height="88" />
+            <p class="eyebrow">Private by invitation</p>
+            <h2 id="auth-title" tabindex="-1">Remember what you made</h2>
+            <p class="screen-intro" id="auth-message">Opening your private archive…</p>
+            <div class="form-error" id="auth-error" role="alert" tabindex="-1" hidden></div>
+            <button class="button button-primary" type="button" id="explore-demo">Explore a sample archive</button>
+            <button class="button button-secondary" type="button" id="sign-in-button" hidden>Sign in with email</button>
+            <p class="auth-helper" id="auth-helper" hidden>Use an invited email address. We’ll send a one-time code—there’s no password to remember.</p>
+          </div>
+        </section>
+
+        <section class="app-screen" data-screen="capture" aria-labelledby="capture-title" hidden>
           <header class="app-bar">
             <button class="icon-text-button" type="button" id="open-journal">
               <svg aria-hidden="true"><use href="#icon-back"></use></svg>
               Journal
             </button>
             <span class="app-bar-title">New cook</span>
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" id="capture-account" data-open-account hidden>Account</button>
           </header>
 
           <div class="screen-scroll">
@@ -160,7 +181,6 @@
                   rows="3"
                   placeholder="For example: I made Oyakodon, eight out of ten. Notes: use less soy. Ingredients were chicken, egg, onion, and rice."
                 ></textarea>
-                <p class="voice-privacy">While recording, audio streams to Amazon Transcribe. After Done, transcript text—not audio or photographs—is sent for smart suggestions. What I Made does not save the audio. Typing and keyboard Dictation stay available.</p>
                 <div class="assist-progress" id="assist-progress" role="status" aria-live="polite" hidden>
                   <span class="assist-progress-dot" aria-hidden="true"></span>
                   <span id="assist-progress-text">Organizing your note…</span>
@@ -169,18 +189,6 @@
                   <p id="assist-recovery-message">Smart suggestions are unavailable. Basic suggestions were used and your note is still editable.</p>
                   <button class="inline-button" type="button" id="retry-assistance">Retry smart suggestions</button>
                 </div>
-                <details class="voice-setup" id="voice-setup">
-                  <summary>Private voice setup</summary>
-                  <div class="voice-setup-body">
-                    <label for="owner-token">Owner token</label>
-                    <input id="owner-token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" />
-                    <div class="voice-setup-actions">
-                      <button class="button button-secondary" type="button" id="save-owner-token">Save on this device</button>
-                      <button class="inline-button" type="button" id="remove-owner-token">Remove</button>
-                    </div>
-                    <p id="token-message" aria-live="polite">Checking this device…</p>
-                  </div>
-                </details>
                 <button class="inline-button" type="button" id="sample-voice">Use a sample voice note</button>
               </fieldset>
 
@@ -188,6 +196,10 @@
                 <label for="dish-name">Dish name <span>Required</span></label>
                 <input id="dish-name" name="dishName" autocomplete="off" required />
                 <p class="field-error" id="dish-error" role="alert" hidden>Enter the dish name to continue.</p>
+                <div class="dish-recognition" id="capture-dish-recognition" role="status" hidden>
+                  <p id="capture-dish-recognition-copy"></p>
+                  <div><button class="inline-button" type="button" id="capture-dish-undo">Undo</button><button class="inline-button" type="button" id="capture-dish-change">Change</button></div>
+                </div>
               </div>
 
               <button class="disclosure-button" id="optional-toggle" type="button" aria-expanded="false" aria-controls="optional-fields">
@@ -217,7 +229,6 @@
               <button class="button button-primary primary-action" type="submit" id="review-button" disabled>
                 Review cook
               </button>
-              <p class="prototype-disclaimer">Cooks and photographs are saved only on this device. Voice audio streams only while recording.</p>
             </form>
           </div>
         </section>
@@ -252,6 +263,10 @@
               <div class="field-group">
                 <label for="confirm-dish">Dish name <span>Required</span></label>
                 <input id="confirm-dish" required />
+                <div class="dish-recognition" id="confirm-dish-recognition" role="status" hidden>
+                  <p id="confirm-dish-recognition-copy"></p>
+                  <div><button class="inline-button" type="button" id="confirm-dish-undo">Undo</button><button class="inline-button" type="button" id="confirm-dish-change">Change</button></div>
+                </div>
               </div>
               <div class="field-group">
                 <label for="confirm-date">Cooked on</label>
@@ -343,11 +358,16 @@
 
         <section class="app-screen" data-screen="year" aria-labelledby="year-title" hidden>
           <header class="app-bar">
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
             <span class="app-bar-title">Year</span>
             <button class="text-button" type="button" id="year-new-cook">New cook</button>
           </header>
           <div class="screen-scroll year-content">
+            <section class="demo-welcome-card" id="demo-welcome" aria-labelledby="demo-welcome-title" hidden>
+              <p class="eyebrow">Fictional sample</p>
+              <h3 id="demo-welcome-title">Explore a year of cooking</h3>
+              <p>Visit the Map, search the Journal, browse the photo recap, and open saved Ideas. Sample content will never enter your private archive.</p>
+            </section>
             <p class="eyebrow" id="year-eyebrow">This year</p>
             <h2 id="year-title" tabindex="-1">Your year in cooking</h2>
             <p class="screen-intro" id="year-summary">Your cooking memories, close enough to revisit.</p>
@@ -419,7 +439,7 @@
               </button>
             </section>
 
-            <section class="archive-safety-card" aria-labelledby="archive-safety-title">
+            <section class="archive-safety-card" id="archive-safety-card" aria-labelledby="archive-safety-title">
               <p class="eyebrow">Keep your archive yours</p>
               <h3 id="archive-safety-title">Backup &amp; storage</h3>
               <p>Your cooks, recipes, and photographs live on this iPhone. Make a portable backup for safekeeping.</p>
@@ -440,10 +460,10 @@
           <header class="app-bar">
             <button class="icon-text-button" type="button" id="backup-back">
               <svg aria-hidden="true"><use href="#icon-back"></use></svg>
-              Year
+              <span id="backup-back-label">Year</span>
             </button>
             <span class="app-bar-title">Backup &amp; storage</span>
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
           </header>
           <div class="screen-scroll backup-content" id="backup-scroll">
             <p class="eyebrow">Your portable archive</p>
@@ -479,7 +499,7 @@
             <section class="backup-section" aria-labelledby="create-backup-title">
               <p class="eyebrow">Save a copy</p>
               <h3 id="create-backup-title">Create a backup</h3>
-              <p>The JSON file includes saved cooks, notes, Ideas, and optimized photographs. Unfinished drafts and your private service token are excluded.</p>
+              <p>The JSON file includes saved cooks, notes, Ideas, and optimized photographs. Unfinished drafts and sign-in information are excluded.</p>
               <button class="button button-primary" type="button" id="create-backup">Create backup</button>
             </section>
 
@@ -526,6 +546,7 @@
               <svg aria-hidden="true"><use href="#icon-back"></use></svg>
               <span id="map-back-label">World</span>
             </button>
+            <button class="text-button" type="button" id="map-account" data-open-account hidden>Account</button>
             <span class="app-bar-spacer" id="map-header-spacer" aria-hidden="true"></span>
             <span class="app-bar-title">Map</span>
             <button class="text-button" type="button" id="map-new-cook">New cook</button>
@@ -538,11 +559,21 @@
             <fieldset class="map-mode-control" id="map-mode-control" hidden>
               <legend>Map view</legend>
               <div class="segmented-control">
-                <button type="button" id="map-mode-photo" aria-pressed="true">Photo Density</button>
-                <button type="button" id="map-mode-needle" aria-pressed="false">Needle Field</button>
+                <button type="button" id="map-mode-density" aria-pressed="true">Cook Density</button>
+                <button type="button" id="map-mode-peaks" aria-pressed="false">Culinary Peaks</button>
               </div>
             </fieldset>
-            <div class="atlas-stage" id="full-map" aria-label="Photo map of saved dishes">
+            <div class="map-density-legend" id="map-density-legend" role="group" aria-labelledby="map-density-legend-title">
+              <span class="map-density-legend-title" id="map-density-legend-title">Cooks in selected year</span>
+              <ol>
+                <li><i data-density-band="1" aria-hidden="true"></i><span>1</span></li>
+                <li><i data-density-band="2" aria-hidden="true"></i><span>2</span></li>
+                <li><i data-density-band="3" aria-hidden="true"></i><span>3–4</span></li>
+                <li><i data-density-band="4" aria-hidden="true"></i><span>5–7</span></li>
+                <li><i data-density-band="5" aria-hidden="true"></i><span>8+</span></li>
+              </ol>
+            </div>
+            <div class="atlas-stage" id="full-map" aria-label="Cook Density map of saved dishes">
               <div class="atlas-map-layer" id="atlas-map-layer">
                 <svg class="world-map" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><g data-world-countries></g></svg>
                 <div class="map-cells" id="full-map-cells"></div>
@@ -607,7 +638,7 @@
 
         <section class="app-screen" data-screen="ideas" aria-labelledby="ideas-title" hidden>
           <header class="app-bar">
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
             <span class="app-bar-title">Ideas</span>
             <button class="text-button" type="button" id="add-idea">Add idea</button>
           </header>
@@ -703,7 +734,7 @@
         <section class="app-screen" data-screen="idea-detail" aria-labelledby="idea-detail-title" hidden>
           <header class="app-bar"><button class="icon-text-button" type="button" id="idea-detail-back"><svg aria-hidden="true"><use href="#icon-back"></use></svg>Ideas</button><span class="app-bar-title">Recipe</span><button class="text-button" type="button" id="edit-idea">Edit</button></header>
           <div class="screen-scroll idea-detail-content">
-            <div class="idea-detail-photo" id="idea-detail-photo"></div><p class="eyebrow" id="idea-detail-status"></p><h2 id="idea-detail-title" tabindex="-1">Recipe</h2><p class="screen-intro" id="idea-detail-summary"></p>
+            <div class="idea-detail-photo" id="idea-detail-photo"></div><p class="photo-credit" id="idea-photo-credit" hidden></p><p class="eyebrow" id="idea-detail-status"></p><h2 id="idea-detail-title" tabindex="-1">Recipe</h2><p class="screen-intro" id="idea-detail-summary"></p>
             <dl class="entry-facts" id="idea-detail-facts"></dl>
             <section class="entry-section"><h3>Ingredients</h3><ul id="idea-detail-ingredients"></ul></section>
             <section class="entry-section"><h3>Instructions</h3><ol id="idea-detail-instructions"></ol></section>
@@ -717,14 +748,14 @@
 
         <section class="app-screen" data-screen="journal" aria-labelledby="journal-title" hidden>
           <header class="app-bar">
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
             <span class="app-bar-title">Journal</span>
             <button class="text-button" type="button" id="new-cook">New cook</button>
           </header>
           <div class="screen-scroll journal-content" id="journal-scroll">
             <p class="eyebrow">Your cooking history</p>
             <h2 id="journal-title" tabindex="-1">What you made</h2>
-            <p class="screen-intro">Your latest cooks are saved here on this device.</p>
+            <p class="screen-intro">Search and revisit individual cooking occasions.</p>
             <div class="section-heading-row journal-recap-row">
               <p>Browse the year as photographs.</p>
               <button class="text-button section-action" type="button" id="journal-photo-recap">Photo recap</button>
@@ -795,7 +826,7 @@
           </header>
           <div class="screen-scroll entry-content">
             <div class="save-status" id="entry-status" role="status" aria-live="polite" hidden></div>
-            <figure class="entry-photo-shell"><img id="entry-photo" alt="" /></figure>
+            <figure class="entry-photo-shell"><img id="entry-photo" alt="" /><figcaption class="photo-credit entry-photo-credit" id="entry-photo-credit" hidden></figcaption></figure>
             <p class="eyebrow" id="entry-date"></p>
             <h2 id="entry-title" tabindex="-1">Cook</h2>
             <section class="occasion-gallery" aria-labelledby="entry-gallery-title">
@@ -896,6 +927,7 @@
             <div class="dialog-handle" aria-hidden="true"></div>
             <div class="dialog-title-row"><div><p class="eyebrow">Photograph</p><h2 id="photo-actions-title">Photo options</h2></div><button class="icon-button" type="button" id="close-photo-actions" aria-label="Close photo options">×</button></div>
             <img class="photo-actions-preview" id="photo-actions-preview" alt="" />
+            <p class="photo-credit photo-dialog-credit" id="photo-dialog-credit" hidden></p>
             <div class="field-group"><label for="photo-dish-assignment">Belongs to</label><select id="photo-dish-assignment"><option value="">The whole occasion</option></select></div>
             <button class="button button-secondary" type="button" id="make-main-photo">Make main photo</button>
             <button class="button button-danger" type="button" id="delete-entry-photo">Delete photo</button>
@@ -938,11 +970,25 @@
           </form>
         </dialog>
 
+        <dialog class="journal-filter-dialog account-dialog" id="account-dialog" aria-labelledby="account-dialog-title" aria-describedby="account-dialog-description">
+          <div>
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="country-sheet-header">
+              <div><p class="eyebrow">Signed-in archive</p><h2 id="account-dialog-title">Your account</h2></div>
+              <button class="text-button sheet-close" type="button" id="close-account-dialog">Close</button>
+            </div>
+            <p class="account-identity"><strong id="account-email"></strong><span id="account-access-status"></span></p>
+            <p id="account-dialog-description">Signing out hides this private archive on this device. Your cooks, Ideas, and photographs stay here for the next time this invited account signs in.</p>
+            <p class="save-status" id="sign-out-status" role="status" aria-live="polite" hidden></p>
+            <button class="button button-secondary primary-action" type="button" id="sign-out-button">Sign out on this device</button>
+          </div>
+        </dialog>
+
         <dialog class="erase-dialog" id="erase-dialog" aria-labelledby="erase-dialog-title" aria-describedby="erase-dialog-description">
           <form id="erase-form" novalidate>
             <p class="eyebrow">Permanent action</p>
             <h2 id="erase-dialog-title">Erase this local archive?</h2>
-            <p id="erase-dialog-description">This permanently removes <strong id="erase-count-summary">your saved archive</strong> from this iPhone. Your private service token and installed app remain.</p>
+            <p id="erase-dialog-description">This permanently removes <strong id="erase-count-summary">your saved archive</strong> from this iPhone. Your sign-in session and installed app remain.</p>
             <p class="erase-warning">This cannot be undone without a backup file.</p>
             <label for="erase-confirmation">Type <strong>ERASE</strong> to continue</label>
             <input id="erase-confirmation" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="erase-error" />
@@ -952,6 +998,35 @@
               <button class="button button-danger" type="submit" id="confirm-erase" disabled>Erase local archive</button>
             </div>
           </form>
+        </dialog>
+
+        <dialog class="erase-dialog" id="legacy-migration-dialog" aria-labelledby="legacy-migration-title" aria-describedby="legacy-migration-description">
+          <div>
+            <p class="eyebrow">One-time owner move</p>
+            <h2 id="legacy-migration-title">Bring your existing archive with you</h2>
+            <p id="legacy-migration-description">This iPhone has your archive from before invitations were added. Move it into your signed-in private archive.</p>
+            <p class="erase-warning">Download a backup first. The previous archive will remain untouched after the move.</p>
+            <p id="legacy-migration-counts"></p>
+            <p class="form-error" id="legacy-migration-error" role="alert" tabindex="-1" hidden></p>
+            <p class="save-status" id="legacy-migration-status" role="status" aria-live="polite" hidden></p>
+            <div class="dialog-actions migration-actions">
+              <button class="button button-secondary" type="button" id="backup-legacy-archive">Download backup first</button>
+              <button class="button button-secondary" type="button" id="defer-legacy-migration">Not now</button>
+              <button class="button button-primary" type="button" id="move-legacy-archive">Move archive</button>
+            </div>
+          </div>
+        </dialog>
+
+        <dialog class="erase-dialog demo-invitation-dialog" id="demo-invitation-dialog" aria-labelledby="demo-invitation-title" aria-describedby="demo-invitation-description">
+          <div>
+            <p class="eyebrow">Private by invitation</p>
+            <h2 id="demo-invitation-title">Ready to start your own archive?</h2>
+            <p id="demo-invitation-description">Sign in with an invited email to save cooks and Ideas in your own separate archive. None of this fictional sample content will come with you.</p>
+            <div class="dialog-actions">
+              <button class="button button-secondary" type="button" id="keep-exploring">Keep exploring</button>
+              <button class="button button-primary" type="button" id="invitation-sign-in">Sign in with invited email</button>
+            </div>
+          </div>
         </dialog>
 
         <dialog class="journal-filter-dialog" id="journal-filter-dialog" aria-labelledby="journal-filter-title">
@@ -995,24 +1070,31 @@
       </main>
     </div>
 
-    <script src="./config.js?v=27"></script>
+    <script src="./config.js?v=35"></script>
     <script src="./transcribe-codec.js?v=16"></script>
-    <script src="./transcribe-adapter.js?v=16"></script>
+    <script src="./transcribe-adapter.js?v=40"></script>
     <script src="./capture-parser.js?v=16"></script>
     <script src="./capture-assistance.js?v=27"></script>
-    <script src="./dish-matcher.js?v=27"></script>
+    <script src="./dish-matcher.js?v=40"></script>
     <script src="./capture-draft.js?v=16"></script>
     <script src="./photo-url.js?v=16"></script>
     <script src="./photo-processor.js?v=16"></script>
     <script src="./assets/world-map-data.js?v=29"></script>
-    <script src="./map-geometry.js?v=29"></script>
-    <script src="./archive-store.js?v=29"></script>
+    <script src="./country-combobox.js?v=40"></script>
+    <script src="./assets/international-dishes.js?v=40"></script>
+    <script src="./dish-recognizer.js?v=40"></script>
+    <script src="./map-geometry.js?v=44"></script>
+    <script src="./account-context.js?v=31"></script>
+    <script src="./auth-session.js?v=49"></script>
+    <script src="./archive-store.js?v=31"></script>
     <script src="./idea-store.js?v=18"></script>
     <script src="./archive-backup.js?v=29"></script>
+    <script src="./legacy-migration.js?v=33"></script>
     <script src="./recipe-client.js?v=18"></script>
     <script src="./assets/culinary-regions.js?v=16"></script>
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
-    <script src="./app.js?v=30"></script>
+    <script src="./demo-archive.js?v=49"></script>
+    <script src="./app.js?v=49"></script>
   </body>
 </html>

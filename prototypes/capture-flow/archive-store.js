@@ -9,9 +9,44 @@
   "use strict";
 
   const DB_NAME = "what-i-made-archive";
+  const ACCOUNT_DB_PREFIX = `${DB_NAME}-account-v1`;
   const DB_VERSION = 5;
   const STORES = ["occasions", "dishes", "attempts", "photos"];
+  let activeArchiveKey = null;
+  let contextVersion = 0;
   let databasePromise = null;
+
+  function normalizeArchiveKey(value) {
+    const key = String(value || "").trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(key)) throw new Error("A valid private archive context is required.");
+    return key;
+  }
+
+  function databaseNameForArchiveKey(value = activeArchiveKey) {
+    return value === null ? DB_NAME : `${ACCOUNT_DB_PREFIX}-${normalizeArchiveKey(value)}`;
+  }
+
+  function setArchiveContext(value) {
+    const nextKey = normalizeArchiveKey(value);
+    if (nextKey === activeArchiveKey) return databaseNameForArchiveKey();
+    const pendingDatabase = databasePromise;
+    contextVersion += 1;
+    activeArchiveKey = nextKey;
+    databasePromise = null;
+    if (pendingDatabase) pendingDatabase.then((database) => database.close()).catch(() => {});
+    return databaseNameForArchiveKey();
+  }
+
+  async function closeDatabase() {
+    const pendingDatabase = databasePromise;
+    contextVersion += 1;
+    databasePromise = null;
+    if (!pendingDatabase) return;
+    try {
+      const database = await pendingDatabase;
+      database.close();
+    } catch {}
+  }
 
   function createId() {
     if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -69,6 +104,11 @@
     return Boolean(proposed)
       && proposed !== normalizeDishName(canonicalName)
       && !(aliases || []).some((alias) => normalizeDishName(alias) === proposed);
+  }
+
+  function appendUsefulAlias(dish, proposedName) {
+    dish.aliases = [...(dish.aliases || [])];
+    if (shouldLearnAlias(dish.canonicalName, dish.aliases, proposedName)) dish.aliases.push(String(proposedName).trim());
   }
 
   function consolidateDishRecords(dishes, attempts, photos = []) {
@@ -137,7 +177,7 @@
         id: dishId,
         canonicalName: dishName,
         normalizedName: normalizeDishName(dishName) || undefined,
-        aliases: [],
+        aliases: shouldLearnAlias(dishName, [], input.speechAlias) ? [String(input.speechAlias).trim()] : [],
         country: cleanOptional(input.country),
         countryCode: resolvedCountryKey(input.country) || null,
         mapLocation: null,
@@ -335,8 +375,10 @@
     if (!("indexedDB" in root)) return Promise.reject(new Error("Local journal storage is unavailable in this browser."));
     if (databasePromise) return databasePromise;
 
-    databasePromise = new Promise((resolve, reject) => {
-      const request = root.indexedDB.open(DB_NAME, DB_VERSION);
+    const openingContextVersion = contextVersion;
+    const databaseName = databaseNameForArchiveKey();
+    const openingPromise = new Promise((resolve, reject) => {
+      const request = root.indexedDB.open(databaseName, DB_VERSION);
       request.onupgradeneeded = (event) => {
         const database = request.result;
         if (!database.objectStoreNames.contains("occasions")) {
@@ -410,16 +452,29 @@
           };
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const database = request.result;
+        if (openingContextVersion !== contextVersion || databasePromise !== openingPromise) {
+          database.close();
+          reject(new Error("The private archive account changed while storage was opening."));
+          return;
+        }
+        database.onversionchange = () => {
+          database.close();
+          if (databasePromise === openingPromise) databasePromise = null;
+        };
+        resolve(database);
+      };
       request.onerror = () => {
-        databasePromise = null;
+        if (databasePromise === openingPromise) databasePromise = null;
         reject(request.error || new Error("The local journal could not be opened."));
       };
       request.onblocked = () => {
-        databasePromise = null;
+        if (databasePromise === openingPromise) databasePromise = null;
         reject(new Error("Close other copies of What I Made, then try again."));
       };
     });
+    databasePromise = openingPromise;
     return databasePromise;
   }
 
@@ -453,6 +508,7 @@
       if (shouldLearnAlias(existingDish.canonicalName, existingDish.aliases, records.dish.canonicalName)) {
         existingDish.aliases.push(records.dish.canonicalName);
       }
+      (records.dish.aliases || []).forEach((alias) => appendUsefulAlias(existingDish, alias));
       if (records.dish.country) existingDish.country = records.dish.country;
       if (!existingDish.defaultMapPhotoId) existingDish.defaultMapPhotoId = records.photo.id;
       existingDish.updatedAt = records.dish.updatedAt;
@@ -521,11 +577,13 @@
         if (!dish && normalizedName && !dishInput.forceNewDish) dish = await requestResult(dishesStore.index("normalizedName").get(normalizedName));
         if (!dish) {
           dish = { id: createId(), canonicalName: dishName, normalizedName, aliases: [], country: cleanOptional(dishInput.country), countryCode: resolvedCountryKey(dishInput.country) || null, mapLocation: null, defaultMapPhotoId: null, createdAt: now, updatedAt: now };
+          appendUsefulAlias(dish, dishInput.speechAlias);
           dishesStore.add(dish);
         } else {
           if (seenDishIds.has(dish.id)) throw new Error("The same dish can appear only once in a cooking occasion.");
           dish.aliases = [...(dish.aliases || [])];
           if (shouldLearnAlias(dish.canonicalName, dish.aliases, dishName)) dish.aliases.push(dishName);
+          appendUsefulAlias(dish, dishInput.speechAlias);
           if (cleanOptional(dishInput.country)) {
             const previousCountryKey = resolvedCountryKey(dish.country);
             dish.country = cleanOptional(dishInput.country);
@@ -872,5 +930,5 @@
     }
   }
 
-  return { DB_NAME, DB_VERSION, normalizeDishName, shouldLearnAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
+  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, appendUsefulAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
 });

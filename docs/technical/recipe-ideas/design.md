@@ -1,5 +1,7 @@
 # Recipe Ideas Technical Design
 
+> **Invitation-access addendum, September 8, 2026:** The owner-token and direct-endpoint boundary below is superseded by [Invitation only private archives](../../product/invitation-only-access/design.md). The current service accepts only API Gateway-validated Cognito access-token claims through the unified service API; there is no shared-token fallback. The remaining recipe parsing, SSRF, attribution, and privacy decisions still apply.
+
 ## System boundary
 
 The PWA owns saved recipes, optimized source images, drafts, search/filter state, and links to cooking attempts. A separate protected Recipe Ideas Lambda performs bounded network work. It has no database and does not retain recipe content. The existing owner token protects every route; the static app contains no service credential.

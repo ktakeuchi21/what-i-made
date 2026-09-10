@@ -1,23 +1,24 @@
 # Recipe Ideas service
 
-Dependency-free CommonJS code for a Node.js 20 AWS Lambda behind a Function URL or API Gateway. It supplies the network-only portion of **Ideas**; saved recipes and optimized images remain in the PWA's IndexedDB.
+CommonJS code for a Node.js Lambda behind the invitation API Gateway. It supplies the network-only portion of **Ideas**; saved recipes and optimized images remain in the PWA's IndexedDB.
 
 ## Routes
 
-Every route requires `Authorization: Bearer <owner-token>` and `RECIPE_IDEAS_ENABLED=true`.
+Every route requires a Cognito access token with `what-i-made/recipes` and `RECIPE_IDEAS_ENABLED=true`.
 
 - `POST /v1/recipes/import` with `{ "url": "https://…" }` retrieves a public HTML page, parses inert Schema.org `Recipe` JSON-LD, and returns an editable normalized recipe. If the recipe declares an image, the response includes a five-minute image token rather than exposing an unrestricted proxy URL.
 - `POST /v1/recipes/search` with `{ "description": "…" }` calls an injected `searchProvider.searchRecipes({ description, limit: 3 })`. It returns `503 unavailable` when no provider is configured.
 - `POST /v1/recipes/generate` calls an injected `generateProvider.generateRecipe({ description })`, sanitizes its structured result, labels it `generated`, and deliberately supplies no remote photograph. It also fails closed when unconfigured.
 - `GET /v1/recipes/image?token=…` validates the HMAC token and proxies only bounded JPEG, PNG, or WebP bytes.
 
-Responses are `no-store` JSON except image bytes. CORS belongs at the Lambda Function URL/API Gateway layer and should allow only the deployed app origin, listed methods, `Authorization`, and `Content-Type`.
+Responses are `no-store` JSON except image bytes. API Gateway CORS should allow only the deployed app origin, listed methods, `Authorization`, and `Content-Type`.
 
 ## Configuration
 
 - `RECIPE_IDEAS_ENABLED`: exactly `true` to enable requests.
-- `OWNER_TOKEN_SHA256`: lowercase or uppercase SHA-256 hex of a 32–128 character URL-safe owner token.
-- `IMAGE_TOKEN_SECRET`: at least 32 unpredictable bytes, distinct from the owner token.
+- `COGNITO_CLIENT_ID`: expected public web-client ID for handler defense in depth.
+- `RATE_LIMIT_TABLE`: DynamoDB table for atomic per-account route windows; requests fail closed without it.
+- `IMAGE_TOKEN_SECRET`: at least 32 unpredictable bytes used only for short-lived image-fetch tokens.
 
 Deploy `lambda.handler`. That entrypoint lazily constructs the concrete Amazon Bedrock providers on the first request and uses Lambda's rotating temporary credentials; there is no SDK dependency or long-lived Bedrock API key. `createHandler({ searchProvider, generateProvider })` remains available for tests and alternate adapters.
 
