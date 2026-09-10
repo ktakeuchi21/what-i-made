@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v51";
+const CACHE_NAME = "what-i-made-capture-v52";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -22,7 +22,7 @@ const APP_SHELL = [
   "./account-context.js?v=31",
   "./auth-session.js?v=51",
   "./activity-client.js?v=51",
-  "./archive-store.js?v=31",
+  "./archive-store.js?v=32",
   "./idea-store.js?v=18",
   "./archive-backup.js?v=29",
   "./legacy-migration.js?v=33",
@@ -32,7 +32,7 @@ const APP_SHELL = [
   "./journal-model.js?v=25",
   "./demo-archive.js?v=49",
   "./audio-worklet.js",
-  "./app.js?v=51",
+  "./app.js?v=52",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",

@@ -32,16 +32,16 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v51/);
-  assert.match(worker, /\.\/app\.js\?v=51/);
+  assert.match(worker, /what-i-made-capture-v52/);
+  assert.match(worker, /\.\/app\.js\?v=52/);
   assert.match(worker, /\.\/auth-session\.js\?v=51/);
   assert.match(worker, /\.\/activity-client\.js\?v=51/);
   assert.match(worker, /\.\/styles\.css\?v=49/);
-  assert.match(html, /\.\/app\.js\?v=51/);
+  assert.match(html, /\.\/app\.js\?v=52/);
   assert.match(html, /\.\/auth-session\.js\?v=51/);
   assert.match(html, /\.\/activity-client\.js\?v=51/);
   assert.match(html, /\.\/styles\.css\?v=49/);
-  assert.match(app, /\.\/sw\.js\?v=51/);
+  assert.match(app, /\.\/sw\.js\?v=52/);
   assert.match(worker, /requestUrl\.pathname\.includes\("\/admin\/"\)/);
   assert.match(html, /id="entry-photo-credit"/);
   assert.match(html, /id="idea-photo-credit"/);
@@ -49,6 +49,22 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(app, /source\.textContent = attribution\.sourceTitle/);
   assert.match(app, /renderPhotoCredit\(\$\("#photo-dialog-credit"\), photo\.attribution\)/);
   assert.match(app, /licenseGroup\.append\(license, " · cropped"\)/);
+});
+
+test("new cook capture exposes and validates an explicit historical date", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const worker = fs.readFileSync(path.join(__dirname, "..", "sw.js"), "utf8");
+
+  assert.match(html, /id="capture-date"[\s\S]*type="date"[\s\S]*min="2026-01-01"/);
+  assert.match(html, /back to January 1, 2026/);
+  assert.match(html, /id="confirm-date"[\s\S]*min="2026-01-01"[\s\S]*id="confirm-date-error"/);
+  assert.match(app, /captureDate\.value = currentDateValue\(\)/);
+  assert.match(app, /confirmDate\.value = captureDate\.value \|\| currentDateValue\(\)/);
+  assert.match(app, /validateNewCookDateControl\(captureDate, captureDateError\)/);
+  assert.match(app, /validateNewCookDateControl\(confirmDate, confirmDateError\)/);
+  assert.match(worker, /\.\/archive-store\.js\?v=32/);
+  assert.match(html, /\.\/archive-store\.js\?v=32/);
 });
 
 test("ships country-level Cook Density and Culinary Peaks map views", () => {

@@ -11,6 +11,7 @@
   const DB_NAME = "what-i-made-archive";
   const ACCOUNT_DB_PREFIX = `${DB_NAME}-account-v1`;
   const DB_VERSION = 5;
+  const MIN_NEW_COOK_DATE = "2026-01-01";
   const STORES = ["occasions", "dishes", "attempts", "photos"];
   let activeArchiveKey = null;
   let contextVersion = 0;
@@ -82,6 +83,21 @@
     const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
     const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     return day <= daysInMonth[month - 1];
+  }
+
+  function localDateValue(now = new Date()) {
+    const date = now instanceof Date ? now : new Date(now);
+    if (Number.isNaN(date.getTime())) return "";
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  function newCookDateError(value, today = localDateValue()) {
+    const cookedAt = String(value || "").trim();
+    if (!isValidCookedDate(cookedAt)) return "Choose a valid cooked date.";
+    if (cookedAt < MIN_NEW_COOK_DATE) return "Choose January 1, 2026 or later.";
+    if (!isValidCookedDate(today) || cookedAt > today) return "Cooked on cannot be later than today.";
+    return "";
   }
 
   function normalizeRating(value) {
@@ -157,7 +173,8 @@
     const dishName = String(input.dishName || "").trim();
     const cookedAt = String(input.cookedAt || "").trim();
     if (!dishName) throw new Error("A dish name is required.");
-    if (!isValidCookedDate(cookedAt)) throw new Error("A valid cooked date is required.");
+    const dateError = newCookDateError(cookedAt, localDateValue(now));
+    if (dateError) throw new Error(dateError);
     if (!(input.photoBlob instanceof Blob) || input.photoBlob.size === 0) throw new Error("A main photo is required.");
 
     const occasionId = ids.occasionId || createId();
@@ -555,10 +572,11 @@
     const cookedAt = String(input.cookedAt || "").trim();
     const dishInputs = Array.isArray(input.dishes) ? input.dishes : [];
     const photoInputs = Array.isArray(input.photos) ? input.photos : [];
-    if (!isValidCookedDate(cookedAt)) throw new Error("A valid cooked date is required.");
+    const now = new Date().toISOString();
+    const dateError = newCookDateError(cookedAt, localDateValue(now));
+    if (dateError) throw new Error(dateError);
     if (!dishInputs.length || dishInputs.some((dish) => !String(dish.dishName || "").trim())) throw new Error("Every dish needs a name.");
     if (!photoInputs.length || !(photoInputs[0].blob instanceof Blob) || photoInputs[0].blob.size === 0) throw new Error("A main photo is required.");
-    const now = new Date().toISOString();
     const occasionId = createId();
     const database = await openDatabase();
     const transaction = database.transaction(STORES, "readwrite");
@@ -930,5 +948,5 @@
     }
   }
 
-  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, appendUsefulAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
+  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, MIN_NEW_COOK_DATE, localDateValue, newCookDateError, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, appendUsefulAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
 });

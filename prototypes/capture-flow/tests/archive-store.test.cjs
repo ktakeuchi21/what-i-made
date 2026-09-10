@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { DB_VERSION, normalizeDishName, shouldLearnAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto } = require("../archive-store.js");
+const { DB_VERSION, MIN_NEW_COOK_DATE, localDateValue, newCookDateError, normalizeDishName, shouldLearnAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto } = require("../archive-store.js");
 
 test("uses one map-photo eligibility rule", () => {
   const attempts = [{ id: "a1", dishId: "d1", occasionId: "o1" }, { id: "a2", dishId: "d2", occasionId: "o1" }];
@@ -13,6 +13,16 @@ test("uses one map-photo eligibility rule", () => {
 
 test("uses the multi-dish IndexedDB schema version", () => {
   assert.equal(DB_VERSION, 5);
+});
+
+test("allows new cooks from January 1, 2026 through the local current date", () => {
+  assert.equal(MIN_NEW_COOK_DATE, "2026-01-01");
+  assert.equal(localDateValue(new Date("2026-09-10T23:30:00-06:00")), "2026-09-10");
+  assert.equal(newCookDateError("2026-01-01", "2026-09-10"), "");
+  assert.equal(newCookDateError("2026-09-09", "2026-09-10"), "");
+  assert.match(newCookDateError("2025-12-31", "2026-09-10"), /January 1, 2026/);
+  assert.match(newCookDateError("2026-09-11", "2026-09-10"), /later than today/);
+  assert.match(newCookDateError("2026-02-30", "2026-09-10"), /valid cooked date/);
 });
 
 test("learns only meaningfully distinct local aliases", () => {
@@ -142,6 +152,8 @@ test("rejects a cook unless photo, name, and date are all present", () => {
   assert.throws(() => buildCookRecords({ ...valid, cookedAt: "today" }), /date/i);
   assert.throws(() => buildCookRecords({ ...valid, cookedAt: "2026-02-31" }), /date/i);
   assert.throws(() => buildCookRecords({ ...valid, cookedAt: "2026-99-01" }), /date/i);
+  assert.throws(() => buildCookRecords({ ...valid, cookedAt: "2025-12-31" }, "2026-09-10T12:00:00.000Z"), /January 1, 2026/i);
+  assert.throws(() => buildCookRecords({ ...valid, cookedAt: "2026-09-11" }, "2026-09-10T12:00:00.000Z"), /later than today/i);
   assert.throws(() => buildCookRecords({ ...valid, photoBlob: null }), /photo/i);
 });
 
