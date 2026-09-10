@@ -9,6 +9,7 @@
   let session = null;
   let openAccountId = "";
   let eventCursor = null;
+  const loadGate = window.WhatIMadeAdminRequests.createLatestGate(() => $("#range").value);
 
   function show(id) { screens.forEach((name) => { $(`#${name}`).hidden = name !== id; }); }
   function formatDate(value, includeTime = false) { if (!value) return "Not yet"; return new Intl.DateTimeFormat(undefined, includeTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(new Date(value)); }
@@ -60,16 +61,22 @@
     return { users };
   }
   async function load() {
+    const loadRequest = loadGate.begin();
+    const range = loadRequest.key;
     const error = $("#dashboard-error"); error.hidden = true; $("#dashboard").setAttribute("aria-busy", "true"); $("#refresh").disabled = true; $("#refresh").setAttribute("aria-busy", "true");
     try {
-      const range = $("#range").value;
       const [summary, people] = await Promise.all([request(`/v1/admin/analytics/summary?range=${range}`), loadPeople(range)]);
+      if (!loadRequest.isCurrent()) return;
       $("#tracked-since").textContent = `Tracked since ${formatDate(`${summary.trackedSince}T12:00:00`)}. Earlier activity is not reconstructed.`;
       [["invited", summary.invitedAccounts], ["signed-accounts", summary.accountsSignedIn], ["active", summary.activeAccounts], ["signins", summary.signIns], ["cooks", summary.cooks], ["ideas", summary.ideas]].forEach(([id, value]) => { $(`#metric-${id}`).textContent = number(value); });
       $("#partial-notice").hidden = !summary.partial && !(people.users || []).some((user) => user.partial);
+      const clearing = summary.purgeStatus === "clearing";
+      $("#open-erase").disabled = clearing;
+      $("#open-erase").textContent = clearing ? "Erase in progress" : "Erase analytics";
+      if (clearing) { $("#erase-status").textContent = "Analytics are reset. Secure removal of the previous history is still finishing."; $("#erase-status").hidden = false; }
       renderTrend(summary.series || []); renderUsers(people.users || []); show("dashboard"); $("#sign-out").hidden = false;
-    } catch (errorValue) { if (errorValue.message !== "forbidden") reportError(errorValue); }
-    finally { $("#dashboard").removeAttribute("aria-busy"); $("#refresh").disabled = false; $("#refresh").removeAttribute("aria-busy"); }
+    } catch (errorValue) { if (loadRequest.isCurrent() && errorValue.message !== "forbidden") reportError(errorValue); }
+    finally { if (loadRequest.isCurrent()) { $("#dashboard").removeAttribute("aria-busy"); $("#refresh").disabled = false; $("#refresh").removeAttribute("aria-busy"); } }
   }
   async function openPerson(accountId, trigger) {
     $("#person-error").hidden = true;
@@ -86,7 +93,7 @@
     catch (error) { show("signed-out"); $("#auth-error").textContent = error.message || "Sign-in could not be completed."; $("#auth-error").hidden = false; }
   }
   $("#sign-in").addEventListener("click", async () => { try { const destination = await auth.startSignIn(); if (typeof destination === "string") location.assign(destination); else { session = destination; await initialize(); } } catch (error) { $("#auth-error").textContent = error.message; $("#auth-error").hidden = false; } });
-  $("#sign-out").addEventListener("click", async () => { const destination = await auth.signOut(); if (destination) location.assign(destination); else { session = null; show("signed-out"); } });
+  $("#sign-out").addEventListener("click", async () => { loadGate.invalidate(); const destination = await auth.signOut(); if (destination) location.assign(destination); else { session = null; show("signed-out"); } });
   $("#refresh").addEventListener("click", () => void load()); $("#range").addEventListener("change", () => void load());
   $("#close-person").addEventListener("click", () => $("#person-dialog").close()); $("#person-dialog").addEventListener("close", (event) => event.currentTarget._returnFocus?.focus());
   $("#load-older-events").addEventListener("click", async (event) => { if (!openAccountId || !eventCursor) return; const button = event.currentTarget; button.disabled = true; try { const payload = await request(`/v1/admin/analytics/users/${openAccountId}?range=${$("#range").value}&cursor=${encodeURIComponent(eventCursor)}`); eventCursor = payload.nextCursor || null; renderTimeline(payload.events || [], true); } catch (error) { reportError(error, "#person-error"); } finally { button.disabled = false; } });

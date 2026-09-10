@@ -76,3 +76,11 @@ test("purge performs a consistent empty verification pass before completion", as
   assert.deepEqual(await handler({ internalPurge: true, generation: "old", verify: true }), { complete: true });
   assert.deepEqual(invocations[1], { complete: "old" });
 });
+
+test("a new erase request is rejected while physical clearing is in progress", async () => {
+  const repository = { rotateGeneration: async () => { throw new Error("erase_in_progress"); } };
+  const handler = createHandler({ repository }, environment);
+  const result = await handler(api("/v1/admin/analytics", "DELETE", "[what-i-made-admins]", JSON.stringify({ confirmation: "ERASE ANALYTICS" })));
+  assert.equal(result.statusCode, 409);
+  assert.deepEqual(JSON.parse(result.body), { error: "erase_in_progress" });
+});

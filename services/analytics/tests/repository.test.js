@@ -94,11 +94,11 @@ test("an event racing with erase retries only in the active generation", async (
   assert.equal(writes[1].input.TransactItems[0].Put.Item.pk.S, "GEN#new#USER#account");
 });
 
-test("a repeated erase resumes the tracked purge instead of orphaning it", async () => {
+test("a repeated erase is rejected until the tracked purge completes", async () => {
   const { calls, repository } = mockRepository((command) => {
     if (command instanceof commands.GetItemCommand) return { Item: { generation: { S: "new" }, purgeStatus: { S: "clearing" }, purgingGeneration: { S: "old" } } };
     return {};
   });
-  assert.deepEqual(await repository.rotateGeneration(), { previous: "old", next: "new", alreadyClearing: true });
+  await assert.rejects(() => repository.rotateGeneration(), /erase_in_progress/);
   assert.equal(calls.some((call) => call instanceof commands.UpdateItemCommand), false);
 });

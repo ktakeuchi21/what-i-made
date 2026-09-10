@@ -99,7 +99,7 @@ function createRepository(environment = process.env, dependencies = {}) {
   }
   async function rotateGeneration() {
     const current = await control();
-    if (current.purgeStatus === "clearing" && current.purgingGeneration) return { previous: current.purgingGeneration, next: current.generation, alreadyClearing: true };
+    if (current.purgeStatus === "clearing" && current.purgingGeneration) throw new Error("erase_in_progress");
     const previous = current.generation;
     const next = crypto.randomUUID();
     try {

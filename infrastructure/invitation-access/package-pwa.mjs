@@ -48,6 +48,7 @@ const STATIC_FILES = Object.freeze([
   "assets/demo/demo-content.json",
   "admin/index.html",
   "admin/admin.css",
+  "admin/admin-request.js",
   "admin/admin.js",
   "privacy/index.html",
   "privacy/privacy.css",

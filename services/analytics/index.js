@@ -109,7 +109,8 @@ function createHandler(dependencies = {}, environment = process.env) {
       }
       return response(404, { error: "not_found" });
     } catch (error) {
-      return response(error?.message === "invalid_request" ? 400 : 503, { error: error?.message === "invalid_request" ? "invalid_request" : "unavailable" });
+      const known = { invalid_request: 400, erase_in_progress: 409 };
+      return response(known[error?.message] || 503, { error: Object.hasOwn(known, error?.message) ? error.message : "unavailable" });
     }
   };
 }
