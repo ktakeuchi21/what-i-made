@@ -1,6 +1,6 @@
 # Invitation access deployment
 
-This SAM stack creates the invitation-only Cognito user pool, managed-login client, JWT-protected HTTP API, and the three private service Lambdas. Public self-registration is disabled. Every API route requires an access token and its matching service scope before Lambda invocation.
+This SAM stack creates the invitation-only Cognito user pool, managed-login client, JWT-protected HTTP API, three private assistance Lambdas, and the metadata-only owner analytics service. Public self-registration is disabled. Every API route requires an access token and its matching service scope before Lambda invocation; analytics reads additionally require membership in `what-i-made-admins` inside the Lambda.
 
 The pool permits email OTP plus Cognito's currently required `PASSWORD` compatibility factor. Invited users are created without passwords, and self-service password recovery is disabled, so the intended experience remains email-code sign-in without a reusable password. The stack also creates Cognito's default managed-login branding resource; API-created app clients do not receive a usable managed-login page without it.
 
@@ -20,7 +20,7 @@ The static package includes the public sample repository and its attribution-bea
    ```
 
    The script derives at most 256 public terms from the bundled, versioned catalog. It never reads an IndexedDB archive or uploads personal dish names.
-5. Run `sam deploy --guided` and supply the exact deployed PWA origin/callback, a globally unique Cognito domain prefix, a random image-token secret of at least 32 characters, the READY `TranscribeVocabularyName`, and separate `CaptureBedrockModelId` and `RecipeBedrockModelId` values. Set `ServicesEnabled=false` for the initial identity-and-authorization deployment. Leave `ReservedConcurrency` at `0` until the account quota has been raised enough to retain ten unreserved executions; then redeploy with `2`.
+5. Run `sam deploy --guided` and supply the exact deployed PWA callback, the same origin's `/admin/` callback, a globally unique Cognito domain prefix, a random image-token secret of at least 32 characters, the READY `TranscribeVocabularyName`, the analytics launch date, and separate `CaptureBedrockModelId` and `RecipeBedrockModelId` values. Set `ServicesEnabled=false` for the initial identity-and-authorization deployment. Leave `ReservedConcurrency` at `0` until the account quota has been raised enough to retain ten unreserved executions; then redeploy with `2`.
 6. Use the stack outputs to build a new static directory without editing tracked source. The packager copies only runtime files, injects the public Cognito/API values and strict CSP, validates the region and optional migration digest, and refuses to overwrite an existing destination:
 
    ```sh
@@ -33,7 +33,7 @@ The static package includes the public sample repository and its attribution-bea
      --legacy-owner-archive-key <64-character-owner-archive-digest>
    ```
 
-   Omit `--legacy-owner-archive-key` after the controlled owner migration. The requested scopes are `openid email what-i-made/capture what-i-made/recipes`. Authenticated builds intentionally disable network assistance if the API base URL is absent or invalid.
+   Omit `--legacy-owner-archive-key` after the controlled owner migration. The requested scopes are `openid email what-i-made/capture what-i-made/recipes what-i-made/activity what-i-made/admin`. Authenticated builds intentionally disable network assistance and activity delivery if the API base URL is absent or invalid.
 7. Inspect the generated directory before uploading it to Amplify. It excludes tests, reports, source-generation scripts, and the high-resolution icon master. The packager accepts only the regional Cognito and API Gateway host forms emitted by this stack, preventing a mistyped arbitrary host from receiving access tokens. The generated `customHttp.yml` applies CSP, anti-framing, MIME-sniffing, referrer, permissions, and transport headers using [Amplify Hosting’s supported custom-header format](https://docs.aws.amazon.com/amplify/latest/userguide/setting-custom-headers.html). Do not publish the temporary owner-migration bundle to invited users.
 
 ## One-time owner archive move
@@ -41,6 +41,8 @@ The static package includes the public sample repository and its attribution-bea
 After creating the owner's Cognito user, read that user's immutable `sub` in the Cognito console or `admin-get-user`. Derive the rollout key as the lowercase SHA-256 hex of the UTF-8 string `what-i-made-archive:<sub>`; for example, `printf %s 'what-i-made-archive:<sub>' | shasum -a 256`. Pass only that 64-character digest to the packager for the owner's temporary rollout bundle. The owner will be offered a backup and a verified move from the fixed local database into the empty scoped archive. After successful migration, build and deploy a fresh bundle without the migration argument before creating invitees. Never put the raw subject or email in the page.
 
 Create invited users only through Cognito administration. Set their email as verified; possession of the public PWA link alone does not grant access.
+
+After deploying analytics, add only the owner user to the stack output group with `aws cognito-idp admin-add-user-to-group --user-pool-id <UserPoolId> --username <owner-username> --group-name what-i-made-admins`. The `/admin/` page uses the same email-code session, but every analytics read and erase operation rechecks the group claim. Follow the separate [owner analytics rollout checklist](../../docs/product/owner-analytics/ROLLOUT_CHECKLIST.md).
 
 The PWA's Account sheet signs out locally first, then opens Cognito's `/logout` endpoint with this app client's registered `logout_uri`. A subsequent explicit sign-in uses managed login and `prompt=login`, allowing a different administrator-created email to request its one-time code instead of silently resuming the previous hosted session. Normal app launches still restore a valid retained session without asking for another code.
 

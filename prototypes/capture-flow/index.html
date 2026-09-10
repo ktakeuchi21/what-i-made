@@ -120,6 +120,7 @@
             <button class="button button-primary" type="button" id="explore-demo">Explore a sample archive</button>
             <button class="button button-secondary" type="button" id="sign-in-button" hidden>Sign in with email</button>
             <p class="auth-helper" id="auth-helper" hidden>Use an invited email address. We’ll send a one-time code—there’s no password to remember.</p>
+            <a class="inline-button" href="./privacy/">Privacy</a>
           </div>
         </section>
 
@@ -979,6 +980,7 @@
             </div>
             <p class="account-identity"><strong id="account-email"></strong><span id="account-access-status"></span></p>
             <p id="account-dialog-description">Signing out hides this private archive on this device. Your cooks, Ideas, and photographs stay here for the next time this invited account signs in.</p>
+            <p><a class="inline-button" href="./privacy/">Privacy and activity metadata</a></p>
             <p class="save-status" id="sign-out-status" role="status" aria-live="polite" hidden></p>
             <button class="button button-secondary primary-action" type="button" id="sign-out-button">Sign out on this device</button>
           </div>
@@ -1070,7 +1072,7 @@
       </main>
     </div>
 
-    <script src="./config.js?v=35"></script>
+    <script src="./config.js?v=51"></script>
     <script src="./transcribe-codec.js?v=16"></script>
     <script src="./transcribe-adapter.js?v=40"></script>
     <script src="./capture-parser.js?v=16"></script>
@@ -1085,7 +1087,8 @@
     <script src="./dish-recognizer.js?v=40"></script>
     <script src="./map-geometry.js?v=44"></script>
     <script src="./account-context.js?v=31"></script>
-    <script src="./auth-session.js?v=49"></script>
+    <script src="./auth-session.js?v=51"></script>
+    <script src="./activity-client.js?v=51"></script>
     <script src="./archive-store.js?v=31"></script>
     <script src="./idea-store.js?v=18"></script>
     <script src="./archive-backup.js?v=29"></script>
@@ -1095,6 +1098,6 @@
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
     <script src="./demo-archive.js?v=49"></script>
-    <script src="./app.js?v=49"></script>
+    <script src="./app.js?v=51"></script>
   </body>
 </html>

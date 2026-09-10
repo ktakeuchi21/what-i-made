@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="wim-auth-domain" content="" />
+    <meta name="wim-auth-client-id" content="" />
+    <meta name="wim-service-api-endpoint" content="" />
+    <meta name="wim-aws-region" content="us-east-2" />
+    <meta name="wim-legacy-owner-archive-key" content="" />
+    <title>Owner analytics · What I Made</title>
+    <link rel="icon" href="../assets/favicon-32.png?v=30" />
+    <link rel="stylesheet" href="./admin.css?v=51" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to analytics</a>
+    <header class="site-header">
+      <a class="brand" href="../"><img src="../assets/app-icon-192.png" width="44" height="44" alt="" /><span>What I Made<small>Owner analytics</small></span></a>
+      <nav aria-label="Owner links"><a href="../">Archive</a><a href="../privacy/">Privacy</a><button id="sign-out" type="button" hidden>Sign out</button></nav>
+    </header>
+
+    <main id="main">
+      <section class="gate" id="loading" aria-live="polite"><p class="eyebrow">Private owner view</p><h1>Opening analytics…</h1><p>Checking your invited account.</p></section>
+      <section class="gate" id="signed-out" hidden><p class="eyebrow">Private owner view</p><h1>Understand how the archive is being used</h1><p>Sign in with the invited owner email. Other invited accounts cannot open analytics.</p><button class="button primary" id="sign-in" type="button">Sign in with email</button><p class="error" id="auth-error" role="alert" hidden></p></section>
+      <section class="gate" id="denied" hidden><p class="eyebrow">Owner access required</p><h1>You don’t have access to analytics</h1><p>This invited account can continue using its private archive.</p><a class="button secondary" href="../">Return to the archive</a></section>
+
+      <section id="dashboard" hidden aria-labelledby="dashboard-title">
+        <div class="title-row">
+          <div><p class="eyebrow">Private owner view</p><h1 id="dashboard-title">Archive activity</h1><p id="tracked-since">Tracked since analytics launched.</p></div>
+          <div class="controls"><label for="range">Time range</label><select id="range"><option value="7d">Last 7 days</option><option value="30d" selected>Last 30 days</option><option value="90d">Last 90 days</option><option value="12m">Last 12 months</option></select><button class="button secondary" id="refresh" type="button">Refresh</button></div>
+        </div>
+        <p class="notice" id="partial-notice" role="status" hidden>Some offline activity could not be retained, so these totals may be incomplete.</p>
+        <p class="error" id="dashboard-error" role="alert" tabindex="-1" hidden></p>
+
+        <dl class="metrics" aria-label="Analytics summary">
+          <div><dt>Invited accounts</dt><dd id="metric-invited">—</dd></div>
+          <div><dt>Signed-in accounts</dt><dd id="metric-signed-accounts">—</dd></div>
+          <div><dt>Active users</dt><dd id="metric-active">—</dd></div>
+          <div><dt>Successful sign-ins</dt><dd id="metric-signins">—</dd></div>
+          <div><dt>Cooks recorded</dt><dd id="metric-cooks">—</dd></div>
+          <div><dt>Ideas saved</dt><dd id="metric-ideas">—</dd></div>
+        </dl>
+
+        <section class="panel" aria-labelledby="trend-title"><div class="section-title"><div><p class="eyebrow">Over time</p><h2 id="trend-title">Activity trend</h2></div></div><div class="trend" id="trend" aria-hidden="true"></div><div class="table-wrap"><table><caption class="sr-only">Daily sign-ins, cooks, and Ideas</caption><thead><tr><th scope="col">Date</th><th scope="col">Sign-ins</th><th scope="col">Cooks</th><th scope="col">Ideas</th></tr></thead><tbody id="trend-table"></tbody></table></div><p class="empty" id="trend-empty" hidden>No activity was recorded in this range.</p></section>
+
+        <section class="panel" aria-labelledby="people-title"><div class="section-title"><div><p class="eyebrow">Invited people</p><h2 id="people-title">Account activity</h2></div><span id="people-count"></span></div><div class="people" id="people" role="list"></div></section>
+
+        <section class="danger-panel" aria-labelledby="erase-title"><p class="eyebrow">Data control</p><h2 id="erase-title">Erase analytics</h2><p>Clear all tracked events and counters. Cognito accounts and every person’s local archive remain untouched.</p><p id="erase-status" role="status" hidden></p><button class="button danger" id="open-erase" type="button">Erase analytics</button></section>
+      </section>
+    </main>
+
+    <dialog id="person-dialog" aria-labelledby="person-title"><div class="dialog-head"><div><p class="eyebrow">Account activity</p><h2 id="person-title">Invited user</h2></div><button class="close" id="close-person" type="button">Close</button></div><dl class="person-summary" id="person-summary"></dl><h3>Recent timeline</h3><ol class="timeline" id="person-timeline"></ol><p class="empty" id="person-empty" hidden>No activity has been recorded.</p></dialog>
+    <dialog id="erase-dialog" aria-labelledby="erase-dialog-title"><form id="erase-form"><div class="dialog-head"><div><p class="eyebrow">Permanent action</p><h2 id="erase-dialog-title">Erase all analytics?</h2></div><button class="close" id="close-erase" type="button">Close</button></div><p>This resets tracked sign-ins and activity for every account. It does not remove invited users or local archives.</p><label for="erase-confirmation">Type <strong>ERASE ANALYTICS</strong> to continue</label><input id="erase-confirmation" autocomplete="off" spellcheck="false" /><p class="error" id="erase-error" role="alert" hidden></p><button class="button danger" id="confirm-erase" disabled>Erase analytics</button></form></dialog>
+
+    <script src="../config.js?v=51"></script>
+    <script src="../account-context.js?v=31"></script>
+    <script src="../auth-session.js?v=51"></script>
+    <script src="./admin.js?v=51"></script>
+  </body>
+</html>

@@ -1,8 +1,17 @@
 # Capture Flow Prototype Test Report
 
-> **Updated:** September 9, 2026
+> **Updated:** September 10, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Owner analytics dashboard — September 10, 2026
+
+- Added metadata-only completed sign-in and cook/Idea activity contracts, an account-scoped offline outbox, 12-month event expiry, owner-group authorization, and global generation-based analytics erasure.
+- Added a responsive `/admin/` dashboard with four date ranges, exact summary values, accessible trend table, invited-account detail, partial-data state, email-code sign-in, and typed destructive confirmation.
+- Added a public `/privacy/` page explaining that archive contents remain local and naming the limited metadata visible to the owner.
+- **Automated proof:** 175 application/infrastructure tests and 59 protected-service tests passed. Analytics-specific coverage includes strict metadata schemas, invitee denial, owner-group enforcement, post-auth sign-ins, account-switch isolation, stale and overflowing outboxes, event idempotency, 12-month TTLs, lifetime counters, generation rotation, purge completion, service-worker exclusions, and deployment packaging. `cfn-lint` accepted the SAM template and the new service dependency audit reported zero vulnerabilities.
+- **Browser proof:** The local owner fixture rendered at desktop and 375×812 with all six metrics, chart/table equivalence, complete account rows, and no page-level overflow. The account timeline opened as a modal, moved focus to Close, and returned focus to its originating account row. The browser reported no console errors or warnings.
+- Live Cognito trigger, owner-group, DynamoDB TTL, log-redaction, physical purge, and production iPhone checks remain deployment gates.
 
 ## Reachable account sign-in and sign-out — September 9, 2026
 
