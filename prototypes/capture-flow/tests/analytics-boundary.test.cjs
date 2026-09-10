@@ -13,6 +13,7 @@ test("admin and privacy pages ship without private archive repositories", () => 
   assert.match(admin, /\.\.\/auth-session\.js/);
   assert.doesNotMatch(admin, /archive-store|idea-store|archive-backup|demo-archive/);
   assert.doesNotMatch(adminScript, /setAttribute\("role", "listitem"\)/);
+  assert.match(adminScript, /show\("dashboard"\); \$\("#sign-out"\)\.hidden = false; reportError\(errorValue\)/);
   assert.match(privacy, /They are not uploaded for analytics/);
 });
 

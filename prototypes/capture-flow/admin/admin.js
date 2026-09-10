@@ -4,7 +4,8 @@
   const config = window.WIM_AUTH_CONFIG || { enabled: false };
   const auth = window.WhatIMadeAuth?.createAuthClient?.(config);
   const endpoint = document.querySelector('meta[name="wim-service-api-endpoint"]')?.content.trim().replace(/\/$/, "") || "";
-  const localFake = ["127.0.0.1", "localhost"].includes(location.hostname) && new URLSearchParams(location.search).get("admin") === "fake";
+  const localAdminMode = new URLSearchParams(location.search).get("admin");
+  const localFake = ["127.0.0.1", "localhost"].includes(location.hostname) && ["fake", "error"].includes(localAdminMode);
   const screens = ["loading", "signed-out", "denied", "dashboard"];
   let session = null;
   let openAccountId = "";
@@ -15,6 +16,7 @@
   function formatDate(value, includeTime = false) { if (!value) return "Not yet"; return new Intl.DateTimeFormat(undefined, includeTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(new Date(value)); }
   function number(value) { return Number(value || 0).toLocaleString(); }
   function reportError(error, selector = "#dashboard-error") { const target = $(selector); target.textContent = error?.message || "Analytics are temporarily unavailable."; target.hidden = false; target.focus(); }
+  function renderEraseControl(purgeStatus) { const state = window.WhatIMadeAdminRequests.eraseControl(purgeStatus); $("#open-erase").disabled = state.disabled; $("#open-erase").textContent = state.label; }
   function hasAdmin(token) {
     if (localFake) return true;
     try { const groups = window.WhatIMadeAuth.decodeJwtPayload(token)["cognito:groups"] || []; return Array.isArray(groups) && groups.includes("what-i-made-admins"); } catch { return false; }
@@ -32,6 +34,7 @@
     return response.json();
   }
   function fixture(path, options) {
+    if (localAdminMode === "error") return Promise.reject(new Error("Analytics are temporarily unavailable. Try again."));
     if (options?.method === "DELETE") return Promise.resolve({ status: "clearing", trackedSince: "2026-09-10" });
     const events = [{ date: "2026-09-04", signIns: 1, cooks: 2, ideas: 0 }, { date: "2026-09-06", signIns: 2, cooks: 1, ideas: 1 }, { date: "2026-09-09", signIns: 1, cooks: 3, ideas: 1 }];
     const users = [{ accountId: "a".repeat(64), email: "kai@example.test", status: "CONFIRMED", enabled: true, createdAt: "2026-09-01T12:00:00Z", firstSignInAt: "2026-09-01T12:00:00Z", lastSignInAt: "2026-09-09T18:00:00Z", lastActivityAt: "2026-09-09T18:20:00Z", signIns: 4, cooks: 6, ideas: 2, activeAccounts: 1, partial: false }];
@@ -71,11 +74,10 @@
       [["invited", summary.invitedAccounts], ["signed-accounts", summary.accountsSignedIn], ["active", summary.activeAccounts], ["signins", summary.signIns], ["cooks", summary.cooks], ["ideas", summary.ideas]].forEach(([id, value]) => { $(`#metric-${id}`).textContent = number(value); });
       $("#partial-notice").hidden = !summary.partial && !(people.users || []).some((user) => user.partial);
       const clearing = summary.purgeStatus === "clearing";
-      $("#open-erase").disabled = clearing;
-      $("#open-erase").textContent = clearing ? "Erase in progress" : "Erase analytics";
+      renderEraseControl(summary.purgeStatus);
       if (clearing) { $("#erase-status").textContent = "Analytics are reset. Secure removal of the previous history is still finishing."; $("#erase-status").hidden = false; }
       renderTrend(summary.series || []); renderUsers(people.users || []); show("dashboard"); $("#sign-out").hidden = false;
-    } catch (errorValue) { if (loadRequest.isCurrent() && errorValue.message !== "forbidden") reportError(errorValue); }
+    } catch (errorValue) { if (loadRequest.isCurrent() && errorValue.message !== "forbidden") { show("dashboard"); $("#sign-out").hidden = false; reportError(errorValue); } }
     finally { if (loadRequest.isCurrent()) { $("#dashboard").removeAttribute("aria-busy"); $("#refresh").disabled = false; $("#refresh").removeAttribute("aria-busy"); } }
   }
   async function openPerson(accountId, trigger) {
@@ -111,6 +113,7 @@
         complete = summary.purgeStatus === "complete";
         if (!complete) await new Promise((resolve) => window.setTimeout(resolve, 1000));
       }
+      if (complete) renderEraseControl("complete");
       status.textContent = complete ? "All analytics were erased." : "Analytics are reset. Secure removal is still finishing in the background.";
     } catch (caught) { error.textContent = caught.message; error.hidden = false; $("#confirm-erase").disabled = false; }
   });

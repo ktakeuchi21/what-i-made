@@ -15,5 +15,9 @@
       invalidate() { version += 1; },
     };
   }
-  return { createLatestGate };
+  function eraseControl(purgeStatus) {
+    const clearing = purgeStatus === "clearing";
+    return { disabled: clearing, label: clearing ? "Erase in progress" : "Erase analytics" };
+  }
+  return { createLatestGate, eraseControl };
 });
