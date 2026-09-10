@@ -7,10 +7,13 @@
   const localFake = ["127.0.0.1", "localhost"].includes(location.hostname) && new URLSearchParams(location.search).get("admin") === "fake";
   const screens = ["loading", "signed-out", "denied", "dashboard"];
   let session = null;
+  let openAccountId = "";
+  let eventCursor = null;
 
   function show(id) { screens.forEach((name) => { $(`#${name}`).hidden = name !== id; }); }
   function formatDate(value, includeTime = false) { if (!value) return "Not yet"; return new Intl.DateTimeFormat(undefined, includeTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(new Date(value)); }
   function number(value) { return Number(value || 0).toLocaleString(); }
+  function reportError(error, selector = "#dashboard-error") { const target = $(selector); target.textContent = error?.message || "Analytics are temporarily unavailable."; target.hidden = false; target.focus(); }
   function hasAdmin(token) {
     if (localFake) return true;
     try { const groups = window.WhatIMadeAuth.decodeJwtPayload(token)["cognito:groups"] || []; return Array.isArray(groups) && groups.includes("what-i-made-admins"); } catch { return false; }
@@ -43,24 +46,39 @@
   }
   function renderUsers(users) {
     const list = $("#people"); list.replaceChildren(); $("#people-count").textContent = `${users.length} account${users.length === 1 ? "" : "s"}`;
-    users.forEach((user) => { const button = document.createElement("button"); button.type = "button"; button.className = "person-row"; button.setAttribute("role", "listitem"); button.innerHTML = `<strong></strong><span><small>First sign-in</small></span><span><small>Last sign-in</small></span><span><small>Sign-ins</small></span><span><small>Last activity</small></span><span><small>Cooks</small></span><span><small>Ideas</small></span><span><small>Status</small></span>`; button.querySelector("strong").textContent = user.email; const values = [formatDate(user.firstSignInAt, true), formatDate(user.lastSignInAt, true), number(user.signIns), formatDate(user.lastActivityAt, true), number(user.cooks), number(user.ideas), user.enabled ? user.status : "Disabled"]; [...button.querySelectorAll("span")].forEach((node, index) => node.append(document.createTextNode(values[index] || "—"))); button.addEventListener("click", () => void openPerson(user.accountId, button)); list.append(button); });
+    users.forEach((user) => { const button = document.createElement("button"); button.type = "button"; button.className = "person-row"; button.innerHTML = `<strong></strong><span><small>First sign-in</small></span><span><small>Last sign-in</small></span><span><small>Sign-ins</small></span><span><small>Last activity</small></span><span><small>Cooks</small></span><span><small>Ideas</small></span><span><small>Status</small></span>`; button.querySelector("strong").textContent = user.email; const values = [formatDate(user.firstSignInAt, true), formatDate(user.lastSignInAt, true), number(user.signIns), formatDate(user.lastActivityAt, true), number(user.cooks), number(user.ideas), user.enabled ? user.status : "Disabled"]; [...button.querySelectorAll("span")].forEach((node, index) => node.append(document.createTextNode(values[index] || "—"))); button.addEventListener("click", () => void openPerson(user.accountId, button).catch(reportError)); list.append(button); });
+  }
+  async function loadPeople(range) {
+    const users = [];
+    let cursor = null;
+    do {
+      const payload = await request(`/v1/admin/analytics/users?range=${range}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
+      users.push(...(payload.users || []));
+      cursor = payload.nextCursor || null;
+    } while (cursor && users.length < 1000);
+    if (cursor) throw new Error("The invited-account list is larger than this dashboard supports.");
+    return { users };
   }
   async function load() {
     const error = $("#dashboard-error"); error.hidden = true; $("#dashboard").setAttribute("aria-busy", "true"); $("#refresh").disabled = true; $("#refresh").setAttribute("aria-busy", "true");
     try {
       const range = $("#range").value;
-      const [summary, people] = await Promise.all([request(`/v1/admin/analytics/summary?range=${range}`), request(`/v1/admin/analytics/users?range=${range}`)]);
+      const [summary, people] = await Promise.all([request(`/v1/admin/analytics/summary?range=${range}`), loadPeople(range)]);
       $("#tracked-since").textContent = `Tracked since ${formatDate(`${summary.trackedSince}T12:00:00`)}. Earlier activity is not reconstructed.`;
       [["invited", summary.invitedAccounts], ["signed-accounts", summary.accountsSignedIn], ["active", summary.activeAccounts], ["signins", summary.signIns], ["cooks", summary.cooks], ["ideas", summary.ideas]].forEach(([id, value]) => { $(`#metric-${id}`).textContent = number(value); });
       $("#partial-notice").hidden = !summary.partial && !(people.users || []).some((user) => user.partial);
       renderTrend(summary.series || []); renderUsers(people.users || []); show("dashboard"); $("#sign-out").hidden = false;
-    } catch (errorValue) { if (errorValue.message !== "forbidden") { error.textContent = errorValue.message; error.hidden = false; error.focus(); } }
+    } catch (errorValue) { if (errorValue.message !== "forbidden") reportError(errorValue); }
     finally { $("#dashboard").removeAttribute("aria-busy"); $("#refresh").disabled = false; $("#refresh").removeAttribute("aria-busy"); }
   }
   async function openPerson(accountId, trigger) {
+    $("#person-error").hidden = true;
     const payload = await request(`/v1/admin/analytics/users/${accountId}?range=${$("#range").value}`);
     const user = payload.user; $("#person-title").textContent = user.email; const summary = $("#person-summary"); summary.replaceChildren(); [["First sign-in", formatDate(user.firstSignInAt, true)], ["Last sign-in", formatDate(user.lastSignInAt, true)], ["Sign-ins", number(user.signIns)], ["Last activity", formatDate(user.lastActivityAt, true)], ["Cooks", number(user.cooks)], ["Ideas", number(user.ideas)]].forEach(([label, value]) => { const wrap = document.createElement("div"); const dt = document.createElement("dt"); const dd = document.createElement("dd"); dt.textContent = label; dd.textContent = value; wrap.append(dt, dd); summary.append(wrap); });
-    const timeline = $("#person-timeline"); timeline.replaceChildren(); (payload.events || []).forEach((event) => { const item = document.createElement("li"); const label = document.createElement("strong"); const time = document.createElement("time"); label.textContent = event.label; time.dateTime = event.occurredAt; time.textContent = formatDate(event.occurredAt, true); item.append(label, time); timeline.append(item); }); $("#person-empty").hidden = Boolean(payload.events?.length); const dialog = $("#person-dialog"); dialog.showModal(); dialog._returnFocus = trigger; $("#close-person").focus();
+    openAccountId = accountId; eventCursor = payload.nextCursor || null; renderTimeline(payload.events || [], false); const dialog = $("#person-dialog"); dialog.showModal(); dialog._returnFocus = trigger; $("#close-person").focus();
+  }
+  function renderTimeline(events, append) {
+    const timeline = $("#person-timeline"); if (!append) timeline.replaceChildren(); events.forEach((event) => { const item = document.createElement("li"); const label = document.createElement("strong"); const time = document.createElement("time"); label.textContent = event.label; time.dateTime = event.occurredAt; time.textContent = formatDate(event.occurredAt, true); item.append(label, time); timeline.append(item); }); $("#person-empty").hidden = timeline.children.length > 0; $("#load-older-events").hidden = !eventCursor;
   }
   async function initialize() {
     if (!auth || !config.enabled || (!endpoint && !localFake)) { show("signed-out"); $("#auth-error").textContent = "Owner analytics are not configured."; $("#auth-error").hidden = false; return; }
@@ -71,6 +89,7 @@
   $("#sign-out").addEventListener("click", async () => { const destination = await auth.signOut(); if (destination) location.assign(destination); else { session = null; show("signed-out"); } });
   $("#refresh").addEventListener("click", () => void load()); $("#range").addEventListener("change", () => void load());
   $("#close-person").addEventListener("click", () => $("#person-dialog").close()); $("#person-dialog").addEventListener("close", (event) => event.currentTarget._returnFocus?.focus());
+  $("#load-older-events").addEventListener("click", async (event) => { if (!openAccountId || !eventCursor) return; const button = event.currentTarget; button.disabled = true; try { const payload = await request(`/v1/admin/analytics/users/${openAccountId}?range=${$("#range").value}&cursor=${encodeURIComponent(eventCursor)}`); eventCursor = payload.nextCursor || null; renderTimeline(payload.events || [], true); } catch (error) { reportError(error, "#person-error"); } finally { button.disabled = false; } });
   $("#open-erase").addEventListener("click", (event) => { $("#erase-confirmation").value = ""; $("#confirm-erase").disabled = true; $("#erase-dialog")._returnFocus = event.currentTarget; $("#erase-dialog").showModal(); $("#erase-confirmation").focus(); });
   $("#close-erase").addEventListener("click", () => $("#erase-dialog").close()); $("#erase-confirmation").addEventListener("input", (event) => { $("#confirm-erase").disabled = event.target.value !== "ERASE ANALYTICS"; });
   $("#erase-dialog").addEventListener("close", (event) => event.currentTarget._returnFocus?.focus());

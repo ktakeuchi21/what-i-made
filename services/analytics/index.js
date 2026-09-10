@@ -1,7 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
-const { identityFromClaims, readRange, summarizeEvents, validateEventBatch, eventLabel, digestSubject } = require("./domain");
+const { RANGE_DAYS, identityFromClaims, readRange, summarizeEvents, validateEventBatch, eventLabel, digestSubject } = require("./domain");
 const { createRepository } = require("./repository");
 
 function response(statusCode, body) {
@@ -15,6 +15,16 @@ function readJson(event) {
 function query(event) { return event.queryStringParameters || {}; }
 function claims(event) { return event.requestContext?.authorizer?.jwt?.claims || {}; }
 function timeline(events) { return events.sort((a, b) => `${b.occurredAt}|${b.eventId}`.localeCompare(`${a.occurredAt}|${a.eventId}`)).map((event) => ({ type: event.type, label: eventLabel(event.type), occurredAt: event.occurredAt })); }
+function eventsInRange(events, range, now) { const cutoff = Number(now) - RANGE_DAYS[range] * 24 * 60 * 60 * 1000; return events.filter((event) => new Date(event.occurredAt).getTime() >= cutoff); }
+function readCursor(value) {
+  if (!value) return 0;
+  try {
+    const decoded = Buffer.from(String(value), "base64url").toString("utf8");
+    if (!/^v1:\d{1,6}$/.test(decoded)) throw new Error("invalid_request");
+    return Number(decoded.slice(3));
+  } catch { throw new Error("invalid_request"); }
+}
+function page(items, cursor, limit) { const offset = readCursor(cursor); if (offset > items.length) throw new Error("invalid_request"); const values = items.slice(offset, offset + limit); const next = offset + values.length; return { values, nextCursor: next < items.length ? Buffer.from(`v1:${next}`).toString("base64url") : null }; }
 
 function createHandler(dependencies = {}, environment = process.env) {
   const repository = dependencies.repository || createRepository(environment, dependencies.repositoryDependencies);
@@ -38,10 +48,11 @@ function createHandler(dependencies = {}, environment = process.env) {
   const launchDate = environment.ANALYTICS_LAUNCH_DATE || new Date(now()).toISOString().slice(0, 10);
   return async function handler(event = {}) {
     if (event.internalPurge === true) {
-      const nextKey = await repository.purgeGeneration(String(event.generation || ""), event.startKey || undefined);
-      if (nextKey) await invokePurge({ internalPurge: true, generation: event.generation, startKey: nextKey });
+      const purge = await repository.purgeGeneration(String(event.generation || ""), event.startKey || undefined);
+      if (purge.nextKey) await invokePurge({ internalPurge: true, generation: event.generation, startKey: purge.nextKey });
+      else if (purge.deletedCount > 0) await invokePurge({ internalPurge: true, generation: event.generation, verify: true });
       else await repository.completePurge(String(event.generation || ""));
-      return { complete: !nextKey };
+      return { complete: !purge.nextKey && purge.deletedCount === 0 };
     }
     const method = event.requestContext?.http?.method || event.httpMethod;
     const path = event.rawPath || event.path || "";
@@ -79,18 +90,22 @@ function createHandler(dependencies = {}, environment = process.env) {
         if (snapshot.control?.purgeStatus === "clearing" && snapshot.control?.purgingGeneration) invokePurge({ internalPurge: true, generation: snapshot.control.purgingGeneration }).catch(() => {});
         const metrics = summarizeEvents(events, range, now());
         metrics.accountsSignedIn = roster.filter((user) => Boolean(user.firstSignInAt)).length;
+        metrics.partial = metrics.partial || roster.some((user) => user.partial);
         return response(200, { trackedSince: launchDate, purgeStatus: snapshot.control?.purgeStatus || "complete", invitedAccounts: roster.length, ...metrics });
       }
       if (method === "GET" && path === "/v1/admin/analytics/users") {
-        const enriched = roster.map((user) => ({ ...user, ...summarizeEvents(events.filter((item) => item.accountId === user.accountId), range, now()), series: undefined }));
-        return response(200, { trackedSince: launchDate, users: enriched, nextCursor: null });
+        const enriched = roster.map((user) => { const metrics = summarizeEvents(events.filter((item) => item.accountId === user.accountId), range, now()); return { ...user, ...metrics, partial: user.partial || metrics.partial, series: undefined }; });
+        const selected = page(enriched, query(event).cursor, 50);
+        return response(200, { trackedSince: launchDate, users: selected.values, nextCursor: selected.nextCursor });
       }
       const match = path.match(/^\/v1\/admin\/analytics\/users\/([a-f0-9]{64})$/);
       if (method === "GET" && match) {
         const user = roster.find((item) => item.accountId === match[1]);
         if (!user) return response(404, { error: "not_found" });
         const userEvents = events.filter((item) => item.accountId === user.accountId);
-        return response(200, { trackedSince: launchDate, user: { ...user, ...summarizeEvents(userEvents, range, now()), series: undefined }, events: timeline(userEvents).slice(0, 200), nextCursor: null });
+        const metrics = summarizeEvents(userEvents, range, now());
+        const selected = page(timeline(eventsInRange(userEvents, range, now())), query(event).cursor, 100);
+        return response(200, { trackedSince: launchDate, user: { ...user, ...metrics, partial: user.partial || metrics.partial, series: undefined }, events: selected.values, nextCursor: selected.nextCursor });
       }
       return response(404, { error: "not_found" });
     } catch (error) {
@@ -111,4 +126,4 @@ function createPostAuthenticationHandler(dependencies = {}, environment = proces
   };
 }
 
-module.exports = { createHandler, createPostAuthenticationHandler, testing: { readJson, timeline } };
+module.exports = { createHandler, createPostAuthenticationHandler, testing: { eventsInRange, page, readCursor, readJson, timeline } };

@@ -58,10 +58,14 @@ function createRepository(environment = process.env, dependencies = {}) {
     try {
       await send("TransactWriteItemsCommand", { TransactItems: [
         { Put: { TableName: tableName, Item: eventItem, ConditionExpression: "attribute_not_exists(pk) AND attribute_not_exists(sk)" } },
+        { ConditionCheck: { TableName: tableName, Key: { pk: { S: "CONTROL" }, sk: { S: "ACTIVE" } }, ConditionExpression: "generation = :generation", ExpressionAttributeValues: { ":generation": { S: active } } } },
         { Update: { TableName: tableName, Key: { pk: { S: pk }, sk: { S: "SUMMARY" } }, UpdateExpression: `SET ${setParts.join(", ")} ADD totalEvents :one, #counter :one`, ExpressionAttributeNames: { "#counter": `count_${event.type}` }, ExpressionAttributeValues: summaryValues } },
       ] });
     } catch (error) {
-      duplicate = error?.name === "TransactionCanceledException" && error.CancellationReasons?.[0]?.Code === "ConditionalCheckFailed";
+      if (error?.name !== "TransactionCanceledException") throw error;
+      const existing = await send("GetItemCommand", { TableName: tableName, Key: { pk: { S: pk }, sk: { S: `EVENT#${event.occurredAt}#${event.id}` } }, ConsistentRead: true });
+      duplicate = Boolean(existing.Item);
+      if (!duplicate && !options.generation && await generation() !== active) return record(accountId, event, options);
       if (!duplicate) throw error;
     }
     const boundary = async (field, comparison) => {
@@ -86,6 +90,7 @@ function createRepository(environment = process.env, dependencies = {}) {
     do {
       const result = await send("ScanCommand", { TableName: tableName, ExclusiveStartKey: key, FilterExpression: "begins_with(pk, :prefix)", ExpressionAttributeValues: { ":prefix": { S: `GEN#${selected}#` } } });
       items.push(...(result.Items || []).map(value));
+      if (items.length > 10000) throw new Error("analytics_limit_exceeded");
       key = result.LastEvaluatedKey;
     } while (key);
     const latestControl = await control();
@@ -93,7 +98,9 @@ function createRepository(environment = process.env, dependencies = {}) {
     return { generation: selected, items, control: latestControl };
   }
   async function rotateGeneration() {
-    const previous = await generation();
+    const current = await control();
+    if (current.purgeStatus === "clearing" && current.purgingGeneration) return { previous: current.purgingGeneration, next: current.generation, alreadyClearing: true };
+    const previous = current.generation;
     const next = crypto.randomUUID();
     try {
       await send("UpdateItemCommand", { TableName: tableName, Key: { pk: { S: "CONTROL" }, sk: { S: "ACTIVE" } }, UpdateExpression: "SET generation = :next, startedAt = :startedAt, purgeStatus = :clearing, purgingGeneration = :previous", ConditionExpression: "generation = :previous", ExpressionAttributeValues: { ":next": { S: next }, ":startedAt": { S: new Date(now()).toISOString() }, ":clearing": { S: "clearing" }, ":previous": { S: previous } } });
@@ -104,7 +111,7 @@ function createRepository(environment = process.env, dependencies = {}) {
     }
   }
   async function purgeGeneration(selected, startKey) {
-    const result = await send("ScanCommand", { TableName: tableName, ExclusiveStartKey: startKey, Limit: 100, FilterExpression: "begins_with(pk, :prefix)", ExpressionAttributeValues: { ":prefix": { S: `GEN#${selected}#` } }, ProjectionExpression: "pk, sk" });
+    const result = await send("ScanCommand", { TableName: tableName, ExclusiveStartKey: startKey, Limit: 100, ConsistentRead: true, FilterExpression: "begins_with(pk, :prefix)", ExpressionAttributeValues: { ":prefix": { S: `GEN#${selected}#` } }, ProjectionExpression: "pk, sk" });
     const keys = result.Items || [];
     for (let index = 0; index < keys.length; index += 25) {
       let pending = keys.slice(index, index + 25).map((Key) => ({ DeleteRequest: { Key } }));
@@ -113,7 +120,7 @@ function createRepository(environment = process.env, dependencies = {}) {
         pending = deletion.UnprocessedItems?.[tableName] || [];
       } while (pending.length);
     }
-    return result.LastEvaluatedKey || null;
+    return { nextKey: result.LastEvaluatedKey || null, deletedCount: keys.length };
   }
   async function completePurge(selected) {
     try {

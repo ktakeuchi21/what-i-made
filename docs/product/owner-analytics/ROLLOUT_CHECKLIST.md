@@ -18,6 +18,7 @@ This release adds first-party metadata analytics. Never place emails, Cognito su
 - Confirm missing, malformed, expired, wrong-client, and wrong-scope tokens are rejected by API Gateway.
 - Confirm an authenticated invitee with the admin scope but without the admin group receives `403` from every admin route.
 - Confirm only the owner group can load summary, users, user detail, and erase routes.
+- Confirm account and timeline cursors return bounded pages, malformed cursors fail closed, and the 10,000-record operational ceiling produces an explicit unavailable state rather than an oversized response.
 - Inspect CloudWatch logs and DynamoDB items for absence of email, raw subject, dish names, ratings, countries, notes, recipes, photographs, and archive identifiers.
 
 ## Static release
@@ -33,6 +34,7 @@ This release adds first-party metadata analytics. Never place emails, Cognito su
 
 - Use only synthetic canary analytics for the erase test.
 - Type `ERASE ANALYTICS`, confirm the new generation is immediately empty, and wait for the dashboard to report physical purge completion.
+- Race a canary event submission against erasure and confirm the write moves to the new generation while the retired generation completes a consistent empty verification pass.
 - Confirm Cognito users and every account’s local archive remain unchanged.
 
 ## Release boundary

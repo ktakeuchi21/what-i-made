@@ -7,10 +7,12 @@ const root = path.join(__dirname, "..");
 
 test("admin and privacy pages ship without private archive repositories", () => {
   const admin = fs.readFileSync(path.join(root, "admin/index.html"), "utf8");
+  const adminScript = fs.readFileSync(path.join(root, "admin/admin.js"), "utf8");
   const privacy = fs.readFileSync(path.join(root, "privacy/index.html"), "utf8");
   assert.match(admin, /Owner analytics/);
   assert.match(admin, /\.\.\/auth-session\.js/);
   assert.doesNotMatch(admin, /archive-store|idea-store|archive-backup|demo-archive/);
+  assert.doesNotMatch(adminScript, /setAttribute\("role", "listitem"\)/);
   assert.match(privacy, /They are not uploaded for analytics/);
 });
 

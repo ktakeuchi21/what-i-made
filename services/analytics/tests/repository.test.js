@@ -27,14 +27,16 @@ test("records an idempotent event with a twelve-month TTL and lifetime counter",
   assert.equal(transaction[0].Put.Item.pk.S, "GEN#current#USER#account");
   assert.equal(transaction[0].Put.Item.expiresAt.N, String(Math.floor(Date.parse("2027-09-11T11:00:00.000Z") / 1000)));
   assert.equal(transaction[0].Put.ConditionExpression, "attribute_not_exists(pk) AND attribute_not_exists(sk)");
-  assert.match(transaction[1].Update.UpdateExpression, /ADD totalEvents :one, #counter :one/);
-  assert.equal(transaction[1].Update.ExpressionAttributeNames["#counter"], "count_cook_created");
-  assert.equal(transaction[1].Update.ExpressionAttributeValues[":partial"].BOOL, true);
+  assert.equal(transaction[1].ConditionCheck.ExpressionAttributeValues[":generation"].S, "current");
+  assert.match(transaction[2].Update.UpdateExpression, /ADD totalEvents :one, #counter :one/);
+  assert.equal(transaction[2].Update.ExpressionAttributeNames["#counter"], "count_cook_created");
+  assert.equal(transaction[2].Update.ExpressionAttributeValues[":partial"].BOOL, true);
 });
 
 test("treats a cancelled event transaction as an idempotent duplicate", async () => {
   const { repository } = mockRepository((command) => {
-    if (command instanceof commands.GetItemCommand) return { Item: { generation: { S: "current" } } };
+    if (command instanceof commands.GetItemCommand && command.input.Key.pk.S === "CONTROL") return { Item: { generation: { S: "current" } } };
+    if (command instanceof commands.GetItemCommand) return { Item: { eventId: { S: "event-id" } } };
     if (command instanceof commands.TransactWriteItemsCommand) throw Object.assign(new Error("duplicate"), { name: "TransactionCanceledException", CancellationReasons: [{ Code: "ConditionalCheckFailed" }, { Code: "None" }] });
     return {};
   });
@@ -57,8 +59,10 @@ test("rotates analytics immediately and purges the retired generation", async ()
   const controlUpdate = calls.find((call) => call instanceof commands.UpdateItemCommand).input;
   assert.equal(controlUpdate.ExpressionAttributeValues[":clearing"].S, "clearing");
   assert.equal(controlUpdate.ExpressionAttributeValues[":previous"].S, "old");
-  const cursor = await repository.purgeGeneration("old");
-  assert.deepEqual(cursor, { pk: { S: "cursor" }, sk: { S: "cursor" } });
+  const purge = await repository.purgeGeneration("old");
+  assert.deepEqual(purge.nextKey, { pk: { S: "cursor" }, sk: { S: "cursor" } });
+  assert.equal(purge.deletedCount, 1);
+  assert.equal(calls.find((call) => call instanceof commands.ScanCommand).input.ConsistentRead, true);
   assert.equal(calls.some((call) => call instanceof commands.BatchWriteItemCommand), true);
   await repository.completePurge("old");
   assert.match(calls.find((call) => call instanceof commands.UpdateItemCommand).input.UpdateExpression, /purgeStatus/);
@@ -70,4 +74,31 @@ test("a retired purge cannot mark a newer erase operation complete", async () =>
     return {};
   });
   await assert.doesNotReject(() => repository.completePurge("retired"));
+});
+
+test("an event racing with erase retries only in the active generation", async () => {
+  let controlReads = 0;
+  let transactions = 0;
+  const { calls, repository } = mockRepository((command) => {
+    if (command instanceof commands.GetItemCommand && command.input.Key.pk.S === "CONTROL") {
+      controlReads += 1;
+      return { Item: { generation: { S: controlReads === 1 ? "old" : "new" } } };
+    }
+    if (command instanceof commands.GetItemCommand) return {};
+    if (command instanceof commands.TransactWriteItemsCommand && transactions++ === 0) throw Object.assign(new Error("generation changed"), { name: "TransactionCanceledException" });
+    return {};
+  });
+  assert.equal(await repository.record("account", { id: "event-id", type: "cook_created", occurredAt: "2026-09-10T11:00:00.000Z", clientVersion: "51" }), true);
+  const writes = calls.filter((call) => call instanceof commands.TransactWriteItemsCommand);
+  assert.equal(writes[0].input.TransactItems[0].Put.Item.pk.S, "GEN#old#USER#account");
+  assert.equal(writes[1].input.TransactItems[0].Put.Item.pk.S, "GEN#new#USER#account");
+});
+
+test("a repeated erase resumes the tracked purge instead of orphaning it", async () => {
+  const { calls, repository } = mockRepository((command) => {
+    if (command instanceof commands.GetItemCommand) return { Item: { generation: { S: "new" }, purgeStatus: { S: "clearing" }, purgingGeneration: { S: "old" } } };
+    return {};
+  });
+  assert.deepEqual(await repository.rotateGeneration(), { previous: "old", next: "new", alreadyClearing: true });
+  assert.equal(calls.some((call) => call instanceof commands.UpdateItemCommand), false);
 });
