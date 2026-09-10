@@ -19,6 +19,7 @@ const STATIC_FILES = Object.freeze([
   "country-combobox.js",
   "dish-recognizer.js",
   "capture-draft.js",
+  "cook-date.js",
   "photo-url.js",
   "photo-processor.js",
   "map-geometry.js",
