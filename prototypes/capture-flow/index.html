@@ -203,6 +203,20 @@
                 </div>
               </div>
 
+              <div class="field-group">
+                <label for="capture-date">Cooked on <span>Required</span></label>
+                <input
+                  id="capture-date"
+                  name="cookedAt"
+                  type="date"
+                  min="2026-01-01"
+                  required
+                  aria-describedby="capture-date-helper capture-date-error"
+                />
+                <p class="field-helper" id="capture-date-helper">Choose today or an earlier date, back to January 1, 2026.</p>
+                <p class="field-error" id="capture-date-error" role="alert" hidden></p>
+              </div>
+
               <button class="disclosure-button" id="optional-toggle" type="button" aria-expanded="false" aria-controls="optional-fields">
                 <span>Add rating, notes, or ingredients</span>
                 <svg aria-hidden="true"><use href="#icon-chevron"></use></svg>
@@ -271,7 +285,9 @@
               </div>
               <div class="field-group">
                 <label for="confirm-date">Cooked on</label>
-                <input id="confirm-date" type="date" />
+                <input id="confirm-date" type="date" min="2026-01-01" required aria-describedby="confirm-date-helper confirm-date-error" />
+                <p class="field-helper" id="confirm-date-helper">This date controls where the cook appears in Journal, Year, and photo recap.</p>
+                <p class="field-error" id="confirm-date-error" role="alert" hidden></p>
               </div>
 
               <fieldset class="match-group" id="match-group" hidden></fieldset>
@@ -1089,7 +1105,7 @@
     <script src="./account-context.js?v=31"></script>
     <script src="./auth-session.js?v=51"></script>
     <script src="./activity-client.js?v=51"></script>
-    <script src="./archive-store.js?v=31"></script>
+    <script src="./archive-store.js?v=32"></script>
     <script src="./idea-store.js?v=18"></script>
     <script src="./archive-backup.js?v=29"></script>
     <script src="./legacy-migration.js?v=33"></script>
@@ -1098,6 +1114,6 @@
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
     <script src="./demo-archive.js?v=49"></script>
-    <script src="./app.js?v=51"></script>
+    <script src="./app.js?v=52"></script>
   </body>
 </html>

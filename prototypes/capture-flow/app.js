@@ -156,6 +156,8 @@
   const cameraInput = $("#camera-input");
   const libraryInput = $("#library-input");
   const dishName = $("#dish-name");
+  const captureDate = $("#capture-date");
+  const captureDateError = $("#capture-date-error");
   const transcript = $("#transcript");
   const rating = $("#rating");
   const notes = $("#notes");
@@ -188,6 +190,8 @@
   const recapScroll = $("#recap-scroll");
   const recapGroups = $("#recap-groups");
   const saveError = $("#save-error");
+  const confirmDate = $("#confirm-date");
+  const confirmDateError = $("#confirm-date-error");
   const newDishesList = $("#new-dishes-list");
   const repeatDishesList = $("#repeat-dishes-list");
   const yearMapCells = $("#year-map-cells");
@@ -318,6 +322,25 @@
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 10);
+  }
+
+  function configureNewCookDateInput(input) {
+    input.min = archive?.MIN_NEW_COOK_DATE || "2026-01-01";
+    input.max = currentDateValue();
+  }
+
+  function validateNewCookDateControl(input, errorElement) {
+    const message = archive?.newCookDateError?.(input.value, currentDateValue()) || "";
+    input.toggleAttribute("aria-invalid", Boolean(message));
+    errorElement.textContent = message;
+    errorElement.hidden = !message;
+    return !message;
+  }
+
+  function clearNewCookDateError(input, errorElement) {
+    input.removeAttribute("aria-invalid");
+    errorElement.hidden = true;
+    errorElement.textContent = "";
   }
 
   function cancelDemoActivation() {
@@ -1055,8 +1078,10 @@
 
   function renderConfirmDishPresentation() {
     const name = $("#confirm-dish").value.trim();
+    const date = confirmDate.value;
+    const dateLabel = date === currentDateValue() ? "Today" : formatCookedDate(date);
     $("#confirm-photo").alt = `${name || "Meal"} being reviewed`;
-    $("#confirm-photo-caption").textContent = `${name || "Today’s cook"} · Today`;
+    $("#confirm-photo-caption").textContent = `${name || "Cook"} · ${dateLabel}`;
   }
 
   function undoPrimaryDishRecognition() {
@@ -1370,9 +1395,10 @@
 
     $("#confirm-photo").src = state.photoSrc;
     $("#confirm-photo").alt = `${name || "Meal"} being reviewed`;
-    $("#confirm-photo-caption").textContent = `${name || "Today’s cook"} · Today`;
+    configureNewCookDateInput(confirmDate);
+    confirmDate.value = captureDate.value || currentDateValue();
+    clearNewCookDateError(confirmDate, confirmDateError);
     $("#confirm-dish").value = name;
-    $("#confirm-date").value = currentDateValue();
     $("#confirm-rating").value = rating.value;
     $("#confirm-notes").value = notes.value || (failed ? transcript.value : "");
     $("#confirm-ingredients").value = ingredients.value;
@@ -1405,6 +1431,7 @@
       notes: $("#confirm-notes").value,
       ingredients: $("#confirm-ingredients").value,
     };
+    renderConfirmDishPresentation();
   }
 
   function formatCookedDate(value) {
@@ -3640,6 +3667,11 @@
     beginTiming();
     captureError.hidden = true;
 
+    if (!validateNewCookDateControl(captureDate, captureDateError)) {
+      captureDate.focus();
+      return;
+    }
+
     if (!state.photoReady) {
       captureError.textContent = "Add a main photo to continue.";
       captureError.hidden = false;
@@ -3907,6 +3939,10 @@
       $("#confirm-dish").focus();
       return;
     }
+    if (!validateNewCookDateControl(confirmDate, confirmDateError)) {
+      confirmDate.focus();
+      return;
+    }
     if (!validateCountryInput($("#confirm-country"))) {
       $("#confirm-country").focus();
       return;
@@ -4000,6 +4036,12 @@
 
     captureForm.reset();
     confirmForm.reset();
+    configureNewCookDateInput(captureDate);
+    configureNewCookDateInput(confirmDate);
+    captureDate.value = currentDateValue();
+    confirmDate.value = captureDate.value;
+    clearNewCookDateError(captureDate, captureDateError);
+    clearNewCookDateError(confirmDate, confirmDateError);
     setCountryValue($("#confirm-country"), "");
     setCountryValue($("#add-dish-country"), "");
     setCountryValue(editCountry, "");
@@ -4151,7 +4193,18 @@
   });
   captureForm.addEventListener("submit", submitCapture);
   confirmForm.addEventListener("submit", submitConfirmation);
-  $("#back-to-capture").addEventListener("click", () => showScreen("capture"));
+  $("#back-to-capture").addEventListener("click", () => {
+    captureDate.value = confirmDate.value || captureDate.value;
+    clearNewCookDateError(captureDate, captureDateError);
+    showScreen("capture");
+  });
+  captureDate.addEventListener("change", () => validateNewCookDateControl(captureDate, captureDateError));
+  captureDate.addEventListener("input", () => clearNewCookDateError(captureDate, captureDateError));
+  confirmDate.addEventListener("change", () => {
+    validateNewCookDateControl(confirmDate, confirmDateError);
+    renderConfirmDishPresentation();
+  });
+  confirmDate.addEventListener("input", () => clearNewCookDateError(confirmDate, confirmDateError));
   $("#view-year").addEventListener("click", () => void openYear());
   $("#open-journal").addEventListener("click", () => void openJournalFromCapture());
   $("#back-to-journal").addEventListener("click", () => void returnFromCook());
@@ -4484,7 +4537,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=51").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=52").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

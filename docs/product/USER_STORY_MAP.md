@@ -42,7 +42,7 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Take a photo with the camera or choose one from the library.
 - Preview, replace, or remove the selected photo.
 - Enter a dish name by voice or typing.
-- Accept the automatic date or edit it.
+- Accept today’s date or choose an earlier date back to January 1, 2026.
 - Optionally add a whole-number rating, notes, and informal ingredients.
 - Optionally add a second dish and a dish-specific photo.
 - Preserve a local draft before any network request.
@@ -55,7 +55,7 @@ After cooking, preserve the meal before its context disappears, then use the gro
 1. Review the cleaned transcript after filler words and false starts are removed.
 2. Review proposed fields.
 3. Decide whether the dish already exists.
-4. Confirm the country.
+4. Confirm the country and cooking date.
 5. Save or correct the entry.
 
 **Tasks**
@@ -65,6 +65,7 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Accept an explicit or high-confidence country, or choose a lower-confidence country suggestion.
 - Accept, clear, or change proposed dish name, rating, notes, and ingredients.
 - Accept or change the proposed country.
+- Confirm the date that places the occasion in Journal, Year, dish history, and photo recap.
 - Search canonical countries and aliases, then select one map-safe country; ambiguous text such as “Korea” remains unresolved until selected.
 - Review, undo, or replace a uniquely strong international-dish spelling correction.
 - Confirm a unique exact existing-dish match, select an unselected fuzzy candidate, or keep the dish new.

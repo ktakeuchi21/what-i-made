@@ -38,7 +38,7 @@ On Review, **Add another dish** keeps sides and components in the same occasion 
 
 ## Test scenarios
 
-1. Minimum capture: photograph, dish name, review, save.
+1. Minimum capture: photograph, dish name, review, save. **Cooked on** defaults to today and accepts earlier dates back to January 1, 2026; the confirmed date drives Journal, Year, history, and photo-recap placement.
 2. Voice-assisted capture: sample photograph, **Speak your cook**, correct fields, save.
 3. Assistance failure: select **AI failure fallback** in the desktop prototype panel and verify that the draft reaches manual confirmation.
 4. Back navigation: move to confirmation, return, and verify inputs remain.
