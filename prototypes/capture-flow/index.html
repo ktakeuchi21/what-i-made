@@ -16,7 +16,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=47" />
+    <link rel="stylesheet" href="./styles.css?v=49" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -119,7 +119,7 @@
             <div class="form-error" id="auth-error" role="alert" tabindex="-1" hidden></div>
             <button class="button button-primary" type="button" id="explore-demo">Explore a sample archive</button>
             <button class="button button-secondary" type="button" id="sign-in-button" hidden>Sign in with email</button>
-            <p class="auth-helper" id="auth-helper" hidden>Use the email address that received an invitation.</p>
+            <p class="auth-helper" id="auth-helper" hidden>Use an invited email address. We’ll send a one-time code—there’s no password to remember.</p>
           </div>
         </section>
 
@@ -130,7 +130,7 @@
               Journal
             </button>
             <span class="app-bar-title">New cook</span>
-            <button class="text-button" type="button" id="capture-account" hidden>Account</button>
+            <button class="text-button" type="button" id="capture-account" data-open-account hidden>Account</button>
           </header>
 
           <div class="screen-scroll">
@@ -358,7 +358,7 @@
 
         <section class="app-screen" data-screen="year" aria-labelledby="year-title" hidden>
           <header class="app-bar">
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
             <span class="app-bar-title">Year</span>
             <button class="text-button" type="button" id="year-new-cook">New cook</button>
           </header>
@@ -463,7 +463,7 @@
               <span id="backup-back-label">Year</span>
             </button>
             <span class="app-bar-title">Backup &amp; storage</span>
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
           </header>
           <div class="screen-scroll backup-content" id="backup-scroll">
             <p class="eyebrow">Your portable archive</p>
@@ -472,13 +472,6 @@
 
             <div class="form-error" id="backup-error" role="alert" tabindex="-1" hidden></div>
             <p class="save-status" id="backup-status" role="status" aria-live="polite" hidden></p>
-
-            <section class="backup-section account-section" id="account-section" aria-labelledby="account-title" hidden>
-              <p class="eyebrow">Signed-in archive</p>
-              <h3 id="account-title">Your account</h3>
-              <p><strong id="account-email"></strong><span id="account-access-status"></span></p>
-              <button class="button button-secondary" type="button" id="sign-out-button">Sign out</button>
-            </section>
 
             <section class="backup-section archive-overview" aria-labelledby="archive-overview-title">
               <div class="section-heading-row">
@@ -553,6 +546,7 @@
               <svg aria-hidden="true"><use href="#icon-back"></use></svg>
               <span id="map-back-label">World</span>
             </button>
+            <button class="text-button" type="button" id="map-account" data-open-account hidden>Account</button>
             <span class="app-bar-spacer" id="map-header-spacer" aria-hidden="true"></span>
             <span class="app-bar-title">Map</span>
             <button class="text-button" type="button" id="map-new-cook">New cook</button>
@@ -644,7 +638,7 @@
 
         <section class="app-screen" data-screen="ideas" aria-labelledby="ideas-title" hidden>
           <header class="app-bar">
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
             <span class="app-bar-title">Ideas</span>
             <button class="text-button" type="button" id="add-idea">Add idea</button>
           </header>
@@ -754,7 +748,7 @@
 
         <section class="app-screen" data-screen="journal" aria-labelledby="journal-title" hidden>
           <header class="app-bar">
-            <span class="app-bar-spacer" aria-hidden="true"></span>
+            <button class="text-button" type="button" data-open-account hidden>Account</button>
             <span class="app-bar-title">Journal</span>
             <button class="text-button" type="button" id="new-cook">New cook</button>
           </header>
@@ -976,6 +970,20 @@
           </form>
         </dialog>
 
+        <dialog class="journal-filter-dialog account-dialog" id="account-dialog" aria-labelledby="account-dialog-title" aria-describedby="account-dialog-description">
+          <div>
+            <div class="sheet-handle" aria-hidden="true"></div>
+            <div class="country-sheet-header">
+              <div><p class="eyebrow">Signed-in archive</p><h2 id="account-dialog-title">Your account</h2></div>
+              <button class="text-button sheet-close" type="button" id="close-account-dialog">Close</button>
+            </div>
+            <p class="account-identity"><strong id="account-email"></strong><span id="account-access-status"></span></p>
+            <p id="account-dialog-description">Signing out hides this private archive on this device. Your cooks, Ideas, and photographs stay here for the next time this invited account signs in.</p>
+            <p class="save-status" id="sign-out-status" role="status" aria-live="polite" hidden></p>
+            <button class="button button-secondary primary-action" type="button" id="sign-out-button">Sign out on this device</button>
+          </div>
+        </dialog>
+
         <dialog class="erase-dialog" id="erase-dialog" aria-labelledby="erase-dialog-title" aria-describedby="erase-dialog-description">
           <form id="erase-form" novalidate>
             <p class="eyebrow">Permanent action</p>
@@ -1077,7 +1085,7 @@
     <script src="./dish-recognizer.js?v=40"></script>
     <script src="./map-geometry.js?v=44"></script>
     <script src="./account-context.js?v=31"></script>
-    <script src="./auth-session.js?v=38"></script>
+    <script src="./auth-session.js?v=49"></script>
     <script src="./archive-store.js?v=31"></script>
     <script src="./idea-store.js?v=18"></script>
     <script src="./archive-backup.js?v=29"></script>
@@ -1086,7 +1094,7 @@
     <script src="./assets/culinary-regions.js?v=16"></script>
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
-    <script src="./demo-archive.js?v=47"></script>
-    <script src="./app.js?v=47"></script>
+    <script src="./demo-archive.js?v=49"></script>
+    <script src="./app.js?v=49"></script>
   </body>
 </html>

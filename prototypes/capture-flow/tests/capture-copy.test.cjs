@@ -32,12 +32,14 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v47/);
-  assert.match(worker, /\.\/app\.js\?v=47/);
-  assert.match(worker, /\.\/styles\.css\?v=47/);
-  assert.match(html, /\.\/app\.js\?v=47/);
-  assert.match(html, /\.\/styles\.css\?v=47/);
-  assert.match(app, /\.\/sw\.js\?v=47/);
+  assert.match(worker, /what-i-made-capture-v49/);
+  assert.match(worker, /\.\/app\.js\?v=49/);
+  assert.match(worker, /\.\/auth-session\.js\?v=49/);
+  assert.match(worker, /\.\/styles\.css\?v=49/);
+  assert.match(html, /\.\/app\.js\?v=49/);
+  assert.match(html, /\.\/auth-session\.js\?v=49/);
+  assert.match(html, /\.\/styles\.css\?v=49/);
+  assert.match(app, /\.\/sw\.js\?v=49/);
   assert.match(html, /id="entry-photo-credit"/);
   assert.match(html, /id="idea-photo-credit"/);
   assert.match(html, /id="photo-dialog-credit"/);
@@ -75,6 +77,24 @@ test("signed-out discovery and demo safety copy ship together", () => {
   assert.match(app, /url\.searchParams\.delete\("demo"\)/);
   assert.doesNotMatch(worker, /assets\/demo\/(?:demo-content|display|thumb)/);
   assert.doesNotMatch(worker, /sample-oyakodon\.jpg/);
+});
+
+test("account access and secure sign-out are reachable throughout the private archive", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+
+  assert.equal((html.match(/data-open-account/g) || []).length, 6);
+  assert.match(html, /id="account-dialog"[\s\S]*aria-labelledby="account-dialog-title"/);
+  assert.match(html, /Signing out hides this private archive on this device/);
+  assert.match(html, />Sign out on this device</);
+  assert.match(html, /invited email address[\s\S]*one-time code/i);
+  assert.match(app, /\$\$\('\[data-open-account\]'\).*openAccountDialog/);
+  assert.match(app, /accountDialog\.addEventListener\("keydown"[\s\S]*trapModalFocus/);
+  assert.match(app, /await archive\.closeDatabase\(\);[\s\S]*clearPrivateArchiveView\(\);[\s\S]*finishSignOutCleanup\(\)/);
+  assert.match(app, /showSignedOut\("signedOut"\)/);
+  assert.match(css, /\.account-dialog > div/);
+  assert.doesNotMatch(html, /id="account-section"/);
 });
 
 test("owner migration backup falls back to download when native sharing fails", () => {

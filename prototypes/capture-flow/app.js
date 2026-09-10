@@ -97,6 +97,7 @@
     accessToken: "",
     authSession: null,
     signOutCleanupPending: false,
+    accountReturnFocusElement: null,
     legacyMigrationInspection: null,
     suggestedCountry: "",
     touchedFields: new Set(),
@@ -217,6 +218,7 @@
   const eraseConfirmation = $("#erase-confirmation");
   const mapCustomizeDialog = $("#map-customize-dialog");
   const demoInvitationDialog = $("#demo-invitation-dialog");
+  const accountDialog = $("#account-dialog");
   const mapLocationStage = $("#map-location-stage");
   const mapEditorMarker = $("#map-editor-marker");
   const countryPickers = new Map();
@@ -236,6 +238,14 @@
 
   function isDemoMode() {
     return state.mode === "demo";
+  }
+
+  function setAccountEntryPoints(visible) {
+    $$('[data-open-account]').forEach((button) => { button.hidden = !visible; });
+    if (!visible) return;
+    const mapAtWorld = state.mapNavigation.level === "world";
+    $("#map-account").hidden = !mapAtWorld;
+    $("#map-header-spacer").hidden = mapAtWorld;
   }
 
   function dashboardOptions() {
@@ -377,6 +387,7 @@
     state.mode = "signedOut";
     state.authSession = null;
     state.accessToken = "";
+    setAccountEntryPoints(false);
     authError.hidden = true;
     signInButton.hidden = false;
     signInButton.textContent = state.signOutCleanupPending ? "Retry secure sign out" : "Sign in with email";
@@ -385,6 +396,8 @@
       ? "Connect to the internet and sign in again to open this archive. Nothing was deleted."
       : reason === "expired"
         ? "Your session ended. Sign in again to reopen your private archive."
+        : reason === "signedOut"
+          ? "You’re signed out. Sign in with an invited email to reopen its private archive."
         : reason === "serviceUnavailable"
           ? "Sign-in is temporarily unavailable. Your archive is still on this device. Try again when connected."
           : reason === "cleanup"
@@ -419,8 +432,7 @@
       $("#demo-banner").hidden = false;
       $("#demo-welcome").hidden = false;
       $("#archive-safety-card").hidden = true;
-      $("#capture-account").hidden = true;
-      $("#account-section").hidden = true;
+      setAccountEntryPoints(false);
       await initializeApp();
     } catch (error) {
       if (error?.name === "AbortError" || activationId !== state.demoActivationId) return;
@@ -472,6 +484,59 @@
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
 
+  function openAccountDialog(trigger) {
+    if (state.mode !== "account" || !state.authSession) return;
+    state.accountReturnFocusElement = trigger || document.activeElement;
+    $("#sign-out-status").hidden = true;
+    accountDialog.showModal();
+    window.requestAnimationFrame(() => $("#close-account-dialog").focus({ preventScroll: true }));
+  }
+
+  function closeAccountDialog(options = {}) {
+    if (!accountDialog.open) return;
+    if (options.restoreFocus === false) state.accountReturnFocusElement = null;
+    accountDialog.close();
+  }
+
+  function clearPrivateArchiveView() {
+    resetDemoTransientState();
+    clearMapCustomizeObjectUrls();
+    if (state.editObjectUrl) URL.revokeObjectURL(state.editObjectUrl);
+    if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+    state.editObjectUrl = "";
+    state.editOriginal = null;
+    state.editPhotoBlob = null;
+    state.objectUrl = "";
+    state.photoBlob = null;
+    state.photoSrc = "";
+    state.photoReady = false;
+    state.ideaDraft = null;
+    state.ideaDraftImage = null;
+    state.mapCustomize = null;
+    state.confirmationBaseline = null;
+    state.assistedDishes = [];
+    state.matchingCooks = [];
+    state.primaryDishRecognition = null;
+    state.countrySuggestion = null;
+    state.touchedFields = new Set();
+    state.archiveKey = "";
+    captureForm.reset();
+    confirmForm.reset();
+    editForm.reset();
+    $("#idea-link-panel")?.reset();
+    $("#idea-describe-panel")?.reset();
+    $("#idea-review-form")?.reset();
+    clearConfirmationDishes();
+    photoPreview.hidden = true;
+    photoPreview.removeAttribute("src");
+    setAccountEntryPoints(false);
+    $("#account-email").textContent = "";
+    $("#account-access-status").textContent = "";
+    closeAccountDialog({ restoreFocus: false });
+    if (!countrySheetLayer.hidden) closeCountrySheet({ restoreFocus: false });
+    ["#year-hero-photo", "#entry-photo", "#success-photo", "#edit-photo-preview"].forEach((selector) => $(selector)?.removeAttribute("src"));
+  }
+
   async function activateAccount(session) {
     if (!session?.subject || !accountContext?.archiveKeyForSubject || !archive?.setArchiveContext) {
       throw new Error("Private archive storage could not be initialized.");
@@ -485,8 +550,7 @@
     state.mapMode = readMapMode(archiveKey);
     state.authSession = session;
     state.accessToken = session.accessToken || "";
-    $("#capture-account").hidden = false;
-    $("#account-section").hidden = false;
+    setAccountEntryPoints(true);
     $("#account-email").textContent = session.email || "Invited account";
     $("#account-access-status").textContent = session.kind === "offlineGrace"
       ? "Offline access. Connect before using voice or recipe search."
@@ -625,19 +689,29 @@
 
   async function signOutAccount() {
     const button = $("#sign-out-button");
+    const status = $("#sign-out-status");
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
+    button.textContent = "Signing out…";
+    status.textContent = "Locking this archive on this device…";
+    status.hidden = false;
     state.accessToken = "";
     state.authSession = null;
     state.signOutCleanupPending = true;
     try {
       await cancelRecording("Session ended");
       await archive.closeDatabase();
+      clearPrivateArchiveView();
       showSignedOut("cleanup");
       await finishSignOutCleanup();
     } catch (error) {
+      clearPrivateArchiveView();
       showSignedOut("cleanup");
       showCleanupError(error);
+    } finally {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      button.textContent = "Sign out on this device";
     }
   }
 
@@ -654,6 +728,7 @@
     try {
       const logoutUrl = await authClient.signOut();
       state.signOutCleanupPending = false;
+      showSignedOut("signedOut");
       if (logoutUrl && navigator.onLine !== false) window.location.replace(logoutUrl);
       else window.location.reload();
     } catch (error) {
@@ -1913,7 +1988,8 @@
     setMapMode(state.mapMode, { render: false });
     $("#map-back").hidden = true;
     $("#map-back-label").textContent = "World";
-    $("#map-header-spacer").hidden = false;
+    $("#map-account").hidden = state.mode !== "account";
+    $("#map-header-spacer").hidden = state.mode === "account";
     setMapViewport();
     renderMapActivity(model.countries);
     renderWorldRegionShelf(model.regions);
@@ -1997,6 +2073,7 @@
     $("#country-shelf-section").hidden = false;
     $("#map-back").hidden = false;
     $("#map-back-label").textContent = "World";
+    $("#map-account").hidden = true;
     $("#map-header-spacer").hidden = true;
     setMapViewport(region);
     window.requestAnimationFrame(() => {
@@ -4003,6 +4080,15 @@
     state.demoReturnFocusElement = null;
     if (target?.isConnected && isDemoMode()) window.requestAnimationFrame(() => target.focus({ preventScroll: true }));
   });
+  $$('[data-open-account]').forEach((button) => button.addEventListener("click", (event) => openAccountDialog(event.currentTarget)));
+  $("#close-account-dialog").addEventListener("click", () => closeAccountDialog());
+  accountDialog.addEventListener("keydown", (event) => trapModalFocus(event, accountDialog));
+  accountDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeAccountDialog(); });
+  accountDialog.addEventListener("close", () => {
+    const target = state.accountReturnFocusElement;
+    state.accountReturnFocusElement = null;
+    if (target?.isConnected && state.mode === "account") window.requestAnimationFrame(() => target.focus({ preventScroll: true }));
+  });
   $("#sign-out-button").addEventListener("click", () => void signOutAccount());
   $("#backup-legacy-archive").addEventListener("click", () => void backupLegacyArchive());
   $("#move-legacy-archive").addEventListener("click", () => void moveLegacyArchive());
@@ -4049,7 +4135,6 @@
   $("#empty-new-cook").addEventListener("click", () => resetCapture({ scenario: "blank" }));
   $("#year-open-journal").addEventListener("click", () => void openJournal());
   $("#open-backup-storage").addEventListener("click", (event) => void openBackupStorage(event.currentTarget));
-  $("#capture-account").addEventListener("click", (event) => void openBackupStorage(event.currentTarget, "capture"));
   $("#backup-back").addEventListener("click", closeBackupStorage);
   $("#protect-storage").addEventListener("click", () => void protectLocalStorage());
   $("#create-backup").addEventListener("click", () => void createPortableBackup());
@@ -4368,7 +4453,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=47").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=49").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

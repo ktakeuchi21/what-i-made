@@ -209,13 +209,18 @@ button:disabled {
   font-size: 0.88rem;
 }
 
-.account-section > p:not(.eyebrow) {
+.account-identity {
   display: grid;
   gap: 2px;
+  margin: 6px 0 16px;
   overflow-wrap: anywhere;
 }
 
-.account-section #account-access-status {
+.account-identity #account-email {
+  font-size: 1rem;
+}
+
+.account-identity #account-access-status {
   color: var(--muted-ink);
   font-size: 0.88rem;
 }
@@ -1546,6 +1551,19 @@ select[aria-invalid="true"] {
 
 .journal-filter-dialog form {
   padding: 8px 16px max(24px, env(safe-area-inset-bottom));
+}
+
+.account-dialog > div {
+  padding: 8px 16px max(24px, env(safe-area-inset-bottom));
+}
+
+.account-dialog #account-dialog-description {
+  margin: 0;
+  color: var(--muted-ink);
+}
+
+.account-dialog #sign-out-status {
+  margin: 16px 0 0;
 }
 
 .journal-filter-dialog .country-sheet-header h2 {

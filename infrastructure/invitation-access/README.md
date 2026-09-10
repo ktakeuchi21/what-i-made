@@ -42,6 +42,8 @@ After creating the owner's Cognito user, read that user's immutable `sub` in the
 
 Create invited users only through Cognito administration. Set their email as verified; possession of the public PWA link alone does not grant access.
 
+The PWA's Account sheet signs out locally first, then opens Cognito's `/logout` endpoint with this app client's registered `logout_uri`. A subsequent explicit sign-in uses managed login and `prompt=login`, allowing a different administrator-created email to request its one-time code instead of silently resuming the previous hosted session. Normal app launches still restore a valid retained session without asking for another code.
+
 ## Required cutover
 
 Before enabling invitation metadata in the PWA, turn off the old services with their kill switches, delete each Lambda Function URL configuration (or its public invoke permission), and revoke the shared owner token. Verify that every former Function URL rejects a direct request. Do not leave the owner-token endpoints as a parallel authorization path.

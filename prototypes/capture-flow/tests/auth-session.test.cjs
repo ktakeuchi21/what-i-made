@@ -67,6 +67,7 @@ test("creates a state-bound authorization-code request with PKCE", async () => {
   const url = new URL(request.authorizeUrl);
   assert.equal(url.pathname, "/oauth2/authorize");
   assert.equal(url.searchParams.get("response_type"), "code");
+  assert.equal(url.searchParams.get("prompt"), "login");
   assert.equal(url.searchParams.get("code_challenge_method"), "S256");
   assert.match(url.searchParams.get("code_challenge"), /^[A-Za-z0-9_-]{43}$/);
   assert.equal(url.searchParams.get("state"), request.transaction.state);
@@ -351,6 +352,24 @@ test("explicit sign-out removes the retained session before returning a hosted l
   assert.equal(logoutUrl.searchParams.get("client_id"), config.clientId);
   assert.equal(logoutUrl.searchParams.get("logout_uri"), config.redirectUri);
   assert.doesNotMatch(logoutUrl.toString(), /secret/);
+});
+
+test("the local invitation harness stays signed out until sign-in is explicitly started", async () => {
+  const storage = memoryStorage();
+  const guardStorage = keyValueStorage();
+  const client = createAuthClient({ enabled: true, fake: true, fakeSubject: "alice", fakeEmail: "alice@example.test" }, {
+    storage,
+    guardStorage,
+    transactionStorage: transactionStorage(),
+    location: { href: "http://localhost/app" },
+    now: () => 2000,
+  });
+
+  assert.equal((await client.restore()).kind, "signedIn");
+  assert.equal(await client.signOut(), null);
+  assert.equal(storage.current(), null);
+  assert.deepEqual(await client.restore(), { kind: "signedOut" });
+  assert.equal((await client.startSignIn()).kind, "signedIn");
 });
 
 test("a failed sign-out deletion leaves a persistent tombstone that blocks reload", async () => {

@@ -57,6 +57,7 @@ The static application shell is downloadable by anyone who knows the URL. Securi
 5. Local features read and write only that archive. AI features attach the person's short-lived access token to requests.
 6. API Gateway validates token issuer, audience, expiration, and route scope before invoking a Lambda.
 7. Signing out closes database handles, clears in-memory content and temporary URLs, removes the local auth session, and displays the sign-in screen. It does not delete the archive.
+8. A visible Account action on every top-level archive screen opens the signed-in identity and sign-out control; account management is not buried inside backup settings.
 
 ### Components and responsibilities
 
@@ -74,6 +75,7 @@ AWS documents both [passwordless email OTP authentication](https://docs.aws.amaz
 
 - Shows sign-in before opening any account archive.
 - Uses Authorization Code with PKCE and the Cognito managed sign-in experience to avoid implementing password or code handling in application code.
+- Requests an interactive managed-login screen after explicit sign-out so a different invited email can enter its own one-time code instead of silently resuming the prior hosted session.
 - Stores tokens in a separate authentication database, excluded from backup and archive erasure.
 - Derives the archive key from a SHA-256 digest of the stable Cognito `sub`, never from an email address.
 - Maintains a `lastAuthorizedAt` entitlement timestamp for bounded offline use.
@@ -117,6 +119,7 @@ The initial owner workflow uses the AWS console to create and disable users. Thi
 - INV-5: Authentication tokens, Cognito identifiers, and entitlement timestamps are never included in backups.
 - INV-6: Missing, expired, invalid, or wrongly scoped access tokens cannot invoke an AI Lambda.
 - INV-7: Explicit sign-out hides the local archive without deleting it.
+- INV-7a: Sign-out remains reachable from Year, Map, Journal, Ideas, capture, and Backup & storage, and returns focus correctly when its Account sheet is dismissed.
 - INV-8: Revocation never claims to erase a person's existing offline archive remotely.
 - INV-9: The legacy owner archive cannot be claimed or viewed by a newly invited account.
 - INV-10: Signing into another device does not imply synchronization and never silently transfers records.

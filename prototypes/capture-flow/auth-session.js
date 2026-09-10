@@ -16,6 +16,7 @@
   const OAUTH_TRANSACTION_MAX_AGE_MS = 10 * 60 * 1000;
   const TOKEN_EXPIRY_SKEW_MS = 30 * 1000;
   const SIGN_OUT_PENDING_KEY = "what-i-made-sign-out-pending";
+  const FAKE_SIGNED_OUT_KEY = "what-i-made-fake-signed-out";
 
   function authError(code, message, cause) {
     const error = new Error(message);
@@ -101,6 +102,7 @@
     authorizeUrl.search = new URLSearchParams({
       client_id: config.clientId,
       response_type: "code",
+      prompt: "login",
       redirect_uri: config.redirectUri,
       scope: config.scopes.join(" "),
       state,
@@ -372,6 +374,9 @@
         return { kind: "signedOut", reason: "cleanupComplete" };
       }
       if (config.fake) {
+        try {
+          if (guardStorage?.getItem(FAKE_SIGNED_OUT_KEY) === "1") return { kind: "signedOut" };
+        } catch {}
         const record = {
           subject: accountContext.normalizeSubject(config.fakeSubject),
           email: config.fakeEmail,
@@ -431,7 +436,10 @@
 
     async function startSignIn() {
       if (!config.enabled) throw new Error("Invitation sign-in is not configured.");
-      if (config.fake) return restore();
+      if (config.fake) {
+        try { guardStorage?.removeItem(FAKE_SIGNED_OUT_KEY); } catch {}
+        return restore();
+      }
       const request = await createAuthorizationRequest(config, { crypto: cryptoApi, now: now(), location });
       transactionStorage?.setItem(OAUTH_TRANSACTION_KEY, JSON.stringify(request.transaction));
       return request.authorizeUrl;
@@ -459,7 +467,11 @@
 
     async function signOut() {
       await clearSession();
-      if (!config.enabled || config.fake) return null;
+      if (!config.enabled) return null;
+      if (config.fake) {
+        try { guardStorage?.setItem(FAKE_SIGNED_OUT_KEY, "1"); } catch {}
+        return null;
+      }
       const logout = new URL("/logout", config.domain);
       logout.search = new URLSearchParams({ client_id: config.clientId, logout_uri: config.redirectUri }).toString();
       return logout.toString();
@@ -476,6 +488,7 @@
     OAUTH_TRANSACTION_MAX_AGE_MS,
     TOKEN_EXPIRY_SKEW_MS,
     SIGN_OUT_PENDING_KEY,
+    FAKE_SIGNED_OUT_KEY,
     normalizeAuthConfig,
     randomBase64Url,
     pkceChallenge,

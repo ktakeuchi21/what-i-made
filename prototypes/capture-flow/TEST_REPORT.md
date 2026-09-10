@@ -4,6 +4,24 @@
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
 
+## Reachable account sign-in and sign-out — September 9, 2026
+
+### Automated proof
+
+- Cognito remains administrator-create-only with public self-registration disabled and email OTP enabled. Authorization Code with PKCE now requests an interactive managed-login screen after an explicit sign-out, while ordinary retained-session launches continue directly into the private archive.
+- Browser-facing checks prove that Account is reachable from Year, Map, Journal, Ideas, capture, and Backup & storage; its bottom sheet has modal semantics, focus trapping, a visible close action, current invited identity, and **Sign out on this device**.
+- Sign-out tests prove that the account database closes before rendered archive state and owned photograph URLs are cleared, the retained session is tombstoned and removed, late refreshes cannot reopen it, and Cognito receives only the registered client ID and logout URI.
+
+### Browser proof
+
+- In an isolated fake invited account, Account opened from capture with `alice@example.test`, trapped focus in the modal sheet, and Escape returned focus to the originating Account control.
+- **Sign out on this device** closed the archive and displayed the signed-out discovery screen with **Sign in with email** and its one-time-code explanation. Explicit sign-in reopened only Alice's local test archive; the browser logged zero errors or warnings.
+- At 375×812 and 812×375, the Account sheet kept its full identity, privacy explanation, Close action, and 48-pixel sign-out control visible without horizontal overflow.
+
+### Remaining device proof
+
+- A production or canary invited account must complete the real managed email-code flow and hosted logout redirect on an iPhone after this static release is deployed. The existing Cognito membership and allowed callback/logout URLs do not require a stack migration.
+
 ## Licensed sample photography — September 9, 2026
 
 ### Automated proof

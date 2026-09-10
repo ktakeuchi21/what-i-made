@@ -154,6 +154,7 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Derive a non-readable account namespace before opening IndexedDB.
 - Keep local features available for up to seven days offline.
 - Require a current scoped token for voice and recipe services.
+- Open Account from every top-level archive view and sign out on this device without erasing its archive.
 - Move the original owner's fixed archive once, only into the configured empty owner archive.
 
 ### 7. Understand the product before joining

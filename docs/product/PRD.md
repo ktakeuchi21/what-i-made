@@ -246,6 +246,7 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - **Given:** Each has a valid Cognito membership and a previously verified session.
 - **When:** They sign out and alternate accounts.
 - **Then:** Each account opens only its SHA-256-scoped local database, the prior account disappears before the next opens, and no archive record or photograph is synchronized to AWS.
+- **And:** Account and sign-out remain directly reachable from every top-level archive destination; sign-out preserves local records and returns to invitation sign-in.
 
 ### Cross-cutting constraints
 
@@ -259,7 +260,7 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - Required data and its main photo commit atomically.
 - All AI-derived fields remain editable and require confirmation.
 - The app contains no shipped AWS credentials and sends no photographs externally.
-- Invitation membership uses Cognito managed login; self-registration is disabled and protected services require scoped access tokens.
+- Invitation membership uses Cognito managed email-code login; self-registration is disabled, explicit sign-out returns to an interactive invited-email login, and protected services require scoped access tokens.
 - Offline archive access ends seven days after the last successful authorization without deleting local data.
 - Touch targets are at least 44 by 44 CSS pixels, visible labels remain present, and core behavior works with VoiceOver, keyboard navigation, enlarged text, landscape, and reduced motion.
 - Detailed technical invariants and acceptance criteria remain authoritative in the [PWA foundation](../technical/pwa-foundation/design.md).
