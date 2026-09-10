@@ -269,8 +269,10 @@
                 </div>
               </div>
               <div class="field-group">
-                <label for="confirm-date">Cooked on</label>
-                <input id="confirm-date" type="date" />
+                <label for="confirm-date">Cooked on <span>Required</span></label>
+                <input id="confirm-date" type="date" min="2026-01-01" required aria-describedby="confirm-date-helper confirm-date-error" />
+                <p class="field-helper" id="confirm-date-helper">Choose any date from January 1, 2026 through today.</p>
+                <p class="field-error" id="confirm-date-error" role="alert" hidden>Choose a valid cooking date.</p>
               </div>
 
               <fieldset class="match-group" id="match-group" hidden></fieldset>
@@ -1077,6 +1079,7 @@
     <script src="./capture-assistance.js?v=27"></script>
     <script src="./dish-matcher.js?v=40"></script>
     <script src="./capture-draft.js?v=16"></script>
+    <script src="./cook-date.js?v=50"></script>
     <script src="./photo-url.js?v=16"></script>
     <script src="./photo-processor.js?v=16"></script>
     <script src="./assets/world-map-data.js?v=29"></script>
@@ -1095,6 +1098,6 @@
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
     <script src="./demo-archive.js?v=49"></script>
-    <script src="./app.js?v=49"></script>
+    <script src="./app.js?v=50"></script>
   </body>
 </html>

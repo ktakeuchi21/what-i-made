@@ -78,7 +78,7 @@ The primary flow begins immediately after cooking: add or take a photo, speak or
 
 ### Required first-release capabilities
 
-1. **Fast capture:** Main photo and dish name required; date automatic and editable.
+1. **Fast capture:** Main photo and dish name required; date automatic and editable. New cooks default to today and may be backdated as far as January 1, 2026, but never into the future.
 2. **Optional detail:** Whole-number rating from 1–10, notes, and informal ingredients; all editable later.
 3. **Flexible occasions:** One dish by default with multiple dishes and optional dish-specific photos supported.
 4. **Assisted confirmation:** Voice transcript and text classification propose structured fields; the owner confirms or corrects every suggestion.
@@ -133,6 +133,7 @@ We believe that a photo-first cooking archive with an under-20-second capture pa
 - **Given:** I have opened a new capture on my iPhone and selected or taken a photo.
 - **When:** I enter a dish name and confirm the cook.
 - **Then:** The photo, dish name, and editable cooking date are committed together and appear in my journal.
+- **And:** The cooking date defaults to today and accepts any date from January 1, 2026 through today.
 
 ### US-02 — Speak an informal review
 

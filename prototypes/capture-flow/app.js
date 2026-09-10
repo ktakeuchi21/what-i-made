@@ -21,6 +21,7 @@
   const dishRecognizer = window.WhatIMadeDishRecognizer;
   const countryCombobox = window.WhatIMadeCountryCombobox;
   const captureDraft = window.WhatIMadeCaptureDraft;
+  const cookDate = window.WhatIMadeCookDate;
   const photoUrls = window.WhatIMadePhotoUrls;
   const archive = window.WhatIMadeArchive;
   const backup = window.WhatIMadeBackup;
@@ -94,6 +95,7 @@
     countrySuggestion: null,
     countryProvenance: "",
     confirmationBaseline: null,
+    captureCookedAt: "",
     accessToken: "",
     authSession: null,
     signOutCleanupPending: false,
@@ -312,9 +314,33 @@
   }
 
   function currentDateValue() {
-    const now = new Date();
-    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 10);
+    return cookDate?.localDateValue?.() || new Date().toISOString().slice(0, 10);
+  }
+
+  function refreshCookDateBounds() {
+    const input = $("#confirm-date");
+    const bounds = cookDate?.dateBounds?.() || { min: "2026-01-01", max: currentDateValue() };
+    input.min = bounds.min;
+    input.max = bounds.max;
+    return bounds;
+  }
+
+  function renderCookDateCaption() {
+    const name = $("#confirm-dish").value.trim() || "Cook";
+    const value = $("#confirm-date").value;
+    $("#confirm-photo-caption").textContent = `${name} · ${value ? formatCookedDate(value) : "Date needed"}`;
+  }
+
+  function validateConfirmCookDate(options = {}) {
+    const input = $("#confirm-date");
+    const error = $("#confirm-date-error");
+    const result = cookDate?.validateCookDate?.(input.value, { bounds: refreshCookDateBounds() })
+      || { valid: /^\d{4}-\d{2}-\d{2}$/.test(input.value), message: "Choose a valid cooking date." };
+    input.toggleAttribute("aria-invalid", !result.valid);
+    error.textContent = result.message || "Choose a valid cooking date.";
+    error.hidden = result.valid;
+    if (!result.valid && options.focus !== false) input.focus();
+    return result.valid;
   }
 
   function cancelDemoActivation() {
@@ -1348,9 +1374,11 @@
 
     $("#confirm-photo").src = state.photoSrc;
     $("#confirm-photo").alt = `${name || "Meal"} being reviewed`;
-    $("#confirm-photo-caption").textContent = `${name || "Today’s cook"} · Today`;
     $("#confirm-dish").value = name;
-    $("#confirm-date").value = currentDateValue();
+    refreshCookDateBounds();
+    $("#confirm-date").value = state.captureCookedAt || currentDateValue();
+    state.captureCookedAt = $("#confirm-date").value;
+    renderCookDateCaption();
     $("#confirm-rating").value = rating.value;
     $("#confirm-notes").value = notes.value || (failed ? transcript.value : "");
     $("#confirm-ingredients").value = ingredients.value;
@@ -3870,6 +3898,9 @@
       const selected = [...$("#match-group").querySelectorAll('input[type="radio"]')].find((input) => input.value === "new");
       if (selected) { selected.checked = true; state.primaryMatchedDishId = ""; state.primaryForceNewDish = true; }
     }
+    state.captureCookedAt = $("#confirm-date").value;
+    validateConfirmCookDate({ focus: false });
+    renderCookDateCaption();
   }
 
   async function submitConfirmation(event) {
@@ -3880,6 +3911,7 @@
       $("#confirm-dish").focus();
       return;
     }
+    if (!validateConfirmCookDate()) return;
     if (!validateCountryInput($("#confirm-country"))) {
       $("#confirm-country").focus();
       return;
@@ -3953,6 +3985,7 @@
     state.countrySuggestion = null;
     state.countryProvenance = "";
     state.confirmationBaseline = null;
+    state.captureCookedAt = "";
     state.assistedDishes = [];
     state.assistanceWarnings = [];
     state.assistanceFailed = false;
@@ -4431,6 +4464,11 @@
     else void openIdeas();
   }));
   $("#restart-prototype").addEventListener("click", () => resetCapture({ scenario: state.scenario }));
+  $("#confirm-date").addEventListener("change", () => {
+    state.captureCookedAt = $("#confirm-date").value;
+    validateConfirmCookDate({ focus: false });
+    renderCookDateCaption();
+  });
   $$("[data-scenario]").forEach((button) => button.addEventListener("click", switchScenario));
   window.addEventListener("pagehide", () => {
     cancelDemoActivation();
@@ -4453,7 +4491,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=49").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=50").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

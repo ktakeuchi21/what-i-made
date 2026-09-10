@@ -32,20 +32,32 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v49/);
-  assert.match(worker, /\.\/app\.js\?v=49/);
+  assert.match(worker, /what-i-made-capture-v50/);
+  assert.match(worker, /\.\/app\.js\?v=50/);
+  assert.match(worker, /\.\/cook-date\.js\?v=50/);
   assert.match(worker, /\.\/auth-session\.js\?v=49/);
   assert.match(worker, /\.\/styles\.css\?v=49/);
-  assert.match(html, /\.\/app\.js\?v=49/);
+  assert.match(html, /\.\/app\.js\?v=50/);
+  assert.match(html, /\.\/cook-date\.js\?v=50/);
   assert.match(html, /\.\/auth-session\.js\?v=49/);
   assert.match(html, /\.\/styles\.css\?v=49/);
-  assert.match(app, /\.\/sw\.js\?v=49/);
+  assert.match(app, /\.\/sw\.js\?v=50/);
   assert.match(html, /id="entry-photo-credit"/);
   assert.match(html, /id="idea-photo-credit"/);
   assert.match(html, /id="photo-dialog-credit"/);
   assert.match(app, /source\.textContent = attribution\.sourceTitle/);
   assert.match(app, /renderPhotoCredit\(\$\("#photo-dialog-credit"\), photo\.attribution\)/);
   assert.match(app, /licenseGroup\.append\(license, " · cropped"\)/);
+});
+
+test("new cooks support explicit bounded past dates", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const cookDate = fs.readFileSync(path.join(__dirname, "..", "cook-date.js"), "utf8");
+  assert.match(html, /id="confirm-date"[^>]*type="date"[^>]*min="2026-01-01"[^>]*required/);
+  assert.match(html, /Choose any date from January 1, 2026 through today/);
+  assert.match(app, /if \(!validateConfirmCookDate\(\)\) return/);
+  assert.match(cookDate, /The cooking date cannot be in the future/);
 });
 
 test("ships country-level Cook Density and Culinary Peaks map views", () => {

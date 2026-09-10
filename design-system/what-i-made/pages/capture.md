@@ -26,6 +26,7 @@ The confirmation screen is one step, not a wizard. Back navigation returns to th
 - Voice uses a bordered interaction group with explicit idle, listening, transcribing, stopped, and error states.
 - The short **Organizing your note…** state is a stable polite live region. It does not replace or move the transcript control.
 - Required and optional status is written beside visible labels; placeholders never carry that meaning.
+- **Cooked on** is required on Review, defaults to the current local date, and uses the native date control. It accepts January 1, 2026 through today and explains that range beside the field.
 - Extracted values use **From your note**; inferred values use **Suggested**. Both remain visually editable. Do not show numeric confidence, sparkle icons, or anthropomorphic AI language.
 - Country is the only origin field in capture. Do not ask for cuisine, region, or precise map location.
 - Country uses a searchable combobox backed by the map catalog. Suggestions appear while typing, options and errors remain reachable by keyboard and VoiceOver, blank is valid, and unresolved non-empty text cannot be saved.
@@ -58,6 +59,7 @@ The confirmation screen is one step, not a wizard. Back navigation returns to th
 - Recording and submission status use polite live regions and never steal focus.
 - Every icon is paired with visible text or an accessible name.
 - Error messages state what happened and how to continue.
+- An invalid, pre-2026, or future cooking date is announced inline and receives focus before save.
 - Reduced motion removes transitions but not state feedback.
 - Photograph alt text uses the confirmed dish name and date when available.
 
