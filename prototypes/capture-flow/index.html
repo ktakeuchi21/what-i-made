@@ -16,7 +16,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=49" />
+    <link rel="stylesheet" href="./styles.css?v=50" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -201,6 +201,16 @@
                   <p id="capture-dish-recognition-copy"></p>
                   <div><button class="inline-button" type="button" id="capture-dish-undo">Undo</button><button class="inline-button" type="button" id="capture-dish-change">Change</button></div>
                 </div>
+              </div>
+
+              <div class="field-group">
+                <div class="field-label-row">
+                  <label for="capture-country">Country <span>Optional</span></label>
+                  <span class="suggestion-label" id="capture-country-provenance" hidden>Suggested</span>
+                </div>
+                <input id="capture-country" aria-describedby="capture-country-helper" />
+                <p class="field-helper" id="capture-country-helper">Select a country to place this dish on your culinary map.</p>
+                <button class="country-suggestion-action" type="button" id="capture-country-suggestion" hidden></button>
               </div>
 
               <div class="field-group">
@@ -1094,7 +1104,7 @@
     <script src="./capture-parser.js?v=16"></script>
     <script src="./capture-assistance.js?v=27"></script>
     <script src="./dish-matcher.js?v=40"></script>
-    <script src="./capture-draft.js?v=16"></script>
+    <script src="./capture-draft.js?v=17"></script>
     <script src="./photo-url.js?v=16"></script>
     <script src="./photo-processor.js?v=16"></script>
     <script src="./assets/world-map-data.js?v=29"></script>
@@ -1114,6 +1124,6 @@
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
     <script src="./demo-archive.js?v=49"></script>
-    <script src="./app.js?v=52"></script>
+    <script src="./app.js?v=55"></script>
   </body>
 </html>

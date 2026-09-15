@@ -15,6 +15,7 @@
       snapshot.recordingActive ||
       [
         snapshot.dishName,
+        snapshot.country,
         snapshot.transcript,
         snapshot.rating,
         snapshot.notes,

@@ -32,16 +32,18 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v52/);
-  assert.match(worker, /\.\/app\.js\?v=52/);
+  assert.match(worker, /what-i-made-capture-v55/);
+  assert.match(worker, /\.\/app\.js\?v=55/);
   assert.match(worker, /\.\/auth-session\.js\?v=51/);
   assert.match(worker, /\.\/activity-client\.js\?v=51/);
-  assert.match(worker, /\.\/styles\.css\?v=49/);
-  assert.match(html, /\.\/app\.js\?v=52/);
+  assert.match(worker, /\.\/capture-draft\.js\?v=17/);
+  assert.match(worker, /\.\/styles\.css\?v=50/);
+  assert.match(html, /\.\/app\.js\?v=55/);
   assert.match(html, /\.\/auth-session\.js\?v=51/);
   assert.match(html, /\.\/activity-client\.js\?v=51/);
-  assert.match(html, /\.\/styles\.css\?v=49/);
-  assert.match(app, /\.\/sw\.js\?v=52/);
+  assert.match(html, /\.\/capture-draft\.js\?v=17/);
+  assert.match(html, /\.\/styles\.css\?v=50/);
+  assert.match(app, /\.\/sw\.js\?v=55/);
   assert.match(worker, /requestUrl\.pathname\.includes\("\/admin\/"\)/);
   assert.match(html, /id="entry-photo-credit"/);
   assert.match(html, /id="idea-photo-credit"/);
@@ -65,6 +67,32 @@ test("new cook capture exposes and validates an explicit historical date", () =>
   assert.match(app, /validateNewCookDateControl\(confirmDate, confirmDateError\)/);
   assert.match(worker, /\.\/archive-store\.js\?v=32/);
   assert.match(html, /\.\/archive-store\.js\?v=32/);
+});
+
+test("new cook capture exposes a map-safe optional country before review", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+
+  assert.match(html, /for="capture-country">Country <span>Optional<\/span>/);
+  assert.match(html, /id="capture-country"[^>]*aria-describedby="capture-country-helper"/);
+  assert.match(html, /Select a country to place this dish on your culinary map/);
+  assert.match(html, /id="capture-country-provenance"[^>]*hidden/);
+  assert.match(html, /id="capture-country-suggestion"[^>]*hidden/);
+  assert.match(app, /setupCountryPicker\(captureCountry\)/);
+  assert.match(app, /validateCountryInput\(captureCountry\)/);
+  assert.match(app, /captureCountry\.value\.trim\(\) \|\| \(countryWasEdited \|\| failed \? "" : state\.suggestedCountry \|\| inferredCountry\)/);
+  assert.match(app, /setCountryValue\(captureCountry, reviewCountry\)/);
+  assert.match(app, /state\.touchedFields\.has\("country"\)/);
+
+  const postParseConflictChecks = app.match(/if \(state\.touchedFields\.has\("country"\)\) suppressPrimaryRecognitionForCountry\(captureCountry\.value\);/g) || [];
+  assert.equal(postParseConflictChecks.length, 2, "local and server parsing must both respect a manual country");
+
+  const reviewSuggestionHandler = app.slice(
+    app.indexOf('$("#country-suggestion-action").addEventListener'),
+    app.indexOf('[$("#confirm-dish"), $("#confirm-country")]', app.indexOf('$("#country-suggestion-action").addEventListener')),
+  );
+  assert.match(reviewSuggestionHandler, /markCountryEdited\(\)/);
+  assert.ok(reviewSuggestionHandler.indexOf("markCountryEdited()") < reviewSuggestionHandler.indexOf("suppressPrimaryRecognitionForCountry"));
 });
 
 test("ships country-level Cook Density and Culinary Peaks map views", () => {

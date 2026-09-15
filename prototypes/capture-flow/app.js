@@ -156,6 +156,9 @@
   const cameraInput = $("#camera-input");
   const libraryInput = $("#library-input");
   const dishName = $("#dish-name");
+  const captureCountry = $("#capture-country");
+  const captureCountryProvenance = $("#capture-country-provenance");
+  const captureCountrySuggestion = $("#capture-country-suggestion");
   const captureDate = $("#capture-date");
   const captureDateError = $("#capture-date-error");
   const transcript = $("#transcript");
@@ -281,6 +284,34 @@
 
   function countryNameForCode(code) {
     return worldMap?.countries?.find((country) => country.key === code)?.name || "";
+  }
+
+  function renderCaptureCountryAssistance() {
+    const hasAutomaticValue = Boolean(captureCountry.value.trim() && state.countryProvenance && !state.touchedFields.has("country"));
+    captureCountryProvenance.hidden = !hasAutomaticValue;
+    captureCountryProvenance.textContent = state.countryProvenance === "from-note" ? "From your note" : "Suggested";
+    const optional = !state.touchedFields.has("country") && !captureCountry.value.trim() ? state.countrySuggestion : null;
+    captureCountrySuggestion.hidden = !optional?.name;
+    captureCountrySuggestion.textContent = optional?.name ? `Use ${optional.name}` : "";
+    if (optional?.name) captureCountrySuggestion.setAttribute("aria-label", `Use suggested country ${optional.name}`);
+    else captureCountrySuggestion.removeAttribute("aria-label");
+  }
+
+  function applyCountryAssistanceToCapture() {
+    if (state.touchedFields.has("country")) {
+      renderCaptureCountryAssistance();
+      return;
+    }
+    setCountryValue(captureCountry, state.suggestedCountry || "");
+    renderCaptureCountryAssistance();
+  }
+
+  function markCountryEdited() {
+    state.touchedFields.add("country");
+    state.suggestedCountry = "";
+    state.countrySuggestion = null;
+    state.countryProvenance = "";
+    renderCaptureCountryAssistance();
   }
 
   function mapModeStorageKey(archiveKey = state.archiveKey) {
@@ -994,6 +1025,7 @@
     state.suggestedCountry = sample.country;
     state.countryProvenance = "suggested";
     state.primaryDishRecognition = null;
+    applyCountryAssistanceToCapture();
     renderPrimaryDishRecognition();
     revealOptionalFields();
     beginTiming();
@@ -1017,8 +1049,12 @@
       const suggestion = parsed[name];
       if (suggestion && !state.touchedFields.has(name)) element.value = suggestion;
     });
-    state.suggestedCountry = parsed.country || "";
-    state.countryProvenance = parsed.country ? "suggested" : "";
+    const countryWasEdited = state.touchedFields.has("country");
+    state.suggestedCountry = countryWasEdited ? "" : parsed.country || "";
+    state.countryProvenance = !countryWasEdited && parsed.country ? "suggested" : "";
+    state.countrySuggestion = null;
+    applyCountryAssistanceToCapture();
+    if (state.touchedFields.has("country")) suppressPrimaryRecognitionForCountry(captureCountry.value);
     renderPrimaryDishRecognition();
     if (parsed.rating || parsed.notes || parsed.ingredients) revealOptionalFields();
     updateReadyState();
@@ -1095,6 +1131,8 @@
       const recognizedCountry = countryNameForCode(recognition.countryCode);
       if (state.suggestedCountry === recognizedCountry) state.suggestedCountry = "";
       if ($("#confirm-country").value === recognizedCountry) setCountryValue($("#confirm-country"), "");
+      if (!state.touchedFields.has("country") && captureCountry.value === recognizedCountry) setCountryValue(captureCountry, "");
+      renderCaptureCountryAssistance();
     }
     renderPrimaryDishRecognition();
     renderConfirmDishPresentation();
@@ -1135,7 +1173,14 @@
     state.assistanceWarnings = [...warnings, ...(state.assistedDishes.length < proposed.length ? ["A possible dish name was too uncertain to assign."] : [])].slice(0, 6);
     const primary = state.assistedDishes[0];
     state.primaryDishRecognition = primary?._recognition || null;
-    if (!primary) { renderPrimaryDishRecognition(); return; }
+    if (!primary) {
+      state.suggestedCountry = "";
+      state.countrySuggestion = null;
+      state.countryProvenance = "";
+      applyCountryAssistanceToCapture();
+      renderPrimaryDishRecognition();
+      return;
+    }
     const accepted = captureAssistance?.acceptedDishFields?.(primary) || primary;
     const fields = [
       ["dishName", dishName, accepted.dishName],
@@ -1149,13 +1194,16 @@
       }
     });
     const country = countryFromSuggestion(primary);
+    const countryWasEdited = state.touchedFields.has("country");
     state.suggestedCountry = "";
     state.countryProvenance = "";
-    if (country.auto) {
+    if (!countryWasEdited && country.auto) {
       state.suggestedCountry = country.auto;
       state.countryProvenance = country.provenance;
     }
-    state.countrySuggestion = country.optional;
+    state.countrySuggestion = countryWasEdited ? null : country.optional;
+    applyCountryAssistanceToCapture();
+    if (state.touchedFields.has("country")) suppressPrimaryRecognitionForCountry(captureCountry.value);
     if (primary.rating || primary.notes || primary.ingredientsText) revealOptionalFields();
     renderPrimaryDishRecognition();
     updateReadyState();
@@ -1403,7 +1451,9 @@
     $("#confirm-notes").value = notes.value || (failed ? transcript.value : "");
     $("#confirm-ingredients").value = ingredients.value;
     const inferredCountry = state.assistedDishes.length ? "" : parser?.inferCountry?.(name) || "";
-    setCountryValue($("#confirm-country"), failed ? "" : state.suggestedCountry || inferredCountry);
+    const countryWasEdited = state.touchedFields.has("country");
+    const countryForReview = captureCountry.value.trim() || (countryWasEdited || failed ? "" : state.suggestedCountry || inferredCountry);
+    setCountryValue($("#confirm-country"), countryForReview);
     renderPrimaryDishRecognition();
 
     $("#assist-warning").hidden = !failed && !state.assistanceFailed && !state.assistanceWarnings.length;
@@ -3278,6 +3328,7 @@
       photoReady: state.photoReady,
       recordingActive: Boolean(state.activeAdapter || state.activeTranscript),
       dishName: dishName.value,
+      country: captureCountry.value,
       transcript: transcript.value,
       rating: rating.value,
       notes: notes.value,
@@ -3667,6 +3718,11 @@
     beginTiming();
     captureError.hidden = true;
 
+    if (!validateCountryInput(captureCountry)) {
+      captureCountry.focus();
+      return;
+    }
+
     if (!validateNewCookDateControl(captureDate, captureDateError)) {
       captureDate.focus();
       return;
@@ -4043,6 +4099,7 @@
     clearNewCookDateError(captureDate, captureDateError);
     clearNewCookDateError(confirmDate, confirmDateError);
     setCountryValue($("#confirm-country"), "");
+    setCountryValue(captureCountry, "");
     setCountryValue($("#add-dish-country"), "");
     setCountryValue(editCountry, "");
     renderPrimaryDishRecognition();
@@ -4062,6 +4119,7 @@
     $("#retry-assistance").hidden = false;
     dishError.hidden = true;
     dishName.removeAttribute("aria-invalid");
+    renderCaptureCountryAssistance();
     $("#open-journal").lastChild.textContent = " Journal";
     $("#capture-title").textContent = "What did you cook?";
 
@@ -4098,6 +4156,7 @@
   }
 
   async function initializeApp() {
+    setupCountryPicker(captureCountry);
     setupCountryPicker($("#confirm-country"));
     setupCountryPicker($("#add-dish-country"));
     setupCountryPicker(editCountry, { allowPristineUnresolved: true });
@@ -4196,7 +4255,27 @@
   $("#back-to-capture").addEventListener("click", () => {
     captureDate.value = confirmDate.value || captureDate.value;
     clearNewCookDateError(captureDate, captureDateError);
+    const reviewCountry = $("#confirm-country").value.trim();
+    setCountryValue(captureCountry, reviewCountry);
+    renderCaptureCountryAssistance();
     showScreen("capture");
+  });
+  captureCountry.addEventListener("input", markCountryEdited);
+  captureCountry.addEventListener("countrycommit", (event) => {
+    markCountryEdited();
+    suppressPrimaryRecognitionForCountry(event.detail?.country?.name || "");
+  });
+  captureCountrySuggestion.addEventListener("click", () => {
+    const suggestion = state.countrySuggestion;
+    if (!suggestion?.name) return;
+    setCountryValue(captureCountry, suggestion.name);
+    state.suggestedCountry = suggestion.name;
+    state.countryProvenance = "suggested";
+    state.countrySuggestion = null;
+    state.touchedFields.add("country");
+    suppressPrimaryRecognitionForCountry(suggestion.name);
+    renderCaptureCountryAssistance();
+    captureCountry.focus();
   });
   captureDate.addEventListener("change", () => validateNewCookDateControl(captureDate, captureDateError));
   captureDate.addEventListener("input", () => clearNewCookDateError(captureDate, captureDateError));
@@ -4270,11 +4349,10 @@
     }
   });
   $("#country-suggestion-action").addEventListener("click", () => {
-    if (!state.countrySuggestion?.name) return;
-    setCountryValue($("#confirm-country"), state.countrySuggestion.name);
-    state.suggestedCountry = state.countrySuggestion.name;
-    state.countryProvenance = "suggested";
-    state.countrySuggestion = null;
+    const suggestion = state.countrySuggestion;
+    if (!suggestion?.name) return;
+    setCountryValue($("#confirm-country"), suggestion.name);
+    markCountryEdited();
     suppressPrimaryRecognitionForCountry($("#confirm-country").value);
     renderCountrySuggestion();
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
@@ -4283,6 +4361,7 @@
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
   }));
   $("#confirm-country").addEventListener("countrycommit", () => {
+    markCountryEdited();
     suppressPrimaryRecognitionForCountry($("#confirm-country").value);
     renderDishMatches($("#match-group"), { dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
   });
@@ -4292,8 +4371,7 @@
     renderConfirmDishPresentation();
   });
   $("#confirm-country").addEventListener("input", () => {
-    state.countryProvenance = "";
-    state.countrySuggestion = null;
+    markCountryEdited();
     $("#country-suggestion").hidden = true;
     renderCountrySuggestion();
   });
@@ -4537,7 +4615,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=52").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=55").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

@@ -817,6 +817,19 @@ select[aria-invalid="true"] {
   margin-bottom: 17px;
 }
 
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.field-label-row label {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
 .field-error,
 .form-error {
   color: var(--danger);
