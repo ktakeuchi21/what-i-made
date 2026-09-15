@@ -1,7 +1,22 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { createProvider, finalJsonText, signRequest } = require("../bedrock-provider");
+const { CAPTURE_INSTRUCTIONS, createProvider, finalJsonText, signRequest } = require("../bedrock-provider");
+
+test("capture prompt defines evidence, abstention, cleanup, and preservation rules", () => {
+  assert.match(CAPTURE_INSTRUCTIONS, /dish name needs evidence/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /lone unknown opening word/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /return dishName null/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /Oh Henry/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /Umm Ali/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /I like basil/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /Great, eight out of ten.*dishName null/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /Not bad, seven out of ten.*notes Not bad/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /Carbonara, rating nine out of ten.*dishName Carbonara/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /mul naengmyeon/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /note's owner is ambiguous/i);
+  assert.match(CAPTURE_INSTRUCTIONS, /untrusted data/i);
+});
 
 const result = { cleanedVoiceText: "I made adobo.", dishes: [], warnings: [] };
 function http(payload, headers = {}) {

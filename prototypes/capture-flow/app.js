@@ -1015,7 +1015,7 @@
     const fields = { dishName, rating, notes, ingredients };
     Object.entries(fields).forEach(([name, element]) => {
       const suggestion = parsed[name];
-      if (suggestion && !state.touchedFields.has(name)) element.value = suggestion;
+      if (!state.touchedFields.has(name)) element.value = suggestion || "";
     });
     state.suggestedCountry = parsed.country || "";
     state.countryProvenance = parsed.country ? "suggested" : "";
@@ -4537,7 +4537,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=52").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=54").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

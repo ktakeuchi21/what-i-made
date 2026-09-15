@@ -2,7 +2,24 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const { parseCaptureTranscript, inferCountry, extractCountry } = require("../capture-parser.js");
+const { cleanConversationalText } = require("../conversational-cleanup.js");
+
+const voiceFixtures = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "voice-mapping-v1.json"), "utf8"));
+
+test("conversational cleanup follows the versioned voice fixtures", () => {
+  voiceFixtures.cleanup.forEach((fixture) => {
+    assert.equal(cleanConversationalText(fixture.input), fixture.expected, fixture.name);
+  });
+});
+
+test("local field mapping follows the versioned voice fixtures", () => {
+  voiceFixtures.localParser.forEach((fixture) => {
+    assert.deepEqual(parseCaptureTranscript(fixture.input), fixture.expected, fixture.name);
+  });
+});
 
 test("parses a natural Oyakodon note into all applicable fields", () => {
   assert.deepEqual(

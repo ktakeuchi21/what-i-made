@@ -1,0 +1,331 @@
+{
+  "version": 1,
+  "cleanup": [
+    {
+      "name": "leading vocal and discourse filler",
+      "input": "Oh, uh, I made mul naengmyeon. It was, um, too salty.",
+      "expected": "I made mul naengmyeon. It was too salty."
+    },
+    {
+      "name": "immediate repetition and abandoned start",
+      "input": "I was going to— I made, I made chicken adobo. It was was excellent.",
+      "expected": "I made chicken adobo. It was excellent."
+    },
+    {
+      "name": "meaningful like and negation",
+      "input": "I like basil, but I do not like five-spice.",
+      "expected": "I like basil, but I do not like five-spice."
+    },
+    {
+      "name": "meaningful so",
+      "input": "This was so spicy.",
+      "expected": "This was so spicy."
+    },
+    {
+      "name": "proper name beginning with Oh",
+      "input": "Oh Henry bar, eight out of ten.",
+      "expected": "Oh Henry bar, eight out of ten."
+    },
+    {
+      "name": "meaningful exclamation",
+      "input": "Oh wow. The sauce was great.",
+      "expected": "Oh wow. The sauce was great."
+    },
+    {
+      "name": "context-free oh before an evaluation",
+      "input": "Oh, it was too salty.",
+      "expected": "it was too salty."
+    },
+    {
+      "name": "standalone filler sentence",
+      "input": "Uh. I made ramen.",
+      "expected": "I made ramen."
+    },
+    {
+      "name": "terminal filler sentence",
+      "input": "I made ramen. Um.",
+      "expected": "I made ramen."
+    },
+    {
+      "name": "terminal comma filler",
+      "input": "I made ramen, uh.",
+      "expected": "I made ramen."
+    },
+    {
+      "name": "meaningful paused like preference",
+      "input": "I really like, basil.",
+      "expected": "I really like, basil."
+    },
+    {
+      "name": "meaningful paused request",
+      "input": "I would like, less salt.",
+      "expected": "I would like, less salt."
+    },
+    {
+      "name": "international name resembling filler",
+      "input": "I made Umm Ali.",
+      "expected": "I made Umm Ali."
+    },
+    {
+      "name": "unpunctuated filler after cooking cue",
+      "input": "I made uh ramen.",
+      "expected": "I made ramen."
+    }
+  ],
+  "localParser": [
+    {
+      "name": "fillers do not enter dish or notes",
+      "input": "Oh, uh, I made ramen. It was, um, too salty.",
+      "expected": {
+        "dishName": "Ramen",
+        "rating": "",
+        "notes": "It was too salty",
+        "ingredients": "",
+        "country": "Japan"
+      }
+    },
+    {
+      "name": "known concise dish remains supported",
+      "input": "Oyakodon. Better texture this time.",
+      "expected": {
+        "dishName": "Oyakodon",
+        "rating": "",
+        "notes": "Better texture this time",
+        "ingredients": "",
+        "country": "Japan"
+      }
+    },
+    {
+      "name": "international catalog dish remains supported",
+      "input": "Mul naengmyeon. The broth was refreshing.",
+      "expected": {
+        "dishName": "Mul naengmyeon",
+        "rating": "",
+        "notes": "The broth was refreshing",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "commentary opening does not become a dish",
+      "input": "Oh wow. The sauce was great.",
+      "expected": {
+        "dishName": "",
+        "rating": "",
+        "notes": "Oh wow. The sauce was great",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "unknown opening word does not become a dish",
+      "input": "Honestly. The sauce was great.",
+      "expected": {
+        "dishName": "",
+        "rating": "",
+        "notes": "Honestly. The sauce was great",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "proper-name dish paired with rating remains supported",
+      "input": "Oh Henry bar, eight out of ten.",
+      "expected": {
+        "dishName": "Oh Henry bar",
+        "rating": "8",
+        "notes": "",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "field markers retain boundaries after cleanup",
+      "input": "Okay, I cooked chicken curry, eight out of ten. Notes: uh, use less salt. Ingredients: chicken, onion, and curry powder.",
+      "expected": {
+        "dishName": "Chicken curry",
+        "rating": "8",
+        "notes": "Use less salt",
+        "ingredients": "Chicken, onion, and curry powder",
+        "country": ""
+      }
+    },
+    {
+      "name": "explicit country remains connected to the dish",
+      "input": "I made chicken adobo. Country is Philippines. Notes: use less vinegar.",
+      "expected": {
+        "dishName": "Chicken adobo",
+        "rating": "",
+        "notes": "Use less vinegar",
+        "ingredients": "",
+        "country": "Philippines"
+      }
+    },
+    {
+      "name": "rating-only reaction does not become a dish",
+      "input": "Great, eight out of ten.",
+      "expected": {
+        "dishName": "",
+        "rating": "8",
+        "notes": "Great",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "international dish with a modifier retains the catalog identity",
+      "input": "I made Mul naengmyeon with extra cucumber. The broth was refreshing.",
+      "expected": {
+        "dishName": "Mul naengmyeon",
+        "rating": "",
+        "notes": "With extra cucumber. The broth was refreshing",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "unpunctuated filler cannot enter an explicit dish",
+      "input": "I made hmm ramen. It was good.",
+      "expected": {
+        "dishName": "Ramen",
+        "rating": "",
+        "notes": "It was good",
+        "ingredients": "",
+        "country": "Japan"
+      }
+    },
+    {
+      "name": "international dish name resembling filler remains a dish",
+      "input": "I made Umm Ali.",
+      "expected": {
+        "dishName": "Umm Ali",
+        "rating": "",
+        "notes": "",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "multiword reaction paired with rating remains a note",
+      "input": "Really great, eight out of ten.",
+      "expected": {
+        "dishName": "",
+        "rating": "8",
+        "notes": "Really great",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "unknown one-word dish paired with rating remains valid",
+      "input": "Shakshuka, eight out of ten.",
+      "expected": {
+        "dishName": "Shakshuka",
+        "rating": "8",
+        "notes": "",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "negated reaction paired with rating remains a note",
+      "input": "Not bad, seven out of ten.",
+      "expected": {
+        "dishName": "",
+        "rating": "7",
+        "notes": "Not bad",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "evaluation verb paired with rating remains a note",
+      "input": "Tasted great, eight out of ten.",
+      "expected": {
+        "dishName": "",
+        "rating": "8",
+        "notes": "Tasted great",
+        "ingredients": "",
+        "country": ""
+      }
+    },
+    {
+      "name": "dish-first rating marker works without a copula",
+      "input": "Carbonara, rating nine out of ten.",
+      "expected": {
+        "dishName": "Carbonara",
+        "rating": "9",
+        "notes": "",
+        "ingredients": "",
+        "country": "Italy"
+      }
+    },
+    {
+      "name": "pronoun after explicit cooking cue cannot become a dish",
+      "input": "I made it. It was good.",
+      "expected": {
+        "dishName": "",
+        "rating": "",
+        "notes": "It was good",
+        "ingredients": "",
+        "country": ""
+      }
+    }
+  ],
+  "serviceResponses": [
+    {
+      "name": "multiple dishes retain separate ratings",
+      "response": {
+        "cleanedVoiceText": "I made chicken adobo and garlic rice. Adobo was eight out of ten. Rice was seven out of ten.",
+        "dishes": [
+          {
+            "dishName": "Chicken adobo",
+            "rating": 8,
+            "notes": null,
+            "ingredientsText": null,
+            "countryCode": "PHL",
+            "countrySource": "inferred",
+            "confidence": { "dishName": 0.98, "rating": 0.99, "notes": 0, "ingredientsText": 0, "country": 0.95 }
+          },
+          {
+            "dishName": "Garlic rice",
+            "rating": 7,
+            "notes": null,
+            "ingredientsText": null,
+            "countryCode": null,
+            "countrySource": "unknown",
+            "confidence": { "dishName": 0.97, "rating": 0.99, "notes": 0, "ingredientsText": 0, "country": 0 }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "name": "ambiguous note ownership produces a warning instead of duplication",
+      "response": {
+        "cleanedVoiceText": "I made soup and bread. It was too salty.",
+        "dishes": [
+          {
+            "dishName": "Soup",
+            "rating": null,
+            "notes": null,
+            "ingredientsText": null,
+            "countryCode": null,
+            "countrySource": "unknown",
+            "confidence": { "dishName": 0.96, "rating": 0, "notes": 0, "ingredientsText": 0, "country": 0 }
+          },
+          {
+            "dishName": "Bread",
+            "rating": null,
+            "notes": null,
+            "ingredientsText": null,
+            "countryCode": null,
+            "countrySource": "unknown",
+            "confidence": { "dishName": 0.96, "rating": 0, "notes": 0, "ingredientsText": 0, "country": 0 }
+          }
+        ],
+        "warnings": ["Could not tell which dish was too salty."]
+      }
+    }
+  ]
+}

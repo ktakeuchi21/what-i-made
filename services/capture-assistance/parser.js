@@ -7,27 +7,46 @@ const FIELD_LIMITS = Object.freeze({ dishName: 200, notes: 2000, ingredientsText
 const RESPONSE_KEYS = ["cleanedVoiceText", "dishes", "warnings"];
 const DISH_KEYS = ["dishName", "rating", "notes", "ingredientsText", "countryCode", "countrySource", "confidence"];
 const CONFIDENCE_KEYS = ["dishName", "rating", "notes", "ingredientsText", "country"];
+const VOCAL_FILLER = "(?:ah+|uh+|um+|uhm+|erm+|hmm+|mm+)";
+const COOKING_CUE = "(?:(?:i|we)\\s+(?:made|cooked|prepared|tried|served)|(?:dish(?:\\s+name)?|rating|notes?|ingredients?|country)(?:\\s+(?:is|was|are|were))?)";
+const CONTENT_CUE = `(?:${COOKING_CUE}|(?:i|we|it|they|this|that)\\s+\\p{L}+)`;
 
 function plainObject(value) { return Boolean(value) && typeof value === "object" && !Array.isArray(value); }
 function exactKeys(value, keys) { return plainObject(value) && Object.keys(value).length === keys.length && Object.keys(value).every((key) => keys.includes(key)); }
 
-function cleanVoiceText(value) {
-  return String(value || "")
-    .replace(/(^|[\s,;])(?:uh+|um+|uhm+|erm+|hmm+|mm+)(?=$|[\s,;.!?])/gi, "$1")
+function cleanVoiceText(value, options = {}) {
+  let text = String(value || "").normalize("NFKC");
+  text = text
+    .replace(new RegExp(`(^|[.!?]\\s+)(?:i|we)\\s+(?:was|were)\\s+going\\s+to\\s*[,–—-]\\s*(?=(?:i|we)\\s+(?:made|cooked|prepared)\\b)`, "gi"), "$1")
+    .replace(/\b((?:i|we)\s+(?:made|cooked|prepared))\s*[,–—-]\s*\1\b/gi, "$1")
+    .replace(new RegExp(`\\b((?:i|we)\\s+(?:made|cooked|prepared)\\s+)${VOCAL_FILLER}\\s+(?!(?:ali)\\b)`, "gi"), "$1")
+    .replace(new RegExp(`(^|[.!?]\\s+)(?:(?:oh|okay|well|so)\\b[\\s,;:]*)+(?=(?:${VOCAL_FILLER}\\b[\\s,;:]*)*${CONTENT_CUE})`, "giu"), "$1")
+    .replace(new RegExp(`^${VOCAL_FILLER}\\s+(?!(?:ali)\\b)`, "gi"), options.removeLeadingFiller ? "" : "$&")
+    .replace(new RegExp(`(^|[.!?;:]\\s+)${VOCAL_FILLER}\\s*,\\s*`, "gi"), "$1")
+    .replace(new RegExp(`\\s*,\\s*${VOCAL_FILLER}\\s*,\\s*`, "gi"), options.preserveListComma ? ", " : " ")
+    .replace(new RegExp(`(^|[.!?]\\s+)${VOCAL_FILLER}[.!?](?=\\s|$)`, "gi"), "$1")
+    .replace(new RegExp(`\\s*,\\s*${VOCAL_FILLER}(?=\\s*[.!?]|$)`, "gi"), "")
+    .replace(new RegExp(`(^|[.!?]\\s+)${VOCAL_FILLER}[\\s,;:]+(?=${CONTENT_CUE})`, "giu"), "$1")
+    .replace(new RegExp(`(^|\\s)${VOCAL_FILLER}(?=\\s+${CONTENT_CUE})`, "giu"), "$1")
     .replace(/\b(\p{L}[\p{L}'’-]*)(?:\s*[,–—-]\s*|\s+)\1\b/giu, "$1")
-    .replace(/\s*,?\s+like\s*,\s*/gi, " ")
+    .replace(/\s*,\s*like\s*,\s*/gi, " ")
     .replace(/\b(?:you know|I mean|basically)\b\s*,?/gi, "")
     .replace(/\s+([,.;!?])/g, "$1")
+    .replace(/([.!?])(?:\s*[,;:])+\s*/g, "$1 ")
+    .replace(/\b(is|was|were|felt|tasted|seemed),\s*,/gi, "$1 ")
+    .replace(/:\s*,/g, ": ")
+    .replace(/,\s*,/g, ", ")
     .replace(/,{2,}/g, ",")
     .replace(/\s{2,}/g, " ")
-    .replace(/^\s*[,;]\s*|\s*[,;]\s*$/g, "")
+    .replace(/^\s*[,;:]\s*|\s*[,;:]\s*$/g, "")
     .trim();
+  return text;
 }
 
-function optionalText(value, limit) {
+function optionalText(value, limit, cleanupOptions) {
   if (value === null) return null;
   if (typeof value !== "string" || value.length > limit) throw new Error("invalid_provider_response");
-  return value.trim() || null;
+  return cleanVoiceText(value, cleanupOptions) || null;
 }
 
 function validateConfidence(value) {
@@ -45,10 +64,10 @@ function validateDish(value) {
   if (!["explicit", "inferred", "unknown"].includes(value.countrySource)) throw new Error("invalid_provider_response");
   if ((countryCode === null) !== (value.countrySource === "unknown")) throw new Error("invalid_provider_response");
   return {
-    dishName: optionalText(value.dishName, FIELD_LIMITS.dishName),
+    dishName: optionalText(value.dishName, FIELD_LIMITS.dishName, { removeLeadingFiller: true }),
     rating: value.rating,
     notes: optionalText(value.notes, FIELD_LIMITS.notes),
-    ingredientsText: optionalText(value.ingredientsText, FIELD_LIMITS.ingredientsText),
+    ingredientsText: optionalText(value.ingredientsText, FIELD_LIMITS.ingredientsText, { preserveListComma: true }),
     countryCode,
     countrySource: value.countrySource,
     confidence: validateConfidence(value.confidence),
