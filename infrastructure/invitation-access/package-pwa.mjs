@@ -13,6 +13,7 @@ const STATIC_FILES = Object.freeze([
   "config.js",
   "transcribe-codec.js",
   "transcribe-adapter.js",
+  "conversational-cleanup.js",
   "capture-parser.js",
   "capture-assistance.js",
   "dish-matcher.js",

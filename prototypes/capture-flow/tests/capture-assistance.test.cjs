@@ -25,6 +25,18 @@ test("rejects extra fields, invalid ratings, and unknown countries", () => {
   assert.throws(() => assistance.validateResponse({ ...base, dishes: [{ dishName: "Adobo", rating: 8, notes: null, ingredientsText: null, countryCode: "XXX", countrySource: "inferred", confidence }] }, ["PHL"]), /not valid/i);
 });
 
+test("client validation removes filler from every structured text field", () => {
+  const result = assistance.validateResponse({
+    cleanedVoiceText: "Oh, uh, I made ramen.",
+    dishes: [{ dishName: "Uh ramen", rating: 7, notes: "It was, um, too salty", ingredientsText: "Noodles, uh, broth", countryCode: "JPN", countrySource: "inferred", confidence }],
+    warnings: [],
+  }, ["JPN"]);
+  assert.equal(result.cleanedVoiceText, "I made ramen.");
+  assert.equal(result.dishes[0].dishName, "ramen");
+  assert.equal(result.dishes[0].notes, "It was too salty");
+  assert.equal(result.dishes[0].ingredientsText, "Noodles, broth");
+});
+
 test("fake assistance removes filler but preserves meaningful like", async () => {
   const result = await assistance.fakeParseCook({
     transcript: "Uh, I like basil. I made pasta.", voiceSegment: "Uh, I like basil. I made pasta.",
@@ -32,6 +44,18 @@ test("fake assistance removes filler but preserves meaningful like", async () =>
   });
   assert.equal(result.cleanedVoiceText, "I like basil. I made pasta.");
   assert.match(result.dishes[0].notes, /like basil/);
+});
+
+test("fake assistance can parse a cleaned voice segment before a transcript is committed", async () => {
+  let parsedText = "";
+  const result = await assistance.fakeParseCook({
+    transcript: "", voiceSegment: "Oh, uh, I made ramen.",
+    parseFallback: (value) => { parsedText = value; return { dishName: "Ramen" }; },
+    countryLookup: () => null,
+  });
+  assert.equal(parsedText, "I made ramen.");
+  assert.equal(result.cleanedVoiceText, "I made ramen.");
+  assert.equal(result.dishes[0].dishName, "Ramen");
 });
 
 test("applies the same confidence thresholds to every proposed dish", () => {

@@ -52,11 +52,12 @@ After cooking, preserve the meal before its context disappears, then use the gro
 
 **Steps**
 
-1. Review the cleaned transcript after filler words and false starts are removed.
-2. Review proposed fields.
-3. Decide whether the dish already exists.
-4. Confirm the country and cooking date.
-5. Save or correct the entry.
+1. Review the cleaned transcript after context-free filler, repetitions, and safe-to-remove false starts are removed without changing names, quantities, negation, or cooking meaning.
+2. Leave Dish name blank when the note contains no explicit or recognizably culinary dish evidence instead of using the first spoken word.
+3. Review proposed fields.
+4. Decide whether the dish already exists.
+5. Confirm the country and cooking date.
+6. Save or correct the entry.
 
 **Tasks**
 

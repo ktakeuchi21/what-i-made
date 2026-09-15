@@ -1,8 +1,16 @@
 # Capture Flow Prototype Test Report
 
-> **Updated:** September 10, 2026
+> **Updated:** September 15, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Stronger voice cleanup and field mapping — September 15, 2026
+
+- Added a versioned realistic-transcript fixture contract shared by browser and service tests. It covers leading and embedded filler, repetitions, abandoned starts, meaningful `like` and `so`, the proper name Oh Henry, commentary-only openings, concise known and international dishes, explicit countries, multiple dishes, ambiguous note ownership, ratings, notes, and ingredients.
+- Local extraction now cleans before classification and requires explicit or recognizable culinary evidence for a bare opening dish. Valid dish-first notes remain supported; interjections and lone unknown words leave Dish name blank.
+- The protected service prompt now includes field-boundary, abstention, preservation, and positive/negative example rules. Deterministic validation cleans every returned text field so model filler cannot leak into Dish, Notes, or Ingredients.
+- **Automated proof:** 199 browser/domain/voice tests, 25 capture-assistance service tests, and 9 invitation packaging/infrastructure tests pass. Syntax checks pass for the application, shared cleanup contract, local parser, and capture-assistance client.
+- **Browser proof:** In the real in-app Chromium browser, `Oh, uh, I made ramen. It was, um, too salty.` immediately populated **Ramen**, **Japan**, and the clean note **It was too salty**; Review retained those values after the assistance round-trip. `Oh wow. The sauce was great.` left Dish name blank and preserved the meaningful reaction as Notes. Fresh-origin checks mapped `Mul naengmyeon with extra cucumber` to canonical **Mul naengmyeon**, removed an unpunctuated `hmm` after “I made,” preserved **Umm Ali** as a dish name, and cleared an obsolete untouched note when the transcript changed. The exercised pages had no document-level horizontal overflow.
 
 ## Owner analytics dashboard — September 10, 2026
 

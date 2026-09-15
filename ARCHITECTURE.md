@@ -89,7 +89,7 @@ Year, Map, Journal, recap, dish history, and Made status are derived from local 
 
 1. `photo-processor.js` creates metadata-free display and thumbnail blobs locally.
 2. `transcribe-adapter.js` obtains a short-lived signed session and streams audio directly to Amazon Transcribe. The signer adds the configured public culinary vocabulary. If that enhanced socket cannot open, the adapter obtains one session without the vocabulary and continues. The app keeps returned text, not audio.
-3. On Done, `capture-assistance.js` sends only `transcript`, `voiceSegment`, and `locale` to the configured service. Typed text is assisted at Review.
+3. On Done, `capture-assistance.js` sends only `transcript`, `voiceSegment`, and `locale` to the configured service. Typed text is assisted at Review. A versioned conversational-cleanup contract removes context-free filler before local extraction and sanitizes every structured text field after service validation. Dish-name extraction ranks explicit cooking phrases and known culinary evidence ahead of bare opening text, and abstains when that evidence is missing.
 4. API Gateway validates the Cognito issuer, client audience, expiry, and `what-i-made/capture` scope before Lambda invocation.
 5. The Lambda rechecks trusted access-token claims, consumes an atomic per-account rate window, validates hard input limits, and performs one bounded Bedrock request.
 6. Client and server reject extra fields, invalid ratings, unknown countries, oversized values, and more than six dishes. Only untouched fields are populated.

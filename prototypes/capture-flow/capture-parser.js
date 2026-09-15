@@ -1,8 +1,14 @@
 (function (root, factory) {
-  const api = factory();
+  const cleanup = typeof module === "object" && module.exports
+    ? require("./conversational-cleanup.js")
+    : root?.WhatIMadeConversationalCleanup;
+  const dishCatalog = typeof module === "object" && module.exports
+    ? require("./assets/international-dishes.js")
+    : root?.WhatIMadeInternationalDishes;
+  const api = factory(cleanup, dishCatalog);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.WhatIMadeCaptureParser = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (cleanup, dishCatalog) {
   "use strict";
 
   const NUMBER_WORDS = Object.freeze({
@@ -47,6 +53,20 @@
     wales: "United Kingdom",
   });
   const AMBIGUOUS_BARE_COUNTRIES = new Set(["chad", "georgia", "jordan", "turkey"]);
+  const DISH_WORDS = new Set([
+    "adobo", "bar", "biryani", "bread", "burger", "cake", "casserole", "chicken", "chili", "curry",
+    "dal", "dumpling", "dumplings", "egg", "eggs", "fish", "gumbo", "mac", "meatballs", "noodle",
+    "noodles", "pasta", "pie", "pizza", "rice", "salad", "sandwich", "soup", "stew", "taco", "tacos",
+  ]);
+  const UNSAFE_DISH_OPENING = /^(?:ah+|uh+|um+|uhm+|erm+|hmm+|mm+|oh|okay|well|so|a|an|the|breakfast|brunch|dinner|food|lunch|meal|he|i|it|she|that|they|this|we|you|added|adding|cooked|cooking|made|making|prepared|preparing|served|serving|tried|trying|used|using)\b/i;
+  const REACTION_WORDS = new Set(["amazing", "awesome", "bad", "delicious", "excellent", "fantastic", "fine", "good", "great", "incredible", "nice", "okay", "terrible", "wonderful"]);
+  const REACTION_INTENSIFIERS = new Set(["pretty", "quite", "really", "so", "super", "very"]);
+  const EVALUATION_WORDS = new Set(["felt", "is", "looked", "looks", "seemed", "tasted", "turned", "was", "were"]);
+  const normalizeDishEvidence = (value) => String(value || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const CATALOG_DISH_NAMES = new Map((dishCatalog?.dishes || []).flatMap((dish) => [dish.canonicalName, ...(dish.aliases || [])]
+    .map((name) => [normalizeDishEvidence(name), dish.canonicalName]))
+    .sort(([left], [right]) => right.length - left.length));
 
   function normalizeForCountryMatch(value) {
     return String(value || "")
@@ -82,6 +102,42 @@
     return text ? text[0].toUpperCase() + text.slice(1) : "";
   }
 
+  function safeDishCandidate(value) {
+    const candidate = clean(value);
+    const words = candidate.match(/[\p{L}\p{N}'’-]+/gu) || [];
+    const meaningfulOhName = /^oh\b/i.test(candidate) && words.some((word) => DISH_WORDS.has(word.toLowerCase()));
+    const protectedInternationalName = /^umm\s+ali\b/i.test(candidate);
+    if (!candidate || (UNSAFE_DISH_OPENING.test(candidate) && !meaningfulOhName && !protectedInternationalName)) return "";
+    return words.length && words.length <= 6 ? candidate : "";
+  }
+
+  function dishLikeOpening(value) {
+    const candidate = safeDishCandidate(value);
+    if (!candidate) return "";
+    const words = candidate.toLowerCase().match(/[\p{L}\p{N}'’-]+/gu) || [];
+    const normalized = normalizeDishEvidence(candidate);
+    const catalogMatch = [...CATALOG_DISH_NAMES].find(([name]) => normalized === name || normalized.startsWith(`${name} `));
+    if (catalogMatch) return catalogMatch[1];
+    if (inferCountry(candidate) || words.some((word) => DISH_WORDS.has(word))) return candidate;
+    return "";
+  }
+
+  function stripDishDetails(value) {
+    const withoutRating = String(value || "").split(/,?\s+(?:rating(?:\s+(?:is|was))?\s+|(?:is|was)\s+)?(?:10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:out of|\/|of)\s*(?:10|ten)\b/i)[0];
+    return withoutRating.split(/,?\s+(?:ingredients?|notes?)\s*(?:are|were|include|included|is|was|:)/i)[0];
+  }
+
+  function evidencedDishCandidate(value) {
+    const candidate = safeDishCandidate(stripDishDetails(value));
+    if (!candidate) return "";
+    const recognized = dishLikeOpening(candidate);
+    if (recognized) return recognized;
+    const words = candidate.toLowerCase().match(/[\p{L}\p{N}'’-]+/gu) || [];
+    const reactionOnly = words.some((word) => REACTION_WORDS.has(word))
+      && words.every((word) => word === "not" || REACTION_WORDS.has(word) || REACTION_INTENSIFIERS.has(word) || EVALUATION_WORDS.has(word));
+    return reactionOnly ? "" : candidate;
+  }
+
   function extractRating(text) {
     const match = text.match(/(?:rating(?:\s+(?:is|was))?\s*)?(10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:out of|\/|of)\s*(?:10|ten)\b/i);
     if (!match) return "";
@@ -96,21 +152,17 @@
     const openingPhrase = clean(openingClause.split(/\s+(?:came|felt|is|looks?|seems?|tasted|turned|was|went|were)\b/i)[0]);
     const wordCount = openingPhrase.split(/\s+/).filter(Boolean).length;
     if (!openingPhrase || wordCount > 6) return "";
-    if (/^(?:a|an|the)\b/i.test(openingPhrase)) return "";
-    if (/^(?:breakfast|brunch|dinner|food|lunch|meal)\b/i.test(openingPhrase)) return "";
-    if (/^(?:he|i|it|she|that|they|this|we|you)\b/i.test(openingPhrase)) return "";
-    if (/^(?:added|adding|cooked|cooking|made|making|prepared|preparing|served|serving|tried|trying|used|using)\b/i.test(openingPhrase)) return "";
-    return sentenceCase(openingPhrase);
+    return sentenceCase(dishLikeOpening(openingPhrase));
   }
 
   function extractDishName(text) {
     const match = text.match(/\b(?:i\s+(?:made|cooked|prepared)|dish(?:\s+name)?\s+(?:is|was)|this\s+is)\s+([^.!?;]+)/i);
-    const directMatch = text.match(/^([^,.!?;]{2,60}),?\s+(?:(?:rating\s+)?(?:is|was)\s+)?(?:10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:out of|\/|of)\s*(?:10|ten)\b/i);
-    const candidate = match?.[1] || directMatch?.[1] || extractOpeningDishName(text);
+    const directMatch = text.match(/^([^,.!?;]{2,60}),?\s+(?:rating(?:\s+(?:is|was))?\s+|(?:is|was)\s+)?(?:10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:out of|\/|of)\s*(?:10|ten)\b/i);
+    const explicitCandidate = match?.[1];
+    const candidate = evidencedDishCandidate(explicitCandidate)
+      || evidencedDishCandidate(directMatch?.[1]) || extractOpeningDishName(text);
     if (!candidate) return "";
-    const withoutRating = candidate.split(/,?\s+(?:(?:rating\s+)?(?:is|was)\s+)?(?:10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:out of|\/|of)\s*(?:10|ten)\b/i)[0];
-    const withoutMarkers = withoutRating.split(/,?\s+(?:ingredients?|notes?)\s*(?:are|were|include|included|is|was|:)/i)[0];
-    return sentenceCase(withoutMarkers);
+    return sentenceCase(stripDishDetails(candidate));
   }
 
   function extractMarkedSection(text, marker, followingMarker) {
@@ -189,10 +241,12 @@
   function extractFallbackNotes(text, dishName, rating, ingredients) {
     if (!text) return "";
     let remainder = text;
-    remainder = remainder.replace(/\b(?:i\s+(?:made|cooked|prepared)|dish(?:\s+name)?\s+(?:is|was)|this\s+is)\s+[^.!?;]+[.!?]?/i, " ");
     if (dishName) {
       const escapedDishName = dishName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      remainder = remainder.replace(new RegExp(`\\b(?:i\\s+(?:made|cooked|prepared)|dish(?:\\s+name)?\\s+(?:is|was)|this\\s+is)\\s+${escapedDishName}`, "i"), " ");
       remainder = remainder.replace(new RegExp(`^${escapedDishName}\\s*[.!?;,]?\\s*`, "i"), " ");
+    } else {
+      remainder = remainder.replace(/\b(?:i\s+(?:made|cooked|prepared)|dish(?:\s+name)?\s+(?:is|was)|this\s+is)\s+[^.!?;]+[.!?]?/i, " ");
     }
     if (rating) {
       remainder = remainder.replace(/(?:rating(?:\s+(?:is|was))?\s*)?(?:10|[1-9]|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:out of|\/|of)\s*(?:10|ten)\b[.,;]?/i, " ");
@@ -205,7 +259,7 @@
   }
 
   function parseCaptureTranscript(value) {
-    const text = clean(value);
+    const text = clean(cleanup?.cleanConversationalText?.(value) ?? value);
     const dishName = extractDishName(text);
     const rating = extractRating(text);
     const ingredients = extractMarkedSection(text, "ingredients?", "notes?");

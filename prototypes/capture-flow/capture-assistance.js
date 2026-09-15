@@ -1,8 +1,11 @@
 (function (root, factory) {
-  const api = factory();
+  const cleanup = typeof module === "object" && module.exports
+    ? require("./conversational-cleanup.js")
+    : root?.WhatIMadeConversationalCleanup;
+  const api = factory(cleanup);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.WhatIMadeCaptureAssistance = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (cleanup) {
   "use strict";
 
   const MAX_TRANSCRIPT = 5000;
@@ -18,10 +21,10 @@
     return isPlainObject(value) && Object.keys(value).every((key) => allowed.includes(key));
   }
 
-  function optionalText(value, limit) {
+  function optionalText(value, limit, cleanupOptions) {
     if (value === null) return null;
     if (typeof value !== "string" || value.length > limit) throw new Error("The assistance response was not valid.");
-    const result = value.trim();
+    const result = (cleanup?.cleanConversationalText?.(value, cleanupOptions) ?? value).trim();
     return result || null;
   }
 
@@ -43,10 +46,10 @@
     if (!["explicit", "inferred", "unknown"].includes(value.countrySource)) throw new Error("The assistance response was not valid.");
     if ((countryCode === null) !== (value.countrySource === "unknown")) throw new Error("The assistance response was not valid.");
     return {
-      dishName: optionalText(value.dishName, FIELD_LIMITS.dishName),
+      dishName: optionalText(value.dishName, FIELD_LIMITS.dishName, { removeLeadingFiller: true }),
       rating,
       notes: optionalText(value.notes, FIELD_LIMITS.notes),
-      ingredientsText: optionalText(value.ingredientsText, FIELD_LIMITS.ingredientsText),
+      ingredientsText: optionalText(value.ingredientsText, FIELD_LIMITS.ingredientsText, { preserveListComma: true }),
       countryCode,
       countrySource: value.countrySource,
       confidence: validateConfidence(value.confidence),
@@ -62,7 +65,7 @@
     }
     const countryKeys = new Set(countryCodes);
     return {
-      cleanedVoiceText: value.cleanedVoiceText.trim(),
+      cleanedVoiceText: cleanup?.cleanConversationalText?.(value.cleanedVoiceText) ?? value.cleanedVoiceText.trim(),
       dishes: value.dishes.map((dish) => validateDish(dish, countryKeys)),
       warnings: value.warnings.slice(),
     };
@@ -128,13 +131,8 @@
 
   function fakeParseCook({ transcript, voiceSegment, parseFallback, countryLookup }) {
     const source = String(voiceSegment || transcript || "");
-    const cleanedVoiceText = source
-      .replace(/(^|[\s,;])(?:uh+|um+|uhm+|erm+|hmm+)(?=$|[\s,;.!?])/gi, "$1")
-      .replace(/\b(?:you know|I mean|basically)\b\s*,?/gi, "")
-      .replace(/\s*,?\s+like\s*,\s*/gi, " ")
-      .replace(/\s+([,.;!?])/g, "$1").replace(/\s{2,}/g, " ").trim();
-    const finalCleanedVoiceText = cleanedVoiceText.replace(/^\s*[,;]\s*/, "");
-    const parsed = typeof parseFallback === "function" ? parseFallback(String(transcript || cleanedVoiceText)) : {};
+    const finalCleanedVoiceText = cleanup?.cleanConversationalText?.(source) ?? source.trim();
+    const parsed = typeof parseFallback === "function" ? parseFallback(String(transcript || finalCleanedVoiceText)) : {};
     const country = countryLookup?.(parsed.country || "");
     return Promise.resolve({
       cleanedVoiceText: finalCleanedVoiceText,
