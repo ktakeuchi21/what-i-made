@@ -67,4 +67,6 @@ The integrated capture flow now saves atomic multi-dish cooking occasions, suppo
 
 The earlier owner-token Lambda and Function URL boundary has been retired. The invitation-only stack, Cognito-managed email-code login, account-scoped archives, protected API routes, owner migration, and clean non-migration PWA are deployed. The owner's migrated archive survives production reloads and the old public service paths are removed.
 
+The major product pivots and the deliberate GPT-5.6 Sol medium development-model experiment are summarized in [Build notes](BUILD_NOTES.md). That retrospective records why the project chose a PWA after device proof, replaced browser speech recognition with Amazon Transcribe, separated cooking occasions from canonical dishes, replaced illustrative map shapes with Natural Earth geography, and moved from a fixed owner boundary to invitation-only accounts.
+
 Next, complete the remaining [owner-first rollout checklist](invitation-only-access/ROLLOUT_CHECKLIST.md) gates: obtain entitlement to a supported Bedrock Responses-API model and rerun authenticated service checks, invite one owner-approved canary, prove account isolation and revocation, and finish the installed-iPhone offline, accessibility, camera, voice, and backup acceptance pass.

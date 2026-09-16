@@ -14,6 +14,8 @@
   <a href="docs/product/PRD.md">Product requirements</a>
   ·
   <a href="ARCHITECTURE.md">Architecture</a>
+  ·
+  <a href="docs/product/BUILD_NOTES.md">Build notes</a>
 </p>
 
 ## The challenge
@@ -52,17 +54,46 @@ Privacy shapes the architecture. Authentication controls invitation-only access,
 
 ## Product screens
 
-The screenshots below come from the deployed fictional sample archive at a 390 × 844 iPhone viewport.
+These screenshots were recaptured from the deployed fictional sample archive on September 15, 2026, at a 390 × 844 iPhone viewport. The sample uses the real browsing interfaces and an isolated, read-only dataset, so anyone can see the product without entering a private archive.
 
-<p align="center">
-  <img src="docs/assets/readme/year.png" width="190" alt="Year view showing a fictional annual cooking summary">
-  <img src="docs/assets/readme/map.png" width="190" alt="Culinary map showing country cook density">
-</p>
+<table>
+  <tr>
+    <td align="center"><strong>Year</strong><br><img src="docs/assets/readme/year.png" width="260" alt="Year view showing 28 fictional dishes, 36 cooks, and 22 countries"></td>
+    <td align="center"><strong>Map</strong><br><img src="docs/assets/readme/map.png" width="260" alt="Accurate world map showing fictional country cook density"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Journal</strong><br><img src="docs/assets/readme/journal.png" width="260" alt="Searchable fictional cooking journal with photographic entries"></td>
+    <td align="center"><strong>Ideas</strong><br><img src="docs/assets/readme/ideas.png" width="260" alt="Fictional recipe Ideas collection showing made and unmade recipes"></td>
+  </tr>
+</table>
 
-<p align="center">
-  <img src="docs/assets/readme/journal.png" width="190" alt="Searchable cooking Journal with photographic entries">
-  <img src="docs/assets/readme/ideas.png" width="190" alt="Ideas collection with recipes to cook later">
-</p>
+## How the product changed
+
+The shipped product is meaningfully different from the first prototype. The important pivots were driven by device tests and repeated use, not by adding technology for its own sake:
+
+- **Platform choice:** we compared PWA, React Native/Expo, and SwiftUI, then chose an installable PWA only after proving the required iPhone camera, photo-library, local-storage, backup, microphone, and Home Screen behavior.
+- **Voice input:** Safari's browser speech-recognition path was not reliable enough on the target iPhone, so the custom voice button moved to Amazon Transcribe while keyboard Dictation remained a fallback.
+- **Archive model:** a capture-only, single-dish prototype became a durable journal organized around cooking occasions, because one cook can contain several dishes and photographs.
+- **Map:** the early hand-drawn continent shapes were useful as a concept test but not credible geography. They were replaced with public-domain Natural Earth country boundaries, exact country counts, region shelves, and an accessible non-map browsing path.
+- **Access:** a fixed owner archive and shared service token gave way to administrator-invited Cognito accounts, email one-time codes, account-scoped local archives, and JWT-protected services.
+- **Product tour:** a private-only experience made the product hard to understand before invitation, so we added a fictional public sample that reuses the real read interfaces while remaining isolated from personal data.
+
+## What we learned
+
+- Validate the riskiest device behavior before committing to a platform. The iPhone feasibility work resolved more uncertainty than a longer speculative architecture phase would have.
+- Make the core workflow survive without AI. Photo, name, review, save, reopen, edit, backup, and restore remain useful when transcription or model assistance is unavailable.
+- AI works best here as an editable proposal. Confidence gates, strict schemas, local country validation, deterministic dish matching, and visible undo matter more than clever prompting alone.
+- Local-first storage is a real privacy advantage, but it deliberately trades away automatic cross-device sync. Account identity, cloud service access, archive storage, and backup are separate concerns.
+- Maps need trustworthy geography and accessible alternatives. A visually attractive approximation was not enough once the map became a way to inspect real history.
+- A public sample needs the same rigor as the private product: fictional records, licensed media, read-only behavior, and a hard boundary preventing sample data from entering an account.
+
+### Development-model experiment
+
+The project was intentionally built in Codex using **GPT-5.6 Sol at medium reasoning** as a consistent constraint. The goal was to explore the limits of one mid-reasoning model across discovery, product design, implementation, debugging, testing, AWS deployment, and documentation instead of switching difficult work to a stronger setting.
+
+It performed well across that range. The larger lesson was that model choice did not replace product judgment or proof: small vertical slices, explicit acceptance criteria, focused automated tests, real-browser checks, physical-iPhone validation, and frequent owner feedback were what kept the work grounded. This development constraint is separate from the models the running application may invoke through AWS Bedrock, which are configured independently by service.
+
+The longer retrospective and decision trail are in [Build notes](docs/product/BUILD_NOTES.md).
 
 ## How it works
 

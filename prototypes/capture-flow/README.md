@@ -2,6 +2,8 @@
 
 This installable prototype validates post-cooking capture and now includes the first durable local-journal path.
 
+For the product evolution behind the prototype—including the voice, archive, map, account, and public-sample pivots—see [What I Made build notes](../../docs/product/BUILD_NOTES.md).
+
 ## Run locally
 
 From the project root:
