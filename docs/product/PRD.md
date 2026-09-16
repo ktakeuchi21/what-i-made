@@ -78,7 +78,7 @@ The primary flow begins immediately after cooking: add or take a photo, speak or
 
 ### Required first-release capabilities
 
-1. **Fast capture:** Main photo and dish name required; **Cooked on** defaults to today and is editable from January 1, 2026 through the current local date.
+1. **Fast capture:** Main photo and dish name required; **Cooked on** defaults to today and is editable from January 1, 2026 through the current local date. A visible optional country autocomplete places the dish on the map without adding another required step.
 2. **Optional detail:** Whole-number rating from 1–10, notes, and informal ingredients; all editable later.
 3. **Flexible occasions:** One dish by default with multiple dishes and optional dish-specific photos supported.
 4. **Assisted confirmation:** Voice transcript and text classification propose structured fields; the owner confirms or corrects every suggestion.

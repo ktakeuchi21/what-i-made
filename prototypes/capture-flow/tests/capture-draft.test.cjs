@@ -15,6 +15,7 @@ test("required inputs and transcript each make a capture dirty", () => {
 });
 
 test("every optional detail is protected as draft content", () => {
+  assert.equal(hasCaptureDraft({ country: "South Korea" }), true);
   assert.equal(hasCaptureDraft({ rating: "8" }), true);
   assert.equal(hasCaptureDraft({ notes: "Use less soy" }), true);
   assert.equal(hasCaptureDraft({ ingredients: "Egg and chicken" }), true);

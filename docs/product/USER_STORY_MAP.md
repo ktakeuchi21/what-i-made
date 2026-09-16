@@ -42,6 +42,7 @@ After cooking, preserve the meal before its context disappears, then use the gro
 - Take a photo with the camera or choose one from the library.
 - Preview, replace, or remove the selected photo.
 - Enter a dish name by voice or typing.
+- Optionally select a canonical country from the map catalog; manual choices take precedence over voice suggestions.
 - Accept today’s date or choose an earlier date back to January 1, 2026.
 - Optionally add a whole-number rating, notes, and informal ingredients.
 - Optionally add a second dish and a dish-specific photo.

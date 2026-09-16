@@ -1,8 +1,16 @@
 # Capture Flow Prototype Test Report
 
-> **Updated:** September 10, 2026
+> **Updated:** September 15, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Country selection on New cook — September 15, 2026
+
+- Added the existing map-catalog autocomplete directly to the first New cook screen. Country remains optional, while unresolved non-empty text is rejected inline before Review.
+- A confirmed selection carries into Review and back. Explicit owner selection—including intentionally clearing the field—takes precedence over later parsing, while untouched fields may still receive labeled high-confidence or optional country suggestions.
+- **Automated proof:** JavaScript syntax validation and the complete 196-test client/service regression suite pass. The focused checks cover the initial field contract, catalog-only validation, cache/version alignment, and country-only draft protection.
+- **Browser proof:** The New cook screen exposes the optional country combobox and map helper. Typing `Kor` produced South Korea and North Korea; selecting South Korea carried into Review and a saved cook appeared in Year as “Oyakodon — South Korea,” with one mapped country. Changing Review to Japan and going Back restored Japan on the first screen. `Atlantis` produced an inline alert and could not reach Review, while clearing the field allowed Review. Fake note assistance filled an untouched field with labeled Japan and left a manually selected South Korea unchanged. Both the local-parser and fake service paths kept a manual Japan selection authoritative and left the incompatible `mool nang myun` text uncorrected rather than applying the South Korea-associated Mul naengmyeon catalog match.
+- **Accessibility evidence:** The browser accessibility tree exposes the control as `combobox "Country Optional"`, the expanded results as a `listbox` with named options, and unresolved input as an `alert`. Physical iPhone VoiceOver gestures, largest Dynamic Type, landscape safe areas, and the installed-PWA update remain owner-device checks.
 
 ## Owner analytics dashboard — September 10, 2026
 
