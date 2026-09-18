@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  document.documentElement.classList.toggle("show-prototype-panel", new URLSearchParams(window.location.search).get("prototype") === "1");
+
   const sample = {
     photo: "./assets/sample-oyakodon.jpg",
     transcript:
@@ -1668,6 +1670,24 @@
     const yearPhotos = occasions
       .filter((occasion) => Number(String(occasion.cookedAt).slice(0, 4)) === model.year)
       .flatMap((occasion) => occasion.photos.map((photo) => ({ ...photo, occasion })));
+    const demoWelcomeImages = $("#demo-welcome-images");
+    demoWelcomeImages.replaceChildren();
+    if (isDemoMode()) {
+      const welcomePhotos = yearPhotos.filter(({ occasion }, index, photos) => (
+        photos.findIndex((candidate) => candidate.occasion.id === occasion.id) === index
+      )).slice(0, 3);
+      welcomePhotos.forEach(({ thumbnailBlob, blob }) => {
+        const image = document.createElement("img");
+        image.src = photoUrlForBlob(thumbnailBlob || blob);
+        image.alt = "";
+        image.loading = "eager";
+        demoWelcomeImages.append(image);
+      });
+      $("#demo-welcome-year").textContent = String(model.year);
+      $("#demo-welcome-cooks").textContent = String(model.cookCount);
+      $("#demo-welcome-countries").textContent = String(model.countryCount);
+      $("#demo-welcome-regions").textContent = String(model.regions.filter((region) => region.cookCount > 0).length);
+    }
     const recapImages = $("#year-recap-images");
     recapImages.replaceChildren();
     yearPhotos.slice(0, 4).forEach(({ thumbnailBlob, blob, occasion }) => {
@@ -1700,6 +1720,15 @@
       journalError.textContent = error.message || "Your year could not be prepared, so your journal is shown instead.";
       journalError.hidden = false;
     }
+  }
+
+  function openDemoDestination(destination) {
+    if (!isDemoMode()) return;
+    state.yearScrollTop = yearScroll.scrollTop;
+    if (destination === "map") void openMap();
+    else if (destination === "journal") void openJournal();
+    else if (destination === "recap") void openRecap("year");
+    else if (destination === "ideas") void openIdeas();
   }
 
   function formatFileSize(bytes) {
@@ -4295,6 +4324,7 @@
   $("#map-new-cook").addEventListener("click", () => resetCapture({ scenario: "blank" }));
   $("#empty-new-cook").addEventListener("click", () => resetCapture({ scenario: "blank" }));
   $("#year-open-journal").addEventListener("click", () => void openJournal());
+  $$("[data-demo-destination]").forEach((button) => button.addEventListener("click", () => openDemoDestination(button.dataset.demoDestination)));
   $("#open-backup-storage").addEventListener("click", (event) => void openBackupStorage(event.currentTarget));
   $("#backup-back").addEventListener("click", closeBackupStorage);
   $("#protect-storage").addEventListener("click", () => void protectLocalStorage());
@@ -4615,7 +4645,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=55").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=56").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

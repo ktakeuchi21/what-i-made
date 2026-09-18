@@ -32,18 +32,18 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v55/);
-  assert.match(worker, /\.\/app\.js\?v=55/);
+  assert.match(worker, /what-i-made-capture-v56/);
+  assert.match(worker, /\.\/app\.js\?v=56/);
   assert.match(worker, /\.\/auth-session\.js\?v=51/);
   assert.match(worker, /\.\/activity-client\.js\?v=51/);
   assert.match(worker, /\.\/capture-draft\.js\?v=17/);
-  assert.match(worker, /\.\/styles\.css\?v=50/);
-  assert.match(html, /\.\/app\.js\?v=55/);
+  assert.match(worker, /\.\/styles\.css\?v=56/);
+  assert.match(html, /\.\/app\.js\?v=56/);
   assert.match(html, /\.\/auth-session\.js\?v=51/);
   assert.match(html, /\.\/activity-client\.js\?v=51/);
   assert.match(html, /\.\/capture-draft\.js\?v=17/);
-  assert.match(html, /\.\/styles\.css\?v=50/);
-  assert.match(app, /\.\/sw\.js\?v=55/);
+  assert.match(html, /\.\/styles\.css\?v=56/);
+  assert.match(app, /\.\/sw\.js\?v=56/);
   assert.match(worker, /requestUrl\.pathname\.includes\("\/admin\/"\)/);
   assert.match(html, /id="entry-photo-credit"/);
   assert.match(html, /id="idea-photo-credit"/);
@@ -124,6 +124,26 @@ test("signed-out discovery and demo safety copy ship together", () => {
   assert.match(app, /url\.searchParams\.delete\("demo"\)/);
   assert.doesNotMatch(worker, /assets\/demo\/(?:demo-content|display|thumb)/);
   assert.doesNotMatch(worker, /sample-oyakodon\.jpg/);
+});
+
+test("sample archive ships a product-led tour of current features", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+
+  assert.match(html, /What I Made — Private cooking journal/);
+  assert.match(html, /See what a year of cooking can become/);
+  assert.match(html, /Fictional · Read only/);
+  assert.deepEqual([...html.matchAll(/data-demo-destination="([^"]+)"/g)].map((match) => match[1]), ["map", "journal", "recap", "ideas"]);
+  assert.match(html, /Density, peaks &amp; regions/);
+  assert.match(html, /Search, filter &amp; revisit/);
+  assert.match(html, /Every cook, month by month/);
+  assert.match(html, /Recipes saved for later/);
+  assert.match(app, /function openDemoDestination\(destination\)/);
+  assert.match(app, /welcomePhotos\.forEach/);
+  assert.match(css, /\.prototype-panel \{[\s\S]*?display: none;/);
+  assert.match(css, /\.show-prototype-panel \.prototype-panel \{[\s\S]*?display: block;/);
+  assert.match(css, /\.demo-tour-card \{[\s\S]*?min-height: 62px;/);
 });
 
 test("account access and secure sign-out are reachable throughout the private archive", () => {
