@@ -1,6 +1,6 @@
-# Capture Flow Prototype
+# What I Made Web App
 
-This installable prototype validates post-cooking capture and now includes the first durable local-journal path.
+This installable PWA is the working What I Made product, including post-cooking capture and its durable local journal.
 
 For the product evolution behind the prototype—including the voice, archive, map, account, and public-sample pivots—see [What I Made build notes](../../docs/product/BUILD_NOTES.md).
 
@@ -28,7 +28,9 @@ In an authenticated archive, **Account** is available from each top-level app ba
 
 The **Ideas** tab stores recipes to cook later separately from cooking history. The local recipe fixture supports URL import, a three-choice description search, and an AI-fallback state without making network calls. Use a description containing `no results` to exercise the fallback. Production configuration points `WIM_RECIPE_CONFIG.endpoint` at the protected service in `services/recipe-ideas`; saved recipe snapshots and their optimized images remain in IndexedDB.
 
-The public sample archive uses locally bundled, metadata-free derivatives of real Wikimedia Commons food photographs. Its version-2 manifest records the creator, source page, license, and local crop/resize conversion for every image. Attribution appears in sample cook and Idea details. The signed-out page does not fetch the manifest or photographs until **Explore a sample archive** is chosen.
+The public sample archive uses locally bundled, metadata-free derivatives of real Wikimedia Commons food photographs. Its version-2 manifest records the creator, source page, license, and local crop/resize conversion for every image. Attribution appears in sample cook and Idea details. After loading, a photo-led tour opens the real Map, Journal, recap, and Ideas experiences directly; the signed-out page still does not fetch the manifest or photographs until **Explore a sample archive** is chosen.
+
+The old desktop scenario panel is now a development-only aid. Add `prototype=1` to the URL when testing those scenarios; ordinary signed-out, sample, and account visits show the finished product shell.
 
 The deployable stack and cutover instructions live in `infrastructure/invitation-access/`. API Gateway rejects missing, expired, wrong-audience, or wrongly scoped tokens before Lambda invocation. Every paid route also consumes an atomic, expiring per-account counter keyed by a digest rather than an email or raw account identifier.
 

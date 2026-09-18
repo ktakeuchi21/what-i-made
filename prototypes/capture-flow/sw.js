@@ -1,10 +1,10 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v55";
+const CACHE_NAME = "what-i-made-capture-v56";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=50",
+  "./styles.css?v=56",
   "./config.js?v=51",
   "./transcribe-codec.js?v=16",
   "./transcribe-adapter.js?v=40",
@@ -32,7 +32,7 @@ const APP_SHELL = [
   "./journal-model.js?v=25",
   "./demo-archive.js?v=49",
   "./audio-worklet.js",
-  "./app.js?v=55",
+  "./app.js?v=56",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",

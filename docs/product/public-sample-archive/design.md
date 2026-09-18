@@ -8,10 +8,12 @@ What I Made offers a public, read-only sample before invitation sign-in. It is a
 
 - Signed-out visitors choose **Explore a sample archive** or **Sign in with email**.
 - Exploration adds `demo=1` while retaining unrelated URL parameters. Browser Back returns to the signed-out page.
-- A persistent **Sample archive · Fictional** bar and contextual Year card prevent sample activity from being mistaken for personal data.
+- A persistent **Sample archive · Fictional · Read only** bar and photographic Year tour prevent sample activity from being mistaken for personal data.
+- The tour shows current sample totals and opens the real culinary Map, searchable Journal, month-grouped photo recap, and Ideas interfaces directly. It is orientation layered onto the product, not a separate slideshow.
 - The fixture represents the previous full calendar year: 36 occasions, 40 dish attempts, 28 dishes, 22 countries across all 13 culinary regions, 40 photograph placements, and eight Ideas.
 - Its food imagery is a curated set of real, openly licensed Wikimedia Commons photographs. Cook and Idea details retain the photographer, source page, license, and a disclosure that the local variant was cropped for display.
 - Personal actions open one invitation dialog instead of changing data. Map display modes remain temporary in-memory preferences.
+- The shipped desktop experience presents the finished app shell. Prototype scenarios are hidden unless a maintainer explicitly adds `prototype=1`.
 - Leaving the sample clears transient navigation, filters, scroll positions, and owned object URLs. Sign-in opens only the retained or newly authenticated account archive.
 
 ## Boundaries

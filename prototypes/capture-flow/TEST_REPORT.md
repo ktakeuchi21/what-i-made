@@ -1,8 +1,16 @@
-# Capture Flow Prototype Test Report
+# What I Made Test Report
 
-> **Updated:** September 15, 2026
+> **Updated:** September 18, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Refreshed public sample experience — September 18, 2026
+
+- Replaced the text-only Year introduction with a photo-led product tour showing the sample's 36 occasions, 22 countries, and all 13 culinary regions.
+- Added direct 44-pixel-or-larger entry points to the current culinary Map, searchable Journal, month-grouped photo recap, and Ideas experience, including explicit Cook Density and Culinary Peaks language.
+- Reframed the persistent sample chrome as **Fictional · Read only**, refreshed the signed-out product message, and kept the existing statement that sample content never enters a private archive.
+- Hid the legacy desktop prototype panel from ordinary visits while retaining it behind `prototype=1` for deliberate development testing.
+- Automated coverage verifies the new tour destinations, current feature language, read-only framing, responsive cards, and updated service-worker assets. Browser proof covered the refreshed desktop shell, all four tour destinations, both map modes, and the read-only invitation flow without a visible runtime failure.
 
 ## Country selection on New cook — September 15, 2026
 
