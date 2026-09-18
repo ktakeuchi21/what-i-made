@@ -146,6 +146,14 @@ test("sample archive ships a product-led tour of current features", () => {
   assert.match(css, /\.demo-tour-card \{[\s\S]*?min-height: 62px;/);
 });
 
+test("signed-out privacy link is separated and remains a full touch target", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "styles.css"), "utf8");
+
+  assert.match(html, /class="inline-button auth-privacy-link" href="\.\/privacy\/"/);
+  assert.match(css, /\.auth-privacy-link \{[\s\S]*?min-height: 44px;[\s\S]*?margin-top: 18px;/);
+});
+
 test("account access and secure sign-out are reachable throughout the private archive", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const app = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
