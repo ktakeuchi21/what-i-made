@@ -54,12 +54,12 @@ Privacy shapes the architecture. Authentication controls invitation-only access,
 
 ## Product screens
 
-These screenshots were recaptured from the deployed fictional sample archive on September 15, 2026, at a 390 × 844 iPhone viewport. The sample uses the real browsing interfaces and an isolated, read-only dataset, so anyone can see the product without entering a private archive.
+These screenshots show the deployed fictional sample archive at a 390 × 844 iPhone viewport. The Map image was refreshed on October 10, 2026, and shows the current app in dark mode; the other images were captured in September 2026. The sample uses the real browsing interfaces and an isolated, read-only dataset, so anyone can see the product without entering a private archive.
 
 <table>
   <tr>
     <td align="center"><strong>Year</strong><br><img src="docs/assets/readme/year.png" width="260" alt="Year view showing 28 fictional dishes, 36 cooks, and 22 countries"></td>
-    <td align="center"><strong>Map</strong><br><img src="docs/assets/readme/map.png" width="260" alt="Accurate world map showing fictional country cook density"></td>
+    <td align="center"><strong>Map</strong><br><img src="docs/assets/readme/map.png?v=2026-10-10" width="260" alt="Current Map in dark mode, with the read-only sample banner, Cook Density and Culinary Peaks controls, and country cook density"></td>
   </tr>
   <tr>
     <td align="center"><strong>Journal</strong><br><img src="docs/assets/readme/journal.png" width="260" alt="Searchable fictional cooking journal with photographic entries"></td>
