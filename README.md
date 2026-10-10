@@ -59,7 +59,7 @@ These screenshots show the deployed fictional sample archive at a 390 × 844 iPh
 <table>
   <tr>
     <td align="center"><strong>Year</strong><br><img src="docs/assets/readme/year.png" width="260" alt="Year view showing 28 fictional dishes, 36 cooks, and 22 countries"></td>
-    <td align="center"><strong>Map</strong><br><img src="docs/assets/readme/map.png?v=2026-10-10-cropped" width="260" alt="Current Map in dark mode, with Cook Density and Culinary Peaks controls and fictional country cook density"></td>
+    <td align="center"><strong>Map</strong><br><img src="docs/assets/readme/map-2026-10-10-cropped.png" width="260" alt="Current Map in dark mode, with Cook Density and Culinary Peaks controls and fictional country cook density"></td>
   </tr>
   <tr>
     <td align="center"><strong>Journal</strong><br><img src="docs/assets/readme/journal.png" width="260" alt="Searchable fictional cooking journal with photographic entries"></td>
