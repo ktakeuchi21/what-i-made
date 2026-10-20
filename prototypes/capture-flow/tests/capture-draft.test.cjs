@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { discardActiveVoice, hasCaptureDraft } = require("../capture-draft.js");
+const { discardActiveVoice, hasCaptureDraft, additionalDishSuggestions } = require("../capture-draft.js");
 
 test("an untouched capture is not a draft", () => {
   assert.equal(hasCaptureDraft(), false);
@@ -45,4 +45,24 @@ test("confirmed discard clears voice ownership before cancelling the adapter", a
     adapterAtCancel: null,
     transcriptAtCancel: null,
   }]);
+});
+
+test("expanded notes add a newly recognized dish after a review with no additional dishes", () => {
+  const soup = { dishName: "Soup", notes: "A second dish from the expanded note" };
+  assert.deepEqual(additionalDishSuggestions([soup], [], []), [soup]);
+});
+
+test("repeated review preserves renamed or removed suggestions and includes new dishes", () => {
+  const photos = [new Blob(["photo"])];
+  const edited = { dishName: "Miso soup", notes: "My edited note", photos };
+  const salad = { dishName: "Salad" };
+  assert.deepEqual(additionalDishSuggestions([{ dishName: "Soup" }, { dishName: "Rice" }, salad], [edited], ["Soup", "Rice"]), [salad]);
+  assert.deepEqual(edited, { dishName: "Miso soup", notes: "My edited note", photos });
+});
+
+test("suggestions do not duplicate existing manual dishes, the primary dish, or one another", () => {
+  const soup = { dishName: "Soup" };
+  assert.deepEqual(additionalDishSuggestions([
+    { dishName: " Rice  bowl " }, { dishName: "SALAD" }, soup, { dishName: "soup" }, { dishName: " " },
+  ], [{ dishName: "Rice bowl" }, { dishName: "Salad" }]), [soup]);
 });

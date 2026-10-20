@@ -21,6 +21,7 @@ const STATIC_FILES = Object.freeze([
   "capture-draft.js",
   "photo-url.js",
   "photo-processor.js",
+  "photo-editor.js",
   "map-geometry.js",
   "account-context.js",
   "auth-session.js",

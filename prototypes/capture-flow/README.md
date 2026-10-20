@@ -85,3 +85,11 @@ This capture-only fixture is separate from `assets/demo/`, whose public-tour pho
 Final prompt:
 
 > Natural editorial food photograph of a freshly cooked bowl of Japanese Oyakodon with softly set egg, chicken, rice, and a little sliced scallion on a warm home table. Vertical 4:3 close overhead three-quarter composition, entire bowl visible, soft window light, realistic home-cooked texture, no people, logos, text, watermark, flags, or restaurant branding.
+
+## Multiple photos in capture and edit
+
+Camera adds another photo; **Add photos** can select several library images at once. Each preview has **Replace** and **Remove** controls. **Make main** chooses the image that represents the cooking occasion. Review keeps the complete gallery, including photos for additional dishes, when you go back and return.
+
+**Edit dish** opens the occasion’s complete photo gallery. Existing dish assignments remain intact; new images belong to the dish being edited. Photo and text changes save together only when you tap **Save changes**. Cancel discards the draft, and at least one photo must remain. Additional dishes also accept several optional photos.
+
+Images and thumbnails are optimized locally and remain in the device archive. Existing single-photo entries and backup files keep working without a migration. If the gallery changes in another window, reopen it before saving your changes.

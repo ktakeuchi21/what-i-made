@@ -1,8 +1,32 @@
 # What I Made Test Report
 
-> **Updated:** September 18, 2026
+> **Updated:** October 19, 2026
 > **Target:** `prototypes/capture-flow/index.html` served locally over HTTP  
 > **Scope:** Invitation accounts and private archives, capture, multi-dish occasions, expandable photo galleries, voice suggestions, canonical local archive, searchable Journal, calendar-year photo recap, Year dashboard, Natural Earth culinary activity map, Ideas, backup/restore, navigation, and responsive behavior
+
+## Multiple-photo capture and editing — October 19, 2026
+
+Criteria are defined in [the feature design](../../docs/technical/multiple-photos/design.md).
+
+| Criterion | Result | Evidence |
+| --- | --- | --- |
+| AC-1: multiple photos during capture | Pass | A two-image selection plus another image survived Review/back. Adding a second dish with two photos saved one occasion with five photos and assignments of three and two. All five reopened in Edit. After Review → Back → an expanded note → Review, a new suggested dish appeared; further review kept its two photos and edited name/notes, added a new suggestion, and respected a removed suggestion. Saving retained the four-photo, two-dish occasion. |
+| AC-2: add, replace, remove, choose main, cancel | Pass | Cancel discarded a six-photo draft and preserved the original five-photo gallery and main ID. A later edit added two, replaced one while preserving its ID and assignment, and removed the original main; six photos persisted with a valid new main. Keyboard Enter selected a main photo. The last remaining photo's Remove control was disabled. |
+| AC-3: additional dishes | Pass | Two optional photos survived Review/back on an additional dish. Adding another dish after save appended two more correctly assigned photos to the occasion. |
+| AC-4: recoverable failures and draft lifecycle | Pass | Unit tests reject invalid batches and discard late processing after reset. A browser batch containing a valid SVG and an undecodable JPEG left eight existing photos untouched with an inline message. A simulated save failure retained four draft photos while the saved gallery stayed at three; retry saved all four. |
+| INV-1: atomic and stale-safe updates | Pass | Real IndexedDB: throwing QuotaExceededError during the second photo write rolled back the complete edit, including text, photo count, and timestamp. A stale gallery version was rejected. |
+| INV-2: valid main and map references | Pass | Deleting the old main preserved a valid main reference; map preferences still referenced an eligible photo. Replacement retained identity and updated its thumbnail. |
+| INV-3: local storage and compatibility | Pass | A legacy single-photo entry opened, expanded to three photos, and reopened after reload. Export and empty-account restore preserved all six photos, thumbnails, and the main ID. Network inspection used only the local application; no photo upload was introduced. |
+
+Focused automated command: `node --test prototypes/capture-flow/tests/capture-draft.test.cjs prototypes/capture-flow/tests/photo-editor.test.cjs prototypes/capture-flow/tests/archive-store.test.cjs prototypes/capture-flow/tests/capture-copy.test.cjs infrastructure/invitation-access/package-pwa.test.mjs`: **46 passed**. JavaScript syntax and `git diff --check` passed.
+
+The broader client/device/infrastructure run completed **216 of 218 tests successfully**. The two activity-client tests also fail on unchanged main: their dated event fixtures enter the stale-event path, whose test store lacks `discard`. They are unrelated to photo editing and were not changed.
+
+Browser verification used local fake authentication and bundled sample photos, without production data or cloud services. Desktop (1440×1000), phone (375×812), and landscape (812×375) had no horizontal overflow. Light, dark, reduced-motion, enlarged text, keyboard controls, and save/reopen behavior were inspected. The browser console had zero errors or warnings. Evidence is under local `output/playwright/multiple-photos-*.png`.
+
+Independent review: **Approve** after correcting the expanded-note regression and rerunning focused tests.
+
+Physical iPhone camera/library selection, VoiceOver, and the installed production PWA update remain device-level checks. This report does not claim a production deployment.
 
 ## Refreshed public sample experience — September 18, 2026
 

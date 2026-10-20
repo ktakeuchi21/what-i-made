@@ -74,9 +74,10 @@
     mapCustomizeObjectUrls: [],
     mapCustomizeRequestId: 0,
     editOriginal: null,
-    editPhotoBlob: null,
-    editObjectUrl: "",
-    editPhotoRequestId: 0,
+    editGalleryOriginal: null,
+    photoLoadRequestId: 0,
+    capturePhotoLoading: false,
+    capturePhotoProcessing: false,
     editPhotoProcessing: false,
     editSaving: false,
     startedAt: null,
@@ -155,8 +156,6 @@
   const photoPicker = $("#photo-picker");
   const photoPreview = $("#photo-preview");
   const photoEmpty = $("#photo-empty");
-  const cameraInput = $("#camera-input");
-  const libraryInput = $("#library-input");
   const dishName = $("#dish-name");
   const captureCountry = $("#capture-country");
   const captureCountryProvenance = $("#capture-country-provenance");
@@ -235,6 +234,18 @@
   const mapEditorMarker = $("#map-editor-marker");
   const countryPickers = new Map();
   let journalSearchTimer = null;
+
+  const capturePhotoEditor = window.WhatIMadePhotoEditor.mount($("#capture-photos"), {
+    idPrefix: "capture", label: "this new cook", onChange: syncCapturePhotos,
+  });
+  const editPhotoEditor = window.WhatIMadePhotoEditor.mount($("#edit-photos"), {
+    idPrefix: "edit", label: "this cooking occasion", minimum: 1,
+    onChange(model) { state.editPhotoProcessing = model.busy; $("#edit-save").disabled = model.busy || state.editSaving; },
+  });
+  const addedDishPhotoEditor = window.WhatIMadePhotoEditor.mount($("#add-dish-photos"), {
+    idPrefix: "add-dish", label: "the additional dish", main: false,
+    onChange(model) { $("#save-added-dish").disabled = model.busy; },
+  });
 
   function activeArchiveRepository() {
     if (demoArchive?.repositoryForMode) return demoArchive.repositoryForMode(state.mode, state.demoRepository, archive);
@@ -560,11 +571,13 @@
   function clearPrivateArchiveView() {
     resetDemoTransientState();
     clearMapCustomizeObjectUrls();
-    if (state.editObjectUrl) URL.revokeObjectURL(state.editObjectUrl);
+    editPhotoEditor.draft.reset();
+    capturePhotoEditor.draft.reset();
+    addedDishPhotoEditor.draft.reset();
+    state.photoLoadRequestId += 1;
+    state.capturePhotoLoading = false;
     if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
-    state.editObjectUrl = "";
     state.editOriginal = null;
-    state.editPhotoBlob = null;
     state.objectUrl = "";
     state.photoBlob = null;
     state.photoSrc = "";
@@ -949,61 +962,58 @@
   function updateReadyState() {
     const hasName = dishName.value.trim().length > 0;
     const hasDescribableNote = transcript.value.trim().length > 0;
-    reviewButton.disabled = state.assistanceBusy || !(state.photoReady && (hasName || hasDescribableNote));
+    reviewButton.disabled = state.assistanceBusy || state.capturePhotoLoading || state.capturePhotoProcessing || !(state.photoReady && (hasName || hasDescribableNote));
     if (hasName) {
       dishName.removeAttribute("aria-invalid");
       dishError.hidden = true;
     }
   }
 
-  function setPhoto(source, alt = "Selected meal", ownsObjectUrl = false, blob = null) {
-    state.objectUrl = photoUrls.replaceOwnedObjectUrl(
-      state.objectUrl,
-      ownsObjectUrl ? source : "",
-      (url) => URL.revokeObjectURL(url),
-    );
-
-    state.photoReady = true;
-    state.photoSrc = source;
-    state.photoBlob = blob;
-    photoPreview.src = source;
-    photoPreview.alt = alt;
-    photoPreview.hidden = false;
-    photoEmpty.hidden = true;
-    photoPicker.dataset.ready = "true";
-    beginTiming();
+  function syncCapturePhotos(model) {
+    const main = model.items[0];
+    state.capturePhotoProcessing = model.busy;
+    if (state.photoBlob !== (main?.blob || null)) {
+      if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+      state.objectUrl = main ? URL.createObjectURL(main.blob) : "";
+    }
+    state.photoBlob = main?.blob || null;
+    state.photoSrc = state.objectUrl;
+    state.photoReady = Boolean(main);
+    if (main) photoPreview.src = state.photoSrc;
+    else photoPreview.removeAttribute("src");
+    photoPreview.alt = "Main photo for this cooking occasion";
+    photoPreview.hidden = !main;
+    photoEmpty.hidden = Boolean(main);
+    photoPicker.dataset.ready = String(Boolean(main));
+    $("#sample-photo").disabled = model.busy || state.capturePhotoLoading;
+    if (model.changed) beginTiming();
     updateReadyState();
   }
 
-  async function handleFile(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      captureError.textContent = "Choose an image from the camera or photo library.";
-      captureError.hidden = false;
-      return;
-    }
-
-    captureError.textContent = "Preparing your photo on this device…";
-    captureError.hidden = false;
+  async function setPhoto(source) {
+    if (state.capturePhotoLoading || state.capturePhotoProcessing) return;
+    const request = ++state.photoLoadRequestId;
+    state.capturePhotoLoading = true;
+    $("#sample-photo").disabled = true;
+    capturePhotoEditor.setDisabled(true);
+    updateReadyState();
     try {
-      const processed = photoProcessor?.processPhoto ? await photoProcessor.processPhoto(file) : { blob: file };
-      const objectUrl = URL.createObjectURL(processed.blob);
-      setPhoto(objectUrl, "Photo selected for this cooking occasion", true, processed.blob);
-      captureError.hidden = true;
+      const response = await fetch(source);
+      if (!response.ok) throw new Error("The sample photo could not be opened.");
+      const blob = await response.blob();
+      if (request !== state.photoLoadRequestId) return;
+      await capturePhotoEditor.draft.add([blob]);
     } catch (error) {
-      captureError.textContent = error.message || "This photo could not be prepared. Try another image.";
+      if (request !== state.photoLoadRequestId) return;
+      captureError.textContent = error.message;
+      captureError.hidden = false;
     } finally {
-      event.target.value = "";
+      if (request === state.photoLoadRequestId) {
+        state.capturePhotoLoading = false;
+        capturePhotoEditor.setDisabled(false);
+        syncCapturePhotos(capturePhotoEditor.draft);
+      }
     }
-  }
-
-  async function resolvePhotoBlob() {
-    if (state.photoBlob instanceof Blob && state.photoBlob.size > 0) return state.photoBlob;
-    const response = await fetch(state.photoSrc);
-    if (!response.ok) throw new Error("The selected photo could not be prepared for saving.");
-    return response.blob();
   }
 
   function revealOptionalFields() {
@@ -1119,7 +1129,7 @@
     const date = confirmDate.value;
     const dateLabel = date === currentDateValue() ? "Today" : formatCookedDate(date);
     $("#confirm-photo").alt = `${name || "Meal"} being reviewed`;
-    $("#confirm-photo-caption").textContent = `${name || "Cook"} · ${dateLabel}`;
+    $("#confirm-photo-caption").textContent = `${name || "Cook"} · ${dateLabel} · ${pluralize(capturePhotoEditor.draft.items.length, "photo")}`;
   }
 
   function undoPrimaryDishRecognition() {
@@ -1439,7 +1449,9 @@
     onSelect(result.exact?.dishId || "", !result.exact);
   }
 
-  async function updateConfirmation() {
+  async function updateConfirmation({ preserveDishes = false } = {}) {
+    const keepDishes = preserveDishes && Boolean(state.confirmationBaseline);
+    const priorSuggestionNames = keepDishes ? state.confirmationBaseline.assistedDishNames || [] : [];
     const name = dishName.value.trim();
     const failed = state.simulateFailure;
 
@@ -1473,9 +1485,13 @@
     renderCountrySuggestion();
     state.matchingCooks = archive?.listCooks ? await archive.listCooks() : [];
     renderDishMatches($("#match-group"), { dishName: name, country: $("#confirm-country").value, groupName: "dishMatch-primary", onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; } });
-    clearConfirmationDishes();
-    state.assistedDishes.slice(1).forEach((dish) => addConfirmationDish(dish, { focus: false, fromAssistance: true }));
+    if (!keepDishes) clearConfirmationDishes();
+    const suggestions = state.assistedDishes.slice(1);
+    captureDraft.additionalDishSuggestions(suggestions, [{ dishName: name }, ...confirmationDishValues()], priorSuggestionNames)
+      .forEach((dish) => addConfirmationDish(dish, { focus: false, fromAssistance: true }));
     state.confirmationBaseline = {
+      // Remember suggestions even after removal or renaming, so another review does not restore them.
+      assistedDishNames: [...new Set([...priorSuggestionNames, ...suggestions.map((dish) => dish.dishName)])],
       dishName: $("#confirm-dish").value,
       cookedAt: $("#confirm-date").value,
       country: $("#confirm-country").value,
@@ -3353,7 +3369,7 @@
 
   async function openJournalFromCapture() {
     const returnIdeaId = state.pendingIdeaId;
-    const hasDraft = captureDraft.hasCaptureDraft({
+    const hasDraft = state.capturePhotoLoading || state.capturePhotoProcessing || captureDraft.hasCaptureDraft({
       photoReady: state.photoReady,
       recordingActive: Boolean(state.activeAdapter || state.activeTranscript),
       dishName: dishName.value,
@@ -3515,6 +3531,7 @@
 
   function openAddDish() {
     $("#add-dish-form").reset();
+    addedDishPhotoEditor.draft.reset();
     setCountryValue($("#add-dish-country"), "");
     $("#add-dish-error").hidden = true;
     showScreen("add-dish");
@@ -3522,20 +3539,24 @@
 
   async function submitAddedDish(event) {
     event.preventDefault();
+    if (addedDishPhotoEditor.draft.busy || state.addedDishSaving) return;
     const button = $("#save-added-dish");
     const input = { dishName: $("#add-dish-name").value.trim(), country: $("#add-dish-country").value.trim(), rating: $("#add-dish-rating").value, notes: $("#add-dish-notes").value.trim(), ingredients: $("#add-dish-ingredients").value.trim(), forceNewDish: $("#add-dish-force-new").checked };
     if (!input.dishName) { $("#add-dish-error").textContent = "Enter a dish name."; $("#add-dish-error").hidden = false; $("#add-dish-name").focus(); return; }
     if (!validateCountryInput($("#add-dish-country"))) { $("#add-dish-country").focus(); return; }
     input.country = $("#add-dish-country").value.trim();
+    state.addedDishSaving = true;
+    addedDishPhotoEditor.setDisabled(true);
+    $("#cancel-add-dish").disabled = true;
     button.disabled = true; button.setAttribute("aria-busy", "true");
     try {
-      const photoFile = $("#add-dish-photo").files?.[0];
-      if (photoFile) input.photo = photoProcessor?.processPhoto ? await photoProcessor.processPhoto(photoFile) : { blob: photoFile };
+      input.photos = addedDishPhotoEditor.draft.values();
       await archive.addDishToOccasion(state.currentOccasionId, input);
       recordActivity("cook_updated");
+      addedDishPhotoEditor.draft.reset();
       await refreshEntry(`${input.dishName} added.`);
     } catch (error) { $("#add-dish-error").textContent = error.message || "The dish could not be added."; $("#add-dish-error").hidden = false; }
-    finally { button.disabled = false; button.removeAttribute("aria-busy"); }
+    finally { state.addedDishSaving = false; addedDishPhotoEditor.setDisabled(false); $("#cancel-add-dish").disabled = false; button.disabled = false; button.removeAttribute("aria-busy"); }
   }
 
   async function returnFromCook() {
@@ -3551,22 +3572,14 @@
   }
 
   function clearEditPhoto() {
-    if (state.editObjectUrl) URL.revokeObjectURL(state.editObjectUrl);
-    state.editObjectUrl = "";
-    state.editPhotoBlob = null;
-  }
-
-  function cancelEditPhotoProcessing() {
-    state.editPhotoRequestId += 1;
-    state.editPhotoProcessing = false;
-    $("#edit-save").disabled = false;
+    editPhotoEditor.draft.reset();
+    state.editGalleryOriginal = null;
   }
 
   function setEditSaving(saving) {
     state.editSaving = saving;
     $("#cancel-edit").disabled = saving;
-    $("#edit-camera-input").disabled = saving;
-    $("#edit-library-input").disabled = saving;
+    editPhotoEditor.setDisabled(saving);
   }
 
   function editValues() {
@@ -3583,7 +3596,7 @@
   function hasEditChanges() {
     if (!state.editOriginal) return false;
     const current = editValues();
-    return Boolean(state.editPhotoBlob)
+    return editPhotoEditor.draft.changed || editPhotoEditor.draft.busy
       || Object.keys(current).some((key) => current[key] !== state.editOriginal[key]);
   }
 
@@ -3595,7 +3608,6 @@
       journalError.hidden = false;
       return;
     }
-    cancelEditPhotoProcessing();
     setEditSaving(false);
     clearEditPhoto();
     state.editOriginal = {
@@ -3612,8 +3624,12 @@
     editRating.value = state.editOriginal.rating;
     editNotes.value = state.editOriginal.notes;
     editIngredients.value = state.editOriginal.ingredients;
-    $("#edit-photo").src = $("#entry-photo").src;
-    $("#edit-photo").alt = `${cook.dishName}, current photo`;
+    const occasion = await archive.getOccasion(cook.occasionId);
+    state.editGalleryOriginal = { updatedAt: occasion.updatedAt, photoIds: occasion.photos.map((photo) => photo.id) };
+    editPhotoEditor.draft.reset([
+      occasion.mainPhoto,
+      ...occasion.photos.filter((photo) => photo.id !== occasion.mainPhotoId),
+    ]);
     $("#edit-dish-error").hidden = true;
     editDish.removeAttribute("aria-invalid");
     editError.hidden = true;
@@ -3623,51 +3639,9 @@
     showScreen("edit");
   }
 
-  async function handleEditPhoto(event) {
-    if (state.editSaving) return;
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const requestId = ++state.editPhotoRequestId;
-    if (!file.type.startsWith("image/")) {
-      state.editPhotoProcessing = false;
-      $("#edit-save").disabled = false;
-      editPhotoError.textContent = "Choose an image from the camera or photo library.";
-      editPhotoError.classList.add("is-error");
-      editPhotoError.hidden = false;
-      event.target.value = "";
-      return;
-    }
-    state.editPhotoProcessing = true;
-    $("#edit-save").disabled = true;
-    editPhotoError.textContent = "Preparing your replacement photo on this device…";
-    editPhotoError.classList.remove("is-error");
-    editPhotoError.hidden = false;
-    try {
-      const processed = photoProcessor?.processPhoto ? await photoProcessor.processPhoto(file) : { blob: file };
-      if (requestId !== state.editPhotoRequestId) return;
-      clearEditPhoto();
-      state.editPhotoBlob = processed.blob;
-      state.editObjectUrl = URL.createObjectURL(processed.blob);
-      $("#edit-photo").src = state.editObjectUrl;
-      $("#edit-photo").alt = `${editDish.value.trim() || "Cook"}, replacement photo`;
-      editPhotoError.hidden = true;
-    } catch (error) {
-      if (requestId !== state.editPhotoRequestId) return;
-      editPhotoError.textContent = error.message || "This photo could not be prepared. Try another image.";
-      editPhotoError.classList.add("is-error");
-    } finally {
-      if (requestId === state.editPhotoRequestId) {
-        state.editPhotoProcessing = false;
-        $("#edit-save").disabled = false;
-      }
-      event.target.value = "";
-    }
-  }
-
   function cancelEdit() {
     if (state.editSaving) return;
     if (hasEditChanges() && !window.confirm("Discard your unsaved changes?")) return;
-    cancelEditPhotoProcessing();
     clearEditPhoto();
     state.editOriginal = null;
     showScreen("entry");
@@ -3675,8 +3649,9 @@
 
   async function submitEdit(event) {
     event.preventDefault();
+    if (state.editSaving) return;
     if (state.editPhotoProcessing) {
-      editPhotoError.textContent = "Wait for the replacement photo to finish preparing.";
+      editPhotoError.textContent = "Wait for your photos to finish preparing.";
       editPhotoError.classList.remove("is-error");
       editPhotoError.hidden = false;
       return;
@@ -3716,7 +3691,10 @@
     try {
       await archive.updateCook(state.currentCookId, {
         ...values,
-        ...(state.editPhotoBlob ? { photoBlob: state.editPhotoBlob } : {}),
+        ...(editPhotoEditor.draft.changed ? { photoEdits: {
+          ...state.editGalleryOriginal,
+          photos: editPhotoEditor.draft.values(),
+        } } : {}),
       });
       recordActivity("cook_updated");
       saved = true;
@@ -3744,6 +3722,7 @@
 
   async function submitCapture(event) {
     event.preventDefault();
+    if (state.capturePhotoProcessing || state.capturePhotoLoading) return;
     beginTiming();
     captureError.hidden = true;
 
@@ -3779,7 +3758,7 @@
         dishName.focus();
         return;
       }
-      await updateConfirmation();
+      await updateConfirmation({ preserveDishes: true });
       showScreen("confirm");
     } catch (error) {
       captureError.textContent = error.message || "Your cook could not be prepared. Your draft is still here.";
@@ -3792,7 +3771,7 @@
   }
 
   function clearConfirmationDishes() {
-    state.confirmationDishes.forEach((dish) => { if (dish.objectUrl) URL.revokeObjectURL(dish.objectUrl); });
+    state.confirmationDishes.forEach((dish) => dish.photoEditor.destroy());
     state.confirmationDishes = [];
     $("#additional-dishes").replaceChildren();
   }
@@ -3800,8 +3779,7 @@
   function addConfirmationDish(initial = {}, options = {}) {
     const record = {
       id: crypto.randomUUID?.() || `dish-${Date.now()}`,
-      processed: options.processed || null,
-      objectUrl: "",
+      photos: options.photos || [],
       matchedDishId: options.matchedDishId || "",
       forceNewDish: options.forceNewDish ?? !options.matchedDishId,
       fromAssistance: Boolean(options.fromAssistance),
@@ -3877,24 +3855,18 @@
     }
     card.append(countryAction);
     const matchGroup = document.createElement("fieldset"); matchGroup.className = "match-group additional-match-group"; card.append(matchGroup);
-    const photoLabel = document.createElement("label"); const photoInput = document.createElement("input"); const photoStatus = document.createElement("span");
-    photoLabel.className = "button button-secondary file-button"; photoLabel.textContent = "Add dish photo";
-    photoInput.type = "file"; photoInput.accept = "image/*"; photoStatus.className = "field-helper"; photoStatus.textContent = "Optional";
-    photoLabel.append(photoInput); card.append(photoLabel, photoStatus);
-    remove.addEventListener("click", () => {
-      if ([...card.querySelectorAll("input, textarea")].some((control) => control.value) && !window.confirm("Remove this unsaved dish?")) return;
-      if (record.objectUrl) URL.revokeObjectURL(record.objectUrl);
-      state.confirmationDishes = state.confirmationDishes.filter((dish) => dish !== record);
-      card.remove();
+    const photoContainer = document.createElement("div");
+    card.append(photoContainer);
+    record.photoEditor = window.WhatIMadePhotoEditor.mount(photoContainer, {
+      idPrefix: `extra-${record.id}`, label: "this additional dish", main: false,
+      onChange() { updateConfirmationPhotoState(); },
     });
-    photoInput.addEventListener("change", async () => {
-      const file = photoInput.files?.[0]; if (!file) return;
-      photoStatus.textContent = "Preparing photo…";
-      try {
-        record.processed = photoProcessor?.processPhoto ? await photoProcessor.processPhoto(file) : { blob: file };
-        photoStatus.textContent = "Dish photo ready.";
-      } catch (error) { record.processed = null; photoStatus.textContent = error.message || "This photo could not be prepared."; }
-      photoInput.value = "";
+    remove.addEventListener("click", () => {
+      if ((record.photoEditor.draft.changed || record.photoEditor.draft.busy || [...card.querySelectorAll("input, textarea")].some((control) => control.value)) && !window.confirm("Remove this unsaved dish?")) return;
+      state.confirmationDishes = state.confirmationDishes.filter((dish) => dish !== record);
+      record.photoEditor.destroy();
+      card.remove();
+      updateConfirmationPhotoState();
     });
     record.element = card;
     state.confirmationDishes.push(record);
@@ -3941,7 +3913,7 @@
       suppressRecognitionForCountry(event.detail?.country);
       refreshMatch();
     });
-    if (record.processed) photoStatus.textContent = "Dish photo ready.";
+    record.photoEditor.draft.reset(record.photos);
     record.initialValues = confirmationDishValuesForRecord(record);
     if (options.focus !== false) card.querySelector("input")?.focus();
     return record;
@@ -3958,7 +3930,7 @@
         ? record.recognition.originalDishName : "",
       matchedDishId: record.matchedDishId || null,
       forceNewDish: record.forceNewDish,
-      processed: record.processed,
+      photos: record.photoEditor.draft.values(),
     };
   }
 
@@ -3980,7 +3952,6 @@
         forceNewDish: state.primaryForceNewDish,
         recognition: state.primaryDishRecognition ? { ...state.primaryDishRecognition } : null,
       },
-      extras: state.confirmationDishes.map((record) => ({ ...confirmationDishValuesForRecord(record), fromAssistance: record.fromAssistance })),
     };
   }
 
@@ -3997,12 +3968,6 @@
     });
     if (snapshot.primary.dishName !== snapshot.baseline.dishName) state.primaryDishRecognition = snapshot.primary.recognition;
     renderPrimaryDishRecognition();
-    if (snapshot.extras.length) {
-      clearConfirmationDishes();
-      snapshot.extras.forEach((dish) => addConfirmationDish(dish, {
-        focus: false, fromAssistance: false, processed: dish.processed, matchedDishId: dish.matchedDishId, forceNewDish: dish.forceNewDish,
-      }));
-    }
     renderDishMatches($("#match-group"), {
       dishName: $("#confirm-dish").value.trim(), country: $("#confirm-country").value.trim(), groupName: "dishMatch-primary",
       onSelect: (id, forceNew) => { state.primaryMatchedDishId = id; state.primaryForceNewDish = forceNew; },
@@ -4016,8 +3981,15 @@
     }
   }
 
+  function updateConfirmationPhotoState() {
+    const busy = Boolean(state.confirmationSaving) || state.confirmationDishes.some((record) => record.photoEditor.draft.busy);
+    $("#save-button").disabled = busy;
+    $("#back-to-capture").disabled = busy;
+  }
+
   async function submitConfirmation(event) {
     event.preventDefault();
+    if (state.confirmationSaving || state.confirmationDishes.some((record) => record.photoEditor.draft.busy)) return;
     const confirmedName = $("#confirm-dish").value.trim();
     if (!confirmedName) {
       $("#confirm-dish").setAttribute("aria-invalid", "true");
@@ -4039,18 +4011,21 @@
     }
 
     const saveButton = $("#save-button");
+    state.confirmationSaving = true;
+    $("#back-to-capture").disabled = true;
+    $("#add-confirm-dish").disabled = true;
+    state.confirmationDishes.forEach((record) => { record.photoEditor.setDisabled(true); record.element.disabled = true; });
     saveButton.disabled = true;
     saveButton.setAttribute("aria-busy", "true");
     saveButton.firstChild.textContent = "Saving…";
     saveError.hidden = true;
 
     try {
-      const photoBlob = await resolvePhotoBlob();
       const extraDishes = confirmationDishValues();
       const missing = extraDishes.find((dish) => !dish.dishName);
       if (missing) throw new Error("Enter a name for every additional dish or remove its section.");
       const dishes = [{ dishName: confirmedName, rating: $("#confirm-rating").value, notes: $("#confirm-notes").value, ingredients: $("#confirm-ingredients").value, country: $("#confirm-country").value, transcript: transcript.value, sourceIdeaId: state.pendingIdeaId, matchedDishId: state.primaryMatchedDishId || null, forceNewDish: state.primaryForceNewDish, speechAlias: primarySpeechAlias() }, ...extraDishes];
-      const photos = [{ blob: photoBlob, dishIndex: 0 }, ...extraDishes.flatMap((dish, index) => dish.processed ? [{ ...dish.processed, dishIndex: index + 1 }] : [])];
+      const photos = [...capturePhotoEditor.draft.values().map((photo) => ({ ...photo, dishIndex: 0 })), ...extraDishes.flatMap((dish, index) => dish.photos.map((photo) => ({ ...photo, dishIndex: index + 1 })))];
       state.currentOccasionId = await archive.saveOccasion({ cookedAt: $("#confirm-date").value, dishes, photos });
       recordActivity("cook_created");
       if (dishes.some((dish) => dish.sourceIdeaId)) recordActivity("idea_completed");
@@ -4077,7 +4052,11 @@
       saveError.textContent = error.message || "This cook could not be saved. Your draft is still here.";
       saveError.hidden = false;
     } finally {
-      saveButton.disabled = false;
+      state.confirmationSaving = false;
+      $("#back-to-capture").disabled = false;
+      $("#add-confirm-dish").disabled = false;
+      state.confirmationDishes.forEach((record) => { record.element.disabled = false; record.photoEditor.setDisabled(false); });
+      updateConfirmationPhotoState();
       saveButton.removeAttribute("aria-busy");
       saveButton.textContent = "Save cook";
     }
@@ -4093,6 +4072,10 @@
     state.activeTranscript = null;
     if (activeAdapter) void activeAdapter.cancel("Voice stopped");
     stopRecordingClock();
+    state.photoLoadRequestId += 1;
+    state.capturePhotoLoading = false;
+    capturePhotoEditor.draft.reset();
+    capturePhotoEditor.setDisabled(false);
     if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
     state.photoReady = false;
     state.photoSrc = "";
@@ -4220,10 +4203,6 @@
     openDemoInvitation(trigger);
   }, true);
 
-  cameraInput.addEventListener("change", handleFile);
-  libraryInput.addEventListener("change", handleFile);
-  $("#edit-camera-input").addEventListener("change", handleEditPhoto);
-  $("#edit-library-input").addEventListener("change", handleEditPhoto);
   $("#sample-photo").addEventListener("click", () => setPhoto(sample.photo, "Sample bowl of Oyakodon"));
   $("#sample-voice").addEventListener("click", applyParsedSample);
   micButton.addEventListener("click", toggleRecording);
@@ -4371,7 +4350,7 @@
     button.setAttribute("aria-busy", "true");
     try {
       await organizeCaptureText({ ...state.lastAssistanceInput, retry: true });
-      await updateConfirmation();
+      await updateConfirmation({ preserveDishes: true });
       restoreConfirmationSnapshot(snapshot);
     } finally {
       button.disabled = false;
@@ -4409,7 +4388,12 @@
   $("#capture-dish-change").addEventListener("click", () => changePrimaryDishRecognition(dishName));
   $("#confirm-dish-change").addEventListener("click", () => changePrimaryDishRecognition($("#confirm-dish")));
   $("#add-entry-dish").addEventListener("click", openAddDish);
-  $("#cancel-add-dish").addEventListener("click", () => showScreen("entry"));
+  $("#cancel-add-dish").addEventListener("click", () => {
+    if (state.addedDishSaving) return;
+    if ((addedDishPhotoEditor.draft.changed || addedDishPhotoEditor.draft.busy || $("#add-dish-name").value) && !window.confirm("Discard this unsaved dish?")) return;
+    addedDishPhotoEditor.draft.reset();
+    showScreen("entry");
+  });
   $("#add-dish-form").addEventListener("submit", submitAddedDish);
   $("#add-entry-photos").addEventListener("click", () => $("#entry-photo-input").click());
   $("#take-entry-photo").addEventListener("click", () => $("#entry-camera-input").click());
@@ -4645,7 +4629,7 @@
 
   if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js?v=56").catch(() => {
+      navigator.serviceWorker.register("./sw.js?v=59").catch(() => {
         // Capture remains usable when installation support is unavailable.
       });
     });

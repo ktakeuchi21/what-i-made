@@ -9,11 +9,11 @@ Let the owner preserve a valid cooking occasion while the food is still hot. The
 
 ## Flow
 
-1. Add or take the main photograph.
+1. Add one or more photographs; the first is main until another is chosen.
 2. Speak naturally or type the dish name.
 3. After Done, replace the final voice segment with a meaning-preserving cleaned version and reveal recognized fields.
 4. Review structured suggestions, including country, on one confirmation screen.
-5. Optionally add more dishes, each with its own details and photograph.
+5. Optionally add more dishes, each with its own details and optional photographs.
 6. Save and show the occasion’s dishes in their individual histories.
 
 The confirmation screen is one step, not a wizard. Back navigation returns to the intact capture draft.
@@ -67,3 +67,7 @@ The confirmation screen is one step, not a wizard. Back navigation returns to th
 - Complete ten representative voice notes and record latency plus correction effort.
 - Test camera permission denial, unavailable speech recognition, and failed classification without losing the visible draft.
 - Test at 375 CSS pixels, iPhone landscape, enlarged text, reduced motion, and dark appearance.
+
+## Multiple-photo controls
+
+Camera adds one photo; Add photos supports several library images per selection. Preview cards offer Replace, Remove, and Make main with visible labels and 44-pixel targets. Processing has a local progress message and blocks Review or Save until complete. Review/back preserves all staged photos. Each additional dish uses the same controls, without a main-photo choice.

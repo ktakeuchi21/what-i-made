@@ -3708,3 +3708,19 @@ select[aria-invalid="true"] {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* The same staged photo controls are used in capture and edit. */
+.photo-editor { margin: 16px 0 24px; }
+.photo-editor-inputs { display: flex; flex-wrap: wrap; gap: 8px; }
+.photo-editor-inputs .file-button { flex: 1; min-width: 120px; }
+.photo-editor-inputs [aria-disabled="true"] { opacity: 0.6; cursor: default; }
+.photo-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); gap: 16px 12px; margin-top: 12px; }
+.photo-editor-card { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.photo-editor-card img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
+.photo-editor-card p { margin: 10px 12px 4px; font-size: 0.875rem; font-weight: 600; }
+.photo-editor-card > div { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 8px 8px; }
+.photo-editor-card button { flex: 1 1 44px; min-width: 44px; min-height: 44px; padding: 8px 4px; font-size: 0.875rem; white-space: normal; }
+.photo-editor-card button[data-action="main"] { flex-basis: 100%; border-bottom: 1px solid var(--border); }
+.photo-editor-status { min-height: 1.5em; margin-bottom: 0; overflow-wrap: anywhere; }
+.photo-editor-status.is-error { color: var(--danger); }
+@media (max-width: 340px) { .photo-editor-grid { grid-template-columns: 1fr; } }

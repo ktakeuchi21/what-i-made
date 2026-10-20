@@ -40,7 +40,7 @@ Privacy shapes the architecture. Authentication controls invitation-only access,
 
 - Photo-first capture with a minimal photo-and-name path.
 - Natural-language voice notes with filler cleanup and editable suggestions for dish, rating, notes, ingredients, and country.
-- Multiple dishes and extra photographs within one cooking occasion.
+- Multiple dishes and photographs within one cooking occasion, with multi-select photo capture and draft controls to replace, remove, or choose a main photo before saving.
 - Trustworthy dish matching, locally learned aliases, international dish recognition, and map-safe country autocomplete.
 - Searchable Journal filters for country, year, month, rating, and unrated cooks.
 - Canonical dish histories that show every attempt, photograph, rating, and note.

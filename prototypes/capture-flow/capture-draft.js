@@ -32,5 +32,16 @@
     if (adapter) await adapter.cancel(message);
   }
 
-  return { hasCaptureDraft, discardActiveVoice };
+  function additionalDishSuggestions(suggestions, existingDishes, previouslySuggestedNames = []) {
+    const nameKey = (name) => String(name || "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
+    const seen = new Set([...previouslySuggestedNames, ...existingDishes.map((dish) => dish.dishName)].map(nameKey));
+    return suggestions.filter((dish) => {
+      const key = nameKey(dish.dishName);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  return { hasCaptureDraft, discardActiveVoice, additionalDishSuggestions };
 });

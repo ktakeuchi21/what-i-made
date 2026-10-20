@@ -11,3 +11,7 @@
 - Use visible labels for every field, numeric keyboard semantics for rating, and inline recovery errors.
 - Keep one final Save changes action. Cancel returns to the unchanged detail and warns only for a dirty edit.
 - Put one Edit action on each dish card. Removing a dish requires confirmation, deletes its non-main assigned photographs, preserves a main photograph by making it occasion-wide, and is disabled for the last dish.
+
+## Staged gallery editing
+
+Edit cook shows the complete occasion gallery. Camera and Add photos append; each preview offers Replace, Remove, and Make main. The current main can be removed when another image remains; the next image becomes main. Removing the last photo is disabled with an explanation. All photo changes remain a draft until Save changes, and Cancel discards them. The existing photo-options sheet on occasion detail still saves its actions immediately.
