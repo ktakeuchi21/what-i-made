@@ -32,18 +32,18 @@ test("service worker caches OAuth navigations only under the canonical shell URL
   assert.match(navigationBranch, /cache\.put\("\.\/index\.html", canonicalResponse\)/);
   assert.doesNotMatch(navigationBranch, /cache\.put\(event\.request/);
   assert.doesNotMatch(navigationBranch, /cache\.put\("\.\/index\.html", (?:copy|response\.clone\(\))\)/);
-  assert.match(worker, /what-i-made-capture-v56/);
-  assert.match(worker, /\.\/app\.js\?v=56/);
+  assert.match(worker, /what-i-made-capture-v59/);
+  assert.match(worker, /\.\/app\.js\?v=59/);
   assert.match(worker, /\.\/auth-session\.js\?v=51/);
   assert.match(worker, /\.\/activity-client\.js\?v=51/);
-  assert.match(worker, /\.\/capture-draft\.js\?v=17/);
-  assert.match(worker, /\.\/styles\.css\?v=56/);
-  assert.match(html, /\.\/app\.js\?v=56/);
+  assert.match(worker, /\.\/capture-draft\.js\?v=59/);
+  assert.match(worker, /\.\/styles\.css\?v=59/);
+  assert.match(html, /\.\/app\.js\?v=59/);
   assert.match(html, /\.\/auth-session\.js\?v=51/);
   assert.match(html, /\.\/activity-client\.js\?v=51/);
-  assert.match(html, /\.\/capture-draft\.js\?v=17/);
-  assert.match(html, /\.\/styles\.css\?v=56/);
-  assert.match(app, /\.\/sw\.js\?v=56/);
+  assert.match(html, /\.\/capture-draft\.js\?v=59/);
+  assert.match(html, /\.\/styles\.css\?v=59/);
+  assert.match(app, /\.\/sw\.js\?v=59/);
   assert.match(worker, /requestUrl\.pathname\.includes\("\/admin\/"\)/);
   assert.match(html, /id="entry-photo-credit"/);
   assert.match(html, /id="idea-photo-credit"/);
@@ -65,8 +65,8 @@ test("new cook capture exposes and validates an explicit historical date", () =>
   assert.match(app, /confirmDate\.value = captureDate\.value \|\| currentDateValue\(\)/);
   assert.match(app, /validateNewCookDateControl\(captureDate, captureDateError\)/);
   assert.match(app, /validateNewCookDateControl\(confirmDate, confirmDateError\)/);
-  assert.match(worker, /\.\/archive-store\.js\?v=32/);
-  assert.match(html, /\.\/archive-store\.js\?v=32/);
+  assert.match(worker, /\.\/archive-store\.js\?v=59/);
+  assert.match(html, /\.\/archive-store\.js\?v=59/);
 });
 
 test("new cook capture exposes a map-safe optional country before review", () => {

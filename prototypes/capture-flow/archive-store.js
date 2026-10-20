@@ -265,8 +265,45 @@
       photo.blob = input.photoBlob;
       photo.mimeType = input.photoBlob.type || "image/jpeg";
       photo.byteLength = input.photoBlob.size;
+      photo.thumbnailBlob = null;
+      photo.width = null;
+      photo.height = null;
+      delete photo.attribution;
     }
     return { occasion, attempt, dish, photo };
+  }
+
+  function buildPhotoEditRecords(occasion, currentPhotos, edits, attemptId, now = new Date().toISOString()) {
+    const expected = Array.isArray(edits.photoIds) ? edits.photoIds : [];
+    if (edits.updatedAt !== occasion.updatedAt || expected.length !== currentPhotos.length
+      || new Set(expected).size !== expected.length || currentPhotos.some((photo) => !expected.includes(photo.id))) {
+      throw new Error("This gallery changed while you were editing. Cancel and reopen the cook before trying again.");
+    }
+    if (!Array.isArray(edits.photos) || !edits.photos.length) throw new Error("Keep at least one photo for this cook.");
+    const seen = new Set();
+    const photos = edits.photos.map((input, index) => {
+      const existing = input.id ? currentPhotos.find((photo) => photo.id === input.id) : null;
+      if (input.id && (!existing || seen.has(input.id))) throw new Error("Choose each photo from this cooking occasion only once.");
+      if (input.id) seen.add(input.id);
+      const photo = existing ? { ...existing } : { id: createId(), occasionId: occasion.id, dishAttemptId: attemptId, createdAt: now };
+      if (!existing || input.edited) {
+        if (!(input.blob instanceof Blob) || !input.blob.size) throw new Error("Choose a valid photograph.");
+        photo.blob = input.blob;
+        photo.thumbnailBlob = input.thumbnailBlob instanceof Blob ? input.thumbnailBlob : null;
+        photo.width = input.width || null;
+        photo.height = input.height || null;
+        photo.mimeType = input.blob.type || "image/jpeg";
+        photo.byteLength = input.blob.size;
+        delete photo.attribution;
+      }
+      photo.role = index === 0 ? "main" : "extra";
+      return photo;
+    });
+    return {
+      photos,
+      mainPhotoId: photos[0].id,
+      deletedPhotoIds: currentPhotos.filter((photo) => !seen.has(photo.id)).map((photo) => photo.id),
+    };
   }
 
   function assembleCooks(occasions, dishes, attempts, photos) {
@@ -668,9 +705,10 @@
       }
       const attempt = { id: createId(), occasionId, dishId: dish.id, position: existingAttempts.reduce((maximum, candidate) => Math.max(maximum, Number.isInteger(candidate.position) ? candidate.position : -1), -1) + 1, rating: normalizeRating(input.rating), notes: cleanOptional(input.notes), ingredientsText: cleanOptional(input.ingredients), transcript: cleanOptional(input.transcript), sourceIdeaId: cleanOptional(input.sourceIdeaId), createdAt: now, updatedAt: now };
       attemptsStore.add(attempt);
-      if (input.photo) {
-        if (!(input.photo.blob instanceof Blob) || !input.photo.blob.size) throw new Error("Choose a valid photograph.");
-        const photo = { id: createId(), occasionId, dishAttemptId: attempt.id, role: "extra", mimeType: input.photo.blob.type || "image/jpeg", byteLength: input.photo.blob.size, blob: input.photo.blob, thumbnailBlob: input.photo.thumbnailBlob instanceof Blob ? input.photo.thumbnailBlob : null, width: input.photo.width || null, height: input.photo.height || null, createdAt: now };
+      const photoInputs = Array.isArray(input.photos) ? input.photos : input.photo ? [input.photo] : [];
+      for (const photoInput of photoInputs) {
+        if (!(photoInput.blob instanceof Blob) || !photoInput.blob.size) throw new Error("Choose a valid photograph.");
+        const photo = { id: createId(), occasionId, dishAttemptId: attempt.id, role: "extra", mimeType: photoInput.blob.type || "image/jpeg", byteLength: photoInput.blob.size, blob: photoInput.blob, thumbnailBlob: photoInput.thumbnailBlob instanceof Blob ? photoInput.thumbnailBlob : null, width: photoInput.width || null, height: photoInput.height || null, createdAt: now };
         transaction.objectStore("photos").add(photo);
         if (!dish.defaultMapPhotoId) dish.defaultMapPhotoId = photo.id;
       }
@@ -934,10 +972,32 @@
       if (!dish) throw new Error("That dish is no longer available.");
       const photo = await requestResult(photosStore.get(occasion.mainPhotoId));
       const updated = buildCookUpdateRecords({ occasion, attempt, dish, photo }, input);
+      if (input.photoEdits) {
+        const currentPhotos = await requestResult(photosStore.index("occasionId").getAll(occasion.id));
+        const gallery = buildPhotoEditRecords(occasion, currentPhotos, input.photoEdits, attempt.id);
+        gallery.deletedPhotoIds.forEach((photoId) => photosStore.delete(photoId));
+        gallery.photos.forEach((record) => photosStore.put(record));
+        updated.occasion.mainPhotoId = gallery.mainPhotoId;
+        updated.photo = null;
+      }
       occasionsStore.put(updated.occasion);
       attemptsStore.put(updated.attempt);
       dishesStore.put(updated.dish);
       if (updated.photo) photosStore.put(updated.photo);
+
+      if (input.photoEdits) {
+        const [allPhotos, allAttempts, allOccasions, allDishes] = await Promise.all([
+          requestResult(photosStore.getAll()), requestResult(attemptsStore.getAll()),
+          requestResult(occasionsStore.getAll()), requestResult(dishesStore.getAll()),
+        ]);
+        for (const candidate of allDishes) {
+          const currentDefault = allPhotos.find((record) => record.id === candidate.defaultMapPhotoId);
+          if (isEligibleMapPhoto(candidate.id, currentDefault, allAttempts, allOccasions)) continue;
+          candidate.defaultMapPhotoId = allPhotos.filter((record) => isEligibleMapPhoto(candidate.id, record, allAttempts, allOccasions))
+            .sort((left, right) => `${left.createdAt}|${left.id}`.localeCompare(`${right.createdAt}|${right.id}`)).at(-1)?.id || null;
+          dishesStore.put(candidate);
+        }
+      }
 
       await done;
       return id;
@@ -948,5 +1008,5 @@
     }
   }
 
-  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, MIN_NEW_COOK_DATE, localDateValue, newCookDateError, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, appendUsefulAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
+  return { DB_NAME, ACCOUNT_DB_PREFIX, DB_VERSION, MIN_NEW_COOK_DATE, localDateValue, newCookDateError, normalizeArchiveKey, databaseNameForArchiveKey, setArchiveContext, closeDatabase, normalizeDishName, shouldLearnAlias, appendUsefulAlias, consolidateDishRecords, buildCookRecords, buildCookUpdateRecords, buildPhotoEditRecords, assembleCooks, assembleOccasions, flattenDishAttempts, isEligibleMapPhoto, openDatabase, requestResult, transactionDone, saveCook, saveOccasion, addDishToOccasion, addPhotosToOccasion, updatePhoto, deletePhoto, removeDishAttempt, updateCook, listCooks, listOccasions, listDishAttempts, getCook, getOccasion, getDishMapPreferences, updateDishMapPreferences };
 });

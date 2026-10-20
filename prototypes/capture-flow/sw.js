@@ -1,19 +1,20 @@
 "use strict";
 
-const CACHE_NAME = "what-i-made-capture-v56";
+const CACHE_NAME = "what-i-made-capture-v59";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=56",
+  "./styles.css?v=59",
   "./config.js?v=51",
   "./transcribe-codec.js?v=16",
   "./transcribe-adapter.js?v=40",
   "./capture-parser.js?v=16",
   "./capture-assistance.js?v=27",
   "./dish-matcher.js?v=40",
-  "./capture-draft.js?v=17",
+  "./capture-draft.js?v=59",
   "./photo-url.js?v=16",
   "./photo-processor.js?v=16",
+  "./photo-editor.js?v=59",
   "./assets/world-map-data.js?v=29",
   "./country-combobox.js?v=40",
   "./assets/international-dishes.js?v=40",
@@ -22,7 +23,7 @@ const APP_SHELL = [
   "./account-context.js?v=31",
   "./auth-session.js?v=51",
   "./activity-client.js?v=51",
-  "./archive-store.js?v=32",
+  "./archive-store.js?v=59",
   "./idea-store.js?v=18",
   "./archive-backup.js?v=29",
   "./legacy-migration.js?v=33",
@@ -32,7 +33,7 @@ const APP_SHELL = [
   "./journal-model.js?v=25",
   "./demo-archive.js?v=49",
   "./audio-worklet.js",
-  "./app.js?v=56",
+  "./app.js?v=59",
   "./manifest.webmanifest?v=30",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",

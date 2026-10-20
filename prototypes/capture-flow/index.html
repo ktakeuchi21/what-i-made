@@ -16,7 +16,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png?v=30" />
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png?v=30" />
     <link rel="manifest" href="./manifest.webmanifest?v=30" />
-    <link rel="stylesheet" href="./styles.css?v=56" />
+    <link rel="stylesheet" href="./styles.css?v=59" />
   </head>
   <body>
     <svg class="symbol-library" aria-hidden="true">
@@ -152,22 +152,11 @@
               <img id="photo-preview" alt="" hidden />
               <div class="photo-empty" id="photo-empty">
                 <svg class="empty-icon" aria-hidden="true"><use href="#icon-camera"></use></svg>
-                <strong>Add the main photo</strong>
+                <strong>Add your photos</strong>
                 <span>Required for a cooking occasion</span>
               </div>
-              <figcaption class="photo-actions">
-                <label class="button button-secondary file-button">
-                  <svg aria-hidden="true"><use href="#icon-camera"></use></svg>
-                  Camera
-                  <input id="camera-input" type="file" accept="image/*" capture="environment" />
-                </label>
-                <label class="button button-secondary file-button">
-                  <svg aria-hidden="true"><use href="#icon-image"></use></svg>
-                  Library
-                  <input id="library-input" type="file" accept="image/*" />
-                </label>
-              </figcaption>
             </figure>
+            <div id="capture-photos"></div>
             <button class="inline-button" type="button" id="sample-photo">Use sample meal</button>
 
             <form id="capture-form" novalidate>
@@ -915,7 +904,7 @@
             <div class="field-group compact-number-field"><label for="add-dish-rating">Rating <span>Optional</span></label><div><input id="add-dish-rating" type="number" min="1" max="10" inputmode="numeric" /><span>out of 10</span></div></div>
             <div class="field-group"><label for="add-dish-notes">Notes <span>Optional</span></label><textarea id="add-dish-notes" rows="3"></textarea></div>
             <div class="field-group"><label for="add-dish-ingredients">Ingredients <span>Optional</span></label><textarea id="add-dish-ingredients" rows="3"></textarea></div>
-            <div class="field-group"><label for="add-dish-photo">Dish photograph <span>Optional</span></label><input id="add-dish-photo" type="file" accept="image/*" /><p class="field-hint">The photograph will also join this occasion’s gallery.</p></div>
+            <div id="add-dish-photos"></div>
             <label class="radio-card"><input id="add-dish-force-new" type="checkbox" /><span class="radio-copy"><strong>Keep as a separate dish</strong><span>Use this only when the same name represents a different dish.</span></span></label>
             <div class="form-error" id="add-dish-error" role="alert" hidden></div>
             <button class="button button-primary primary-action" type="submit" id="save-added-dish">Add dish</button>
@@ -933,20 +922,8 @@
             <h2 id="edit-title" tabindex="-1">Edit your cook</h2>
             <p class="screen-intro">Changes save only when you tap Save changes.</p>
 
-            <figure class="edit-photo-shell"><img id="edit-photo" alt="" /></figure>
-            <div class="edit-photo-actions">
-              <label class="button button-secondary file-button" for="edit-camera-input">
-                <svg aria-hidden="true"><use href="#icon-camera"></use></svg>
-                Camera
-                <input id="edit-camera-input" type="file" accept="image/*" capture="environment" />
-              </label>
-              <label class="button button-secondary file-button" for="edit-library-input">
-                <svg aria-hidden="true"><use href="#icon-library"></use></svg>
-                Library
-                <input id="edit-library-input" type="file" accept="image/*" />
-              </label>
-            </div>
-            <p class="field-helper">Replacing this photo updates this cook. If it represents the dish on your map, the map updates too.</p>
+            <div id="edit-photos"></div>
+            <p class="field-helper">These photos belong to the whole cooking occasion. New photos belong to the dish you’re editing. Changes save together below.</p>
             <div class="edit-photo-message" id="edit-photo-error" role="status" aria-live="polite" hidden></div>
 
             <div class="shared-dish-note" id="shared-dish-note">
@@ -1140,9 +1117,10 @@
     <script src="./capture-parser.js?v=16"></script>
     <script src="./capture-assistance.js?v=27"></script>
     <script src="./dish-matcher.js?v=40"></script>
-    <script src="./capture-draft.js?v=17"></script>
+    <script src="./capture-draft.js?v=59"></script>
     <script src="./photo-url.js?v=16"></script>
     <script src="./photo-processor.js?v=16"></script>
+    <script src="./photo-editor.js?v=59"></script>
     <script src="./assets/world-map-data.js?v=29"></script>
     <script src="./country-combobox.js?v=40"></script>
     <script src="./assets/international-dishes.js?v=40"></script>
@@ -1151,7 +1129,7 @@
     <script src="./account-context.js?v=31"></script>
     <script src="./auth-session.js?v=51"></script>
     <script src="./activity-client.js?v=51"></script>
-    <script src="./archive-store.js?v=32"></script>
+    <script src="./archive-store.js?v=59"></script>
     <script src="./idea-store.js?v=18"></script>
     <script src="./archive-backup.js?v=29"></script>
     <script src="./legacy-migration.js?v=33"></script>
@@ -1160,6 +1138,6 @@
     <script src="./dashboard-model.js?v=29"></script>
     <script src="./journal-model.js?v=25"></script>
     <script src="./demo-archive.js?v=49"></script>
-    <script src="./app.js?v=56"></script>
+    <script src="./app.js?v=59"></script>
   </body>
 </html>
